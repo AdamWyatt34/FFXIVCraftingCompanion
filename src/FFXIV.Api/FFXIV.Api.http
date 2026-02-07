@@ -1,0 +1,6 @@
+@FFXIV.Api_HostAddress = http://localhost:5159
+
+GET {{FFXIV.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

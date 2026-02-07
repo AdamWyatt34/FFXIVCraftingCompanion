@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet:*)",
+      "WebSearch",
+      "WebFetch(domain:v2.xivapi.com)",
+      "Bash(dir:*)",
+      "Bash(cd:*)",
+      "Bash(test:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(node:*)",
+      "Bash(npm --version:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)"
+    ]
+  }
+}
