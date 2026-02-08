@@ -9,6 +9,7 @@ const sizes = {
   md: 32,
   lg: 40,
   xl: 48,
+  "2xl": 64,
 } as const;
 
 type IconSize = keyof typeof sizes;

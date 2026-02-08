@@ -10,4 +10,8 @@ public class Item
     public int ItemLevel { get; set; }
     public ItemCategory Category { get; set; }
     public bool CanBeHQ { get; set; }
+
+    public ICollection<ItemSource> Sources { get; set; } = new List<ItemSource>();
+    public ICollection<GatheringInfo> GatheringInfos { get; set; } = new List<GatheringInfo>();
+    public ICollection<VendorInfo> VendorInfos { get; set; } = new List<VendorInfo>();
 }

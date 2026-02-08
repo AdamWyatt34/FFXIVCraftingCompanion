@@ -5,4 +5,7 @@
     <Project Path="src/FFXIV.Domain/FFXIV.Domain.csproj" />
     <Project Path="src/FFXIV.Infrastructure/FFXIV.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FFXIV.Tests/FFXIV.Tests.csproj" />
+  </Folder>
 </Solution>

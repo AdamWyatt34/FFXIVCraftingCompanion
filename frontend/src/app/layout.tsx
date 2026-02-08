@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Header, BottomTabNav } from "@/components/layout";
+import { ToastProvider } from "@/components/ui";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased">
         <Header />
-        <main className="flex-1 pb-16">{children}</main>
+        <ToastProvider>
+          <main className="flex-1 pb-16">{children}</main>
+        </ToastProvider>
         <BottomTabNav />
       </body>
     </html>

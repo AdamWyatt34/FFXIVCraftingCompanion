@@ -18,7 +18,9 @@ export interface RecipeDto {
   durability: number;
   requiredCraftsmanship: number;
   requiredControl: number;
+  yield: number;
   ingredients: RecipeIngredientDto[];
+  materialSummary: MaterialSummaryDto | null;
 }
 
 export interface RecipeIngredientDto {
@@ -75,6 +77,93 @@ export type EquipSlot =
   | "Necklace"
   | "Bracelet"
   | "Ring";
+
+export interface ItemSourceDto {
+  type: string;
+  description: string;
+  zone: string | null;
+  npc: string | null;
+  cost: number | null;
+  currency: string | null;
+  gatheringLevel: number | null;
+  gatheringClass: string | null;
+}
+
+export interface RecipeSummaryDto {
+  recipeId: number;
+  craftType: string;
+  craftTypeName: string;
+  recipeLevel: number;
+  requiredCraftsmanship: number;
+  requiredControl: number;
+  yield: number;
+}
+
+export interface MaterialTreeNodeDto {
+  itemId: number;
+  itemName: string;
+  iconUrl: string;
+  quantity: number;
+  isRawMaterial: boolean;
+  primarySource: string;
+  sources: ItemSourceDto[];
+  recipe: RecipeSummaryDto | null;
+  children: MaterialTreeNodeDto[];
+  depth: number;
+}
+
+export interface ShoppingListItemDto {
+  itemId: number;
+  itemName: string;
+  iconUrl: string;
+  totalQuantity: number;
+  primarySource: string;
+  sources: ItemSourceDto[];
+  category: string;
+  alsoAvailableFromVendor: boolean;
+}
+
+export interface IntermediateCraftDto {
+  itemId: number;
+  itemName: string;
+  iconUrl: string;
+  craftType: string;
+  craftTypeName: string;
+  recipeId: number;
+  quantity: number;
+  recipeLevel: number;
+  craftOrder: number;
+}
+
+export interface TreeSummaryDto {
+  totalUniqueRawMaterials: number;
+  totalUniqueCrystals: number;
+  totalIntermediateCrafts: number;
+  maxTreeDepth: number;
+  requestedQuantity: number;
+}
+
+export interface MaterialTreeResultDto {
+  tree: MaterialTreeNodeDto;
+  shoppingList: ShoppingListItemDto[];
+  intermediateCrafts: IntermediateCraftDto[];
+  crystalRequirements: ShoppingListItemDto[];
+  summary: TreeSummaryDto;
+}
+
+export interface ShoppingListResultDto {
+  shoppingList: ShoppingListItemDto[];
+  crystalRequirements: ShoppingListItemDto[];
+  intermediateCrafts: IntermediateCraftDto[];
+  summary: TreeSummaryDto;
+}
+
+export interface MaterialSummaryDto {
+  rawMaterialCount: number;
+  intermediateCraftCount: number;
+  crystalTypeCount: number;
+  treeDepth: number;
+}
 
 export interface ApiError {
   error: string;

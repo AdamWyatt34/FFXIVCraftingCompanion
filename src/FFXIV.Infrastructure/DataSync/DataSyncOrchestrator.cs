@@ -15,9 +15,12 @@ public sealed class DataSyncOrchestrator
     private readonly AppDbContext _db;
     private readonly IXivApiClient _xivApiClient;
     private readonly DataSyncOptions _options;
+    private readonly SourceDataSyncService _sourceDataSync;
+    private readonly GarlandDataEnricher _garlandEnricher;
+    private readonly ICacheService _cache;
     private readonly ILogger<DataSyncOrchestrator> _logger;
 
-    private const string ItemFields = "Name,LevelItem,CanBeHq,Icon,ItemSearchCategory,ItemUICategory";
+    private const string ItemFields = "Name,LevelItem,CanBeHq,Icon,ItemSearchCategory,ItemUICategory,PriceMid";
     private const string RecipeFields = "ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,DurabilityFactor,AmountResult,CanHq,Ingredient,AmountIngredient";
     private const int ItemPageSize = 500;
     private const int RecipePageSize = 50;
@@ -26,11 +29,17 @@ public sealed class DataSyncOrchestrator
         AppDbContext db,
         IXivApiClient xivApiClient,
         IOptions<DataSyncOptions> options,
+        SourceDataSyncService sourceDataSync,
+        GarlandDataEnricher garlandEnricher,
+        ICacheService cache,
         ILogger<DataSyncOrchestrator> logger)
     {
         _db = db;
         _xivApiClient = xivApiClient;
         _options = options.Value;
+        _sourceDataSync = sourceDataSync;
+        _garlandEnricher = garlandEnricher;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -58,7 +67,7 @@ public sealed class DataSyncOrchestrator
         var (versionKey, versionName) = await _xivApiClient.GetCurrentGameVersionAsync(ct);
         _logger.LogInformation("Syncing against game version {VersionName} ({VersionKey})", versionName, versionKey);
 
-        var itemCount = await SyncItemsAsync(ct);
+        var (itemCount, itemPriceLookup) = await SyncItemsAsync(ct);
         await UpdateSyncMetadataAsync("Item", itemCount, versionKey, ct);
 
         var recipeCount = await SyncRecipesAsync(ct);
@@ -68,7 +77,28 @@ public sealed class DataSyncOrchestrator
         // var equipCount = await SyncEquipmentAsync(ct);
         // await UpdateSyncMetadataAsync("Equipment", equipCount, versionKey, ct);
 
+        if (_options.SyncSources)
+        {
+            var (sourceCount, gatheringCount, vendorCount) =
+                await _sourceDataSync.SyncAllSourcesAsync(itemPriceLookup, ct);
+            await UpdateSyncMetadataAsync("ItemSource", sourceCount, versionKey, ct);
+            await UpdateSyncMetadataAsync("GatheringInfo", gatheringCount, versionKey, ct);
+            await UpdateSyncMetadataAsync("VendorInfo", vendorCount, versionKey, ct);
+        }
+
+        if (_options.EnrichFromGarlandTools)
+        {
+            _logger.LogInformation("Running Garland Tools data enrichment...");
+            await _garlandEnricher.EnrichSourceDataAsync(ct);
+        }
+
         await UpdateSyncMetadataAsync("GameVersion", 0, versionKey, ct);
+
+        _logger.LogInformation("Invalidating cached data after sync...");
+        await _cache.RemoveByPrefixAsync("materialtree:", ct);
+        await _cache.RemoveByPrefixAsync("recipe:", ct);
+        await _cache.RemoveByPrefixAsync("item:", ct);
+        _logger.LogInformation("Cache invalidation complete");
 
         stopwatch.Stop();
         _logger.LogInformation(
@@ -76,12 +106,13 @@ public sealed class DataSyncOrchestrator
             stopwatch.Elapsed, itemCount, recipeCount);
     }
 
-    private async Task<int> SyncItemsAsync(CancellationToken ct)
+    private async Task<(int Count, Dictionary<int, int> PriceLookup)> SyncItemsAsync(CancellationToken ct)
     {
         _logger.LogInformation("Starting item sync...");
         int? afterRowId = null;
         var totalSynced = 0;
         var batch = new List<Item>();
+        var priceLookup = new Dictionary<int, int>();
 
         while (true)
         {
@@ -99,6 +130,9 @@ public sealed class DataSyncOrchestrator
                     continue;
 
                 batch.Add(XivApiDataMapper.ToItem(row.RowId, row.Fields));
+
+                if (row.Fields.PriceMid > 0)
+                    priceLookup[row.RowId] = row.Fields.PriceMid;
 
                 if (batch.Count >= _options.BatchSize)
                 {
@@ -122,7 +156,7 @@ public sealed class DataSyncOrchestrator
         }
 
         _logger.LogInformation("Item sync complete. Total: {RecordCount}", totalSynced);
-        return totalSynced;
+        return (totalSynced, priceLookup);
     }
 
     private async Task<int> SyncRecipesAsync(CancellationToken ct)
@@ -233,6 +267,7 @@ public sealed class DataSyncOrchestrator
                 tracked.Durability = recipe.Durability;
                 tracked.RequiredCraftsmanship = recipe.RequiredCraftsmanship;
                 tracked.RequiredControl = recipe.RequiredControl;
+                tracked.Yield = recipe.Yield;
             }
             else
             {

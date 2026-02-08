@@ -13,7 +13,9 @@
       "Bash(npx create-next-app@latest:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:garlandtools.org)"
     ]
   }
 }

@@ -38,7 +38,8 @@ public static class XivApiDataMapper
             Quality = CalculateFactoredValue(rlt?.Quality ?? 0, fields.QualityFactor),
             Durability = CalculateFactoredValue(rlt?.Durability ?? 0, fields.DurabilityFactor),
             RequiredCraftsmanship = rlt?.SuggestedCraftsmanship ?? 0,
-            RequiredControl = 0
+            RequiredControl = 0,
+            Yield = fields.AmountResult > 0 ? fields.AmountResult : 1
         };
     }
 
@@ -113,5 +114,35 @@ public static class XivApiDataMapper
     private static int CalculateFactoredValue(int baseValue, int factor)
     {
         return baseValue * factor / 100;
+    }
+
+    /// <summary>
+    /// Maps XIVAPI GatheringType row_id to our GatheringType enum.
+    /// 0=Mining, 1=Quarrying, 2=Logging, 3=Harvesting.
+    /// </summary>
+    public static GatheringType MapGatheringType(int rowId)
+    {
+        return rowId switch
+        {
+            0 => GatheringType.Mining,
+            1 => GatheringType.Quarrying,
+            2 => GatheringType.Logging,
+            3 => GatheringType.Harvesting,
+            _ => GatheringType.Mining
+        };
+    }
+
+    /// <summary>
+    /// Maps a GatheringType to its corresponding class/job abbreviation.
+    /// </summary>
+    public static string GatheringTypeToClassJob(GatheringType gatheringType)
+    {
+        return gatheringType switch
+        {
+            GatheringType.Mining or GatheringType.Quarrying => "MIN",
+            GatheringType.Logging or GatheringType.Harvesting => "BTN",
+            GatheringType.Fishing => "FSH",
+            _ => "MIN"
+        };
     }
 }

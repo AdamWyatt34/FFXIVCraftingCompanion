@@ -1,5 +1,6 @@
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Items.Queries;
+using FFXIV.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,9 +22,10 @@ public class ItemsController : ControllerBase
     }
 
     /// <summary>
-    /// Search for items by name.
+    /// Search for items by name, optionally filtered by craft type.
     /// </summary>
-    /// <param name="q">Search query (minimum 2 characters).</param>
+    /// <param name="q">Search query (minimum 2 characters). Optional when craftType is specified.</param>
+    /// <param name="craftType">Filter by craft type (e.g. CRP, BSM, ARM, GSM, LTW, WVR, ALC, CUL).</param>
     /// <param name="page">Page number (default: 1, minimum: 1).</param>
     /// <param name="pageSize">Items per page (default: 20, range: 1-100).</param>
     /// <response code="200">Returns matching items.</response>
@@ -32,11 +34,18 @@ public class ItemsController : ControllerBase
     [ProducesResponseType(typeof(ItemSearchResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Search(
-        [FromQuery] string q,
+        [FromQuery] string? q = null,
+        [FromQuery] CraftType? craftType = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        var hasQuery = !string.IsNullOrWhiteSpace(q) && q.Length >= 2;
+        var hasCraftType = craftType.HasValue;
+
+        if (!hasQuery && !hasCraftType)
+            return BadRequest(new { error = "Provide a search query (minimum 2 characters) or a craftType filter." });
+
+        if (!string.IsNullOrWhiteSpace(q) && q.Length < 2)
             return BadRequest(new { error = "Query must be at least 2 characters." });
 
         if (page < 1)
@@ -45,7 +54,8 @@ public class ItemsController : ControllerBase
         if (pageSize < 1 || pageSize > 100)
             return BadRequest(new { error = "PageSize must be between 1 and 100." });
 
-        var result = await _mediator.Send(new SearchItemsQuery(q, page, pageSize));
+        var result = await _mediator.Send(new SearchItemsQuery(
+            hasQuery ? q : null, page, pageSize, craftType));
         return Ok(result);
     }
 

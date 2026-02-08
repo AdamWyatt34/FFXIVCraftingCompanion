@@ -2,6 +2,8 @@ import type {
   ItemDto,
   ItemSearchResultDto,
   RecipeDto,
+  MaterialTreeResultDto,
+  ShoppingListResultDto,
   ApiError,
 } from "@/types/api";
 
@@ -56,16 +58,18 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function searchItems(
-  query: string,
+  query: string | null,
   page = 1,
   pageSize = 20,
   signal?: AbortSignal,
+  craftType?: string,
 ): Promise<ItemSearchResultDto> {
   const params = new URLSearchParams({
-    q: query,
     page: String(page),
     pageSize: String(pageSize),
   });
+  if (query) params.set("q", query);
+  if (craftType) params.set("craftType", craftType);
   return fetchApi<ItemSearchResultDto>(`/api/items/search?${params}`, { signal });
 }
 
@@ -73,6 +77,34 @@ export function getItem(id: number): Promise<ItemDto> {
   return fetchApi<ItemDto>(`/api/items/${id}`);
 }
 
-export function getRecipe(id: number): Promise<RecipeDto> {
-  return fetchApi<RecipeDto>(`/api/recipes/${id}`);
+export function getRecipe(
+  id: number,
+  includeMaterials = false,
+): Promise<RecipeDto> {
+  const params = includeMaterials ? "?includeMaterials=true" : "";
+  return fetchApi<RecipeDto>(`/api/recipes/${id}${params}`);
+}
+
+export function getMaterialTree(
+  recipeId: number,
+  quantity = 1,
+  signal?: AbortSignal,
+): Promise<MaterialTreeResultDto> {
+  const params = quantity > 1 ? `?quantity=${quantity}` : "";
+  return fetchApi<MaterialTreeResultDto>(
+    `/api/recipes/${recipeId}/materials${params}`,
+    { signal },
+  );
+}
+
+export function getShoppingList(
+  recipeId: number,
+  quantity = 1,
+  signal?: AbortSignal,
+): Promise<ShoppingListResultDto> {
+  const params = quantity > 1 ? `?quantity=${quantity}` : "";
+  return fetchApi<ShoppingListResultDto>(
+    `/api/recipes/${recipeId}/shoppinglist${params}`,
+    { signal },
+  );
 }

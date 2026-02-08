@@ -1,4 +1,8 @@
+using System.Runtime.InteropServices;
 using FFXIV.Application.DTOs;
+using FFXIV.Application.Recipes;
+using FFXIV.Application.Recipes.DTOs;
+using FFXIV.Domain.Models;
 using FFXIV.Infrastructure.DataSync;
 using FFXIV.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +13,7 @@ namespace FFXIV.Api.Controllers;
 // TODO: Secure these endpoints with authentication/authorization (Sprint 4)
 
 /// <summary>
-/// Administrative endpoints for data synchronization management.
+/// Administrative endpoints for data synchronization management and tree validation.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -18,11 +22,16 @@ public class AdminController : ControllerBase
 {
     private readonly IDataSyncTrigger _syncTrigger;
     private readonly AppDbContext _db;
+    private readonly ITreeValidationService _validationService;
 
-    public AdminController(IDataSyncTrigger syncTrigger, AppDbContext db)
+    public AdminController(
+        IDataSyncTrigger syncTrigger,
+        AppDbContext db,
+        ITreeValidationService validationService)
     {
         _syncTrigger = syncTrigger;
         _db = db;
+        _validationService = validationService;
     }
 
     /// <summary>
@@ -66,5 +75,76 @@ public class AdminController : ControllerBase
             IsSyncCurrentlyRunning: isSyncRunning));
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Validate a recipe's material tree against Garland Tools data.
+    /// This is a development/testing aid.
+    /// </summary>
+    /// <param name="recipeId">The recipe ID to validate.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <response code="200">Returns validation result.</response>
+    /// <response code="404">Recipe not found.</response>
+    [HttpPost("validate-tree/{recipeId:int}")]
+    [ProducesResponseType(typeof(TreeValidationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ValidateTree(int recipeId, CancellationToken cancellationToken)
+    {
+        var result = await _validationService.ValidateTreeAsync(recipeId, 1, cancellationToken);
+
+        if (result.ErrorMessage?.Contains("not found") == true)
+            return NotFound(new { error = result.ErrorMessage });
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Validate a batch of recipe trees against Garland Tools data.
+    /// Body can contain a list of recipe IDs or use "random:N" to validate N random recipes.
+    /// </summary>
+    /// <param name="request">Batch validation request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <response code="200">Returns batch validation results.</response>
+    /// <response code="400">Invalid request.</response>
+    [HttpPost("validate-batch")]
+    [ProducesResponseType(typeof(BatchValidationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ValidateBatch(
+        [FromBody] BatchValidationRequest request, CancellationToken cancellationToken)
+    {
+        IEnumerable<int> recipeIds;
+
+        if (request.RandomSpec is not null)
+        {
+            if (!request.RandomSpec.StartsWith("random:", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { error = "Invalid randomSpec format. Use 'random:N'." });
+
+            if (!int.TryParse(request.RandomSpec.AsSpan(7), out var count) || count < 1 || count > 500)
+                return BadRequest(new { error = "Random count must be between 1 and 500." });
+
+            recipeIds = await GetRandomRecipeIdsAsync(count, cancellationToken);
+        }
+        else if (request.RecipeIds is { Count: > 0 })
+        {
+            recipeIds = request.RecipeIds;
+        }
+        else
+        {
+            return BadRequest(new { error = "Provide either recipeIds or randomSpec." });
+        }
+
+        var result = await _validationService.ValidateBatchAsync(recipeIds, cancellationToken);
+        return Ok(result);
+    }
+
+    private async Task<List<int>> GetRandomRecipeIdsAsync(int count, CancellationToken ct)
+    {
+        var allIds = await _db.Recipes
+            .AsNoTracking()
+            .Select(r => r.RecipeId)
+            .ToListAsync(ct);
+
+        Random.Shared.Shuffle(CollectionsMarshal.AsSpan(allIds));
+        return allIds.Take(count).ToList();
     }
 }

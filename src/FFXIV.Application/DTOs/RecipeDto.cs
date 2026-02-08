@@ -1,3 +1,5 @@
+using FFXIV.Application.Recipes.DTOs;
+
 namespace FFXIV.Application.DTOs;
 
 public sealed record RecipeDto(
@@ -10,4 +12,6 @@ public sealed record RecipeDto(
     int Durability,
     int RequiredCraftsmanship,
     int RequiredControl,
-    List<RecipeIngredientDto> Ingredients);
+    int Yield,
+    List<RecipeIngredientDto> Ingredients,
+    MaterialSummaryDto? MaterialSummary = null);

@@ -13,6 +13,9 @@ public class AppDbContext : DbContext
     public DbSet<Equipment> Equipment => Set<Equipment>();
     public DbSet<CraftingAction> CraftingActions => Set<CraftingAction>();
     public DbSet<SyncMetadata> SyncMetadata => Set<SyncMetadata>();
+    public DbSet<ItemSource> ItemSources => Set<ItemSource>();
+    public DbSet<GatheringInfo> GatheringInfos => Set<GatheringInfo>();
+    public DbSet<VendorInfo> VendorInfos => Set<VendorInfo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -111,6 +111,63 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.ToTable("Equipment", (string)null);
                 });
 
+            modelBuilder.Entity("FFXIV.Domain.Entities.GatheringInfo", b =>
+                {
+                    b.Property<int>("GatheringInfoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("GatheringInfoId"));
+
+                    b.Property<string>("AreaName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ClassJob")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<float?>("CoordinateX")
+                        .HasColumnType("real");
+
+                    b.Property<float?>("CoordinateY")
+                        .HasColumnType("real");
+
+                    b.Property<string>("GatheringType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsTimed")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SpawnTimes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ZoneName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("GatheringInfoId");
+
+                    b.HasIndex("ItemId");
+
+                    b.ToTable("GatheringInfos", (string)null);
+                });
+
             modelBuilder.Entity("FFXIV.Domain.Entities.Item", b =>
                 {
                     b.Property<int>("ItemId")
@@ -142,6 +199,35 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.ToTable("Items", (string)null);
                 });
 
+            modelBuilder.Entity("FFXIV.Domain.Entities.ItemSource", b =>
+                {
+                    b.Property<int>("ItemSourceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ItemSourceId"));
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceDetails")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("ItemSourceId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("ItemId", "SourceType")
+                        .IsUnique();
+
+                    b.ToTable("ItemSources", (string)null);
+                });
+
             modelBuilder.Entity("FFXIV.Domain.Entities.Recipe", b =>
                 {
                     b.Property<int>("RecipeId")
@@ -171,6 +257,11 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("ResultItemId")
                         .HasColumnType("integer");
+
+                    b.Property<int>("Yield")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.HasKey("RecipeId");
 
@@ -229,6 +320,75 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.ToTable("SyncMetadata", (string)null);
                 });
 
+            modelBuilder.Entity("FFXIV.Domain.Entities.VendorInfo", b =>
+                {
+                    b.Property<int>("VendorInfoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("VendorInfoId"));
+
+                    b.Property<float?>("CoordinateX")
+                        .HasColumnType("real");
+
+                    b.Property<float?>("CoordinateY")
+                        .HasColumnType("real");
+
+                    b.Property<int>("Cost")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CurrencyItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CurrencyType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NpcName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ZoneName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("VendorInfoId");
+
+                    b.HasIndex("CurrencyItemId");
+
+                    b.HasIndex("ItemId");
+
+                    b.ToTable("VendorInfos", (string)null);
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.GatheringInfo", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.Item", "Item")
+                        .WithMany("GatheringInfos")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.ItemSource", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.Item", "Item")
+                        .WithMany("Sources")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+                });
+
             modelBuilder.Entity("FFXIV.Domain.Entities.Recipe", b =>
                 {
                     b.HasOne("FFXIV.Domain.Entities.Item", "ResultItem")
@@ -257,6 +417,33 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("Recipe");
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.VendorInfo", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.Item", "CurrencyItem")
+                        .WithMany()
+                        .HasForeignKey("CurrencyItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FFXIV.Domain.Entities.Item", "Item")
+                        .WithMany("VendorInfos")
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CurrencyItem");
+
+                    b.Navigation("Item");
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.Item", b =>
+                {
+                    b.Navigation("GatheringInfos");
+
+                    b.Navigation("Sources");
+
+                    b.Navigation("VendorInfos");
                 });
 
             modelBuilder.Entity("FFXIV.Domain.Entities.Recipe", b =>

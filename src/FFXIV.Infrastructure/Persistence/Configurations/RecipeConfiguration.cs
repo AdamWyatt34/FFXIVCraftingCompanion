@@ -26,6 +26,8 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
 
         builder.HasIndex(r => r.ResultItemId);
 
+        builder.Property(r => r.Yield).HasDefaultValue(1);
+
         builder.Property(r => r.CraftType).HasConversion<string>();
     }
 }

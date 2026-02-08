@@ -29,6 +29,62 @@ export const ITEM_CATEGORY_INFO: Record<
   Other: { label: "Other", colorClass: "text-text-secondary" },
 };
 
+export const SOURCE_TYPE_INFO: Record<
+  string,
+  { label: string; bgClass: string; textClass: string }
+> = {
+  Gathered: {
+    label: "Gathered",
+    bgClass: "bg-emerald-500/20",
+    textClass: "text-emerald-400",
+  },
+  Vendor: {
+    label: "Vendor",
+    bgClass: "bg-amber-500/20",
+    textClass: "text-amber-400",
+  },
+  Crafted: {
+    label: "Crafted",
+    bgClass: "bg-blue-500/20",
+    textClass: "text-blue-400",
+  },
+  "Scrip Exchange": {
+    label: "Scrip",
+    bgClass: "bg-violet-500/20",
+    textClass: "text-violet-400",
+  },
+  "Mob Drop": {
+    label: "Mob Drop",
+    bgClass: "bg-red-500/20",
+    textClass: "text-red-400",
+  },
+  "Quest Reward": {
+    label: "Quest",
+    bgClass: "bg-cyan-500/20",
+    textClass: "text-cyan-400",
+  },
+  "Dungeon Drop": {
+    label: "Dungeon",
+    bgClass: "bg-orange-500/20",
+    textClass: "text-orange-400",
+  },
+  Desynthesis: {
+    label: "Desynth",
+    bgClass: "bg-pink-500/20",
+    textClass: "text-pink-400",
+  },
+  "Aetherial Reduction": {
+    label: "Reduction",
+    bgClass: "bg-teal-500/20",
+    textClass: "text-teal-400",
+  },
+  Other: {
+    label: "Other",
+    bgClass: "bg-gray-500/20",
+    textClass: "text-gray-400",
+  },
+};
+
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 export const MIN_SEARCH_LENGTH = 2;

@@ -33,6 +33,19 @@ public class RecipeRepository : IRecipeRepository
             .FirstOrDefaultAsync(r => r.ResultItemId == itemId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Recipe>> GetByResultItemIdsAsync(
+        IEnumerable<int> itemIds, CancellationToken cancellationToken = default)
+    {
+        var idList = itemIds.ToList();
+        return await _db.Recipes
+            .AsNoTracking()
+            .Include(r => r.ResultItem)
+            .Include(r => r.Ingredients)
+                .ThenInclude(ri => ri.Item)
+            .Where(r => idList.Contains(r.ResultItemId))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<Recipe> Recipes, int TotalCount)> SearchAsync(
         string query, int limit, int offset, CancellationToken cancellationToken = default)
     {

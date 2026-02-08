@@ -1,4 +1,5 @@
 using FFXIV.Domain.Entities;
+using FFXIV.Domain.Enums;
 using FFXIV.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,20 +22,40 @@ public class ItemRepository : IItemRepository
     }
 
     public async Task<(IReadOnlyList<Item> Items, int TotalCount)> SearchByNameAsync(
-        string query, int limit, int offset, CancellationToken cancellationToken = default)
+        string? query, int limit, int offset, CraftType? craftType = null, CancellationToken cancellationToken = default)
     {
-        var pattern = $"%{query}%";
-        var startsWithPattern = $"{query}%";
+        IQueryable<Item> baseQuery = _db.Items.AsNoTracking();
 
-        var baseQuery = _db.Items
-            .AsNoTracking()
-            .Where(i => EF.Functions.ILike(i.Name, pattern));
+        // Filter by craft type via join with Recipes
+        if (craftType.HasValue)
+        {
+            baseQuery = baseQuery
+                .Where(i => _db.Recipes.Any(r => r.ResultItemId == i.ItemId && r.CraftType == craftType.Value));
+        }
+
+        // Filter by name if query provided
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var pattern = $"%{query}%";
+            baseQuery = baseQuery.Where(i => EF.Functions.ILike(i.Name, pattern));
+        }
 
         var totalCount = await baseQuery.CountAsync(cancellationToken);
 
-        var items = await baseQuery
-            .OrderBy(i => EF.Functions.ILike(i.Name, startsWithPattern) ? 0 : 1)
-            .ThenBy(i => i.Name)
+        IOrderedQueryable<Item> orderedQuery;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var startsWithPattern = $"{query}%";
+            orderedQuery = baseQuery
+                .OrderBy(i => EF.Functions.ILike(i.Name, startsWithPattern) ? 0 : 1)
+                .ThenBy(i => i.Name);
+        }
+        else
+        {
+            orderedQuery = baseQuery.OrderBy(i => i.Name);
+        }
+
+        var items = await orderedQuery
             .Skip(offset)
             .Take(limit)
             .ToListAsync(cancellationToken);

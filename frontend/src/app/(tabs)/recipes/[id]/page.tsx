@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Sparkles,
+  ShoppingCart,
+  TreePine,
+  ListOrdered,
+  Info,
+} from "lucide-react";
 import { getRecipe } from "@/lib/api-client";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import {
@@ -12,27 +19,54 @@ import {
   LoadingSpinner,
   ErrorState,
 } from "@/components/ui";
+import {
+  MaterialTree,
+  QuantityMultiplier,
+  ShoppingListView,
+  CraftingStepsView,
+  ShoppingListSkeleton,
+  CraftingStepsSkeleton,
+} from "@/components/recipes";
+import { useMaterialTree } from "@/hooks/useMaterialTree";
 import type { RecipeDto, CraftType } from "@/types/api";
 
-export default function RecipeDetailPage() {
+type TabKey = "shopping" | "tree" | "steps";
+
+const TABS: { key: TabKey; label: string; icon: typeof ShoppingCart }[] = [
+  { key: "shopping", label: "Shopping List", icon: ShoppingCart },
+  { key: "tree", label: "Crafting Tree", icon: TreePine },
+  { key: "steps", label: "Crafting Steps", icon: ListOrdered },
+];
+
+function isValidTab(val: string | null): val is TabKey {
+  return val === "shopping" || val === "tree" || val === "steps";
+}
+
+function RecipeDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [recipe, setRecipe] = useState<RecipeDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+
+  const tabParam = searchParams.get("tab");
+  const activeTab: TabKey = isValidTab(tabParam) ? tabParam : "shopping";
+
+  function setActiveTab(tab: TabKey) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
+
+  const recipeId = Number(params.id);
+  const isValidId = !isNaN(recipeId);
 
   useEffect(() => {
-    const id = Number(params.id);
-    if (isNaN(id)) {
-      setError("Invalid recipe ID");
-      setIsLoading(false);
-      return;
-    }
+    if (!isValidId) return;
 
-    setIsLoading(true);
-    setError(null);
-
-    getRecipe(id)
+    getRecipe(recipeId, true)
       .then(setRecipe)
       .catch((err: unknown) => {
         setError(
@@ -40,7 +74,22 @@ export default function RecipeDetailPage() {
         );
       })
       .finally(() => setIsLoading(false));
-  }, [params.id]);
+  }, [isValidId, recipeId]);
+
+  const {
+    data: treeData,
+    isLoading: isTreeLoading,
+    error: treeError,
+    retry: retryTree,
+  } = useMaterialTree(recipeId, quantity);
+
+  if (!isValidId) {
+    return (
+      <div className="p-4">
+        <ErrorState message="Invalid recipe ID" />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -74,81 +123,202 @@ export default function RecipeDetailPage() {
         Back to search
       </button>
 
-      {/* Result item header */}
-      <div className="flex items-center gap-4">
+      {/* Enhanced header */}
+      <div className="flex items-start gap-4">
         <ItemIcon
           iconUrl={recipe.resultItem.iconUrl}
           alt={recipe.resultItem.name}
-          size="xl"
+          size="2xl"
         />
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-text-primary">
             {recipe.resultItem.name}
           </h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`text-sm font-medium ${craftInfo.colorClass}`}>
               {craftInfo.fullName}
             </span>
             <span className="text-text-muted text-sm">
               Lv. {recipe.recipeLevel}
             </span>
+            <span className="text-text-muted text-sm">
+              iLv {recipe.resultItem.itemLevel}
+            </span>
+            {recipe.yield > 1 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gold/20 text-gold">
+                Yields {recipe.yield}
+              </span>
+            )}
           </div>
+          {recipe.materialSummary && (
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="text-xs text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
+                {recipe.materialSummary.rawMaterialCount} materials
+              </span>
+              <span className="text-xs text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
+                {recipe.materialSummary.crystalTypeCount} crystal types
+              </span>
+              {recipe.materialSummary.intermediateCraftCount > 0 && (
+                <span className="text-xs text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
+                  {recipe.materialSummary.intermediateCraftCount} sub-crafts
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Recipe stats */}
-      <div className="bg-bg-surface rounded-lg p-4 space-y-3 border border-border">
-        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-          Recipe Stats
-        </h2>
-        <StatBar label="Difficulty" value={recipe.difficulty} />
-        <StatBar label="Quality" value={recipe.quality} />
-        <StatBar label="Durability" value={recipe.durability} />
+      {/* Recipe stats - 2 column on desktop */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-bg-surface rounded-lg p-4 space-y-3 border border-border">
+          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+            Recipe Stats
+          </h2>
+          <StatBar label="Difficulty" value={recipe.difficulty} />
+          <StatBar label="Quality" value={recipe.quality} />
+          <StatBar label="Durability" value={recipe.durability} />
+        </div>
+        <div className="bg-bg-surface rounded-lg p-4 space-y-3 border border-border">
+          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+            Required Stats
+          </h2>
+          <StatBar label="Craftsmanship" value={recipe.requiredCraftsmanship} />
+          <StatBar label="Control" value={recipe.requiredControl} />
+        </div>
       </div>
 
-      {/* Required stats */}
-      <div className="bg-bg-surface rounded-lg p-4 space-y-3 border border-border">
-        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-          Required Stats
-        </h2>
-        <StatBar label="Craftsmanship" value={recipe.requiredCraftsmanship} />
-        <StatBar label="Control" value={recipe.requiredControl} />
-      </div>
-
-      {/* Ingredients */}
+      {/* Direct ingredients */}
       <div className="bg-bg-surface rounded-lg p-4 border border-border">
         <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
           Ingredients ({recipe.ingredients.length})
         </h2>
-        <div className="space-y-2">
-          {recipe.ingredients.map((ingredient) => (
-            <Link
-              key={ingredient.itemId}
-              href={`/recipes?q=${encodeURIComponent(ingredient.itemName)}`}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elevated transition-colors group"
-            >
-              <ItemIcon
-                iconUrl={ingredient.iconUrl}
-                alt={ingredient.itemName}
-                size="md"
-              />
-              <span className="flex-1 text-sm text-text-primary group-hover:text-gold transition-colors truncate">
-                {ingredient.itemName}
-              </span>
-              <div className="flex items-center gap-2 shrink-0">
-                {ingredient.canBeHQ && (
-                  <span title="Can be HQ">
-                    <Sparkles size={14} className="text-gold" />
-                  </span>
-                )}
-                <span className="text-sm text-text-muted font-mono">
-                  x{ingredient.quantity}
+        {recipe.ingredients.length === 0 ? (
+          <p className="text-sm text-text-muted py-2">
+            This recipe has no ingredients.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {recipe.ingredients.map((ingredient) => (
+              <Link
+                key={ingredient.itemId}
+                href={`/recipes?q=${encodeURIComponent(ingredient.itemName)}`}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elevated transition-colors group"
+              >
+                <ItemIcon
+                  iconUrl={ingredient.iconUrl}
+                  alt={ingredient.itemName}
+                  size="md"
+                />
+                <span className="flex-1 text-sm text-text-primary group-hover:text-gold transition-colors truncate">
+                  {ingredient.itemName}
                 </span>
-              </div>
-            </Link>
-          ))}
+                <div className="flex items-center gap-2 shrink-0">
+                  {ingredient.canBeHQ && (
+                    <span title="Can be HQ">
+                      <Sparkles size={14} className="text-gold" />
+                    </span>
+                  )}
+                  <span className="text-sm text-text-muted font-mono">
+                    x{ingredient.quantity}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quantity multiplier */}
+      <QuantityMultiplier value={quantity} onChange={setQuantity} />
+
+      {/* Complex recipe banner */}
+      {treeData && treeData.summary.maxTreeDepth > 5 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <Info size={16} className="text-blue-400 shrink-0" />
+          <span className="text-sm text-blue-300">
+            This is a complex recipe with {treeData.summary.maxTreeDepth} levels
+            of sub-crafts.
+          </span>
+        </div>
+      )}
+
+      {/* Tab navigation */}
+      <div className="border-b border-border">
+        <div className="flex gap-0">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  isActive
+                    ? "border-gold text-gold"
+                    : "border-transparent text-text-muted hover:text-text-secondary"
+                }`}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Tab content */}
+      <div className="pb-4 min-h-[200px]">
+        {isTreeLoading ? (
+          <>
+            {activeTab === "shopping" && <ShoppingListSkeleton />}
+            {activeTab === "tree" && (
+              <div className="flex items-center justify-center p-8 gap-3">
+                <LoadingSpinner size={24} />
+                <span className="text-sm text-text-muted">
+                  Loading tree...
+                </span>
+              </div>
+            )}
+            {activeTab === "steps" && <CraftingStepsSkeleton />}
+          </>
+        ) : treeError ? (
+          <ErrorState message={treeError} onRetry={retryTree} />
+        ) : treeData ? (
+          <>
+            {activeTab === "shopping" && (
+              <ShoppingListView
+                shoppingList={treeData.shoppingList}
+                crystalRequirements={treeData.crystalRequirements}
+                intermediateCrafts={treeData.intermediateCrafts}
+                itemName={recipe.resultItem.name}
+                quantity={quantity}
+                summary={treeData.summary}
+              />
+            )}
+            {activeTab === "tree" && <MaterialTree tree={treeData.tree} />}
+            {activeTab === "steps" && (
+              <CraftingStepsView
+                intermediateCrafts={treeData.intermediateCrafts}
+                tree={treeData.tree}
+              />
+            )}
+          </>
+        ) : null}
+      </div>
     </div>
+  );
+}
+
+export default function RecipeDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center p-12">
+          <LoadingSpinner size={32} />
+        </div>
+      }
+    >
+      <RecipeDetailContent />
+    </Suspense>
   );
 }

@@ -39,6 +39,7 @@ public static class Mapper
             Durability: recipe.Durability,
             RequiredCraftsmanship: recipe.RequiredCraftsmanship,
             RequiredControl: recipe.RequiredControl,
+            Yield: recipe.Yield,
             Ingredients: ingredients);
     }
 }

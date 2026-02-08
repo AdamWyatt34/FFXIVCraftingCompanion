@@ -30,15 +30,21 @@ public static class DependencyInjection
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IRecipeRepository, RecipeRepository>();
         services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+        services.AddScoped<IItemSourceRepository, ItemSourceRepository>();
+        services.AddScoped<IGatheringInfoRepository, GatheringInfoRepository>();
+        services.AddScoped<IVendorInfoRepository, VendorInfoRepository>();
 
         // Data Sync
         services.Configure<DataSyncOptions>(configuration.GetSection(DataSyncOptions.SectionName));
         services.AddScoped<DataSyncOrchestrator>();
+        services.AddScoped<SourceDataSyncService>();
         services.AddSingleton<DataSyncService>();
         services.AddSingleton<IDataSyncTrigger>(sp => sp.GetRequiredService<DataSyncService>());
         services.AddHostedService(sp => sp.GetRequiredService<DataSyncService>());
 
         AddXivApiClient(services, configuration);
+        AddGarlandToolsClient(services, configuration);
+        services.AddScoped<GarlandDataEnricher>();
 
         return services;
     }
@@ -104,6 +110,44 @@ public static class DependencyInjection
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true,
                 Delay = TimeSpan.FromSeconds(2)
+            });
+
+            builder.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));
+        });
+    }
+
+    private static void AddGarlandToolsClient(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var optionsSection = configuration.GetSection(GarlandToolsOptions.SectionName);
+        services.Configure<GarlandToolsOptions>(optionsSection);
+        var options = optionsSection.Get<GarlandToolsOptions>() ?? new GarlandToolsOptions();
+
+        services.AddHttpClient<IGarlandToolsClient, GarlandToolsClient>(client =>
+        {
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.DefaultRequestHeaders.Add("User-Agent", "FFXIVCraftingCompanion/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .AddResilienceHandler("GarlandToolsPipeline", builder =>
+        {
+            builder.AddRateLimiter(new SlidingWindowRateLimiter(
+                new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = options.RateLimitPermitCount,
+                    Window = TimeSpan.FromSeconds(options.RateLimitWindowSeconds),
+                    SegmentsPerWindow = 2,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 50
+                }));
+
+            builder.AddRetry(new HttpRetryStrategyOptions
+            {
+                MaxRetryAttempts = options.MaxRetryAttempts,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                Delay = TimeSpan.FromSeconds(3)
             });
 
             builder.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));

@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChefHat } from "lucide-react";
+import { ChefHat, X } from "lucide-react";
 import {
   SearchBar,
   ItemCard,
@@ -23,6 +23,8 @@ function RecipesPageContent() {
   const {
     query,
     setQuery,
+    craftType,
+    setCraftType,
     items,
     totalCount,
     isLoading,
@@ -40,11 +42,17 @@ function RecipesPageContent() {
   });
 
   const hasQuery = query.length >= MIN_SEARCH_LENGTH;
-  const showWelcome = !hasQuery && !isLoading;
-  const showResults = hasQuery && items.length > 0;
-  const showEmpty = hasQuery && !isLoading && !error && items.length === 0;
-  const showError = hasQuery && !isLoading && error !== null;
-  const showSkeleton = hasQuery && isLoading && items.length === 0;
+  const hasFilter = craftType !== null;
+  const isActive = hasQuery || hasFilter;
+  const showWelcome = !isActive && !isLoading;
+  const showResults = isActive && items.length > 0;
+  const showEmpty = isActive && !isLoading && !error && items.length === 0;
+  const showError = isActive && !isLoading && error !== null;
+  const showSkeleton = isActive && isLoading && items.length === 0;
+
+  const activeCraftInfo = craftType
+    ? CRAFT_TYPE_INFO[craftType as CraftType]
+    : null;
 
   return (
     <div className="flex flex-col h-full">
@@ -56,6 +64,19 @@ function RecipesPageContent() {
           isLoading={isLoading}
           autoFocus
         />
+        {/* Active craft type filter chip */}
+        {activeCraftInfo && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-text-muted">Filtered by:</span>
+            <button
+              onClick={() => setCraftType(null)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-sm rounded-full bg-bg-surface border border-border-focus ${activeCraftInfo.colorClass}`}
+            >
+              {activeCraftInfo.fullName}
+              <X size={14} />
+            </button>
+          </div>
+        )}
         {showResults && (
           <p className="text-xs text-text-muted mt-2">
             {totalCount.toLocaleString()} result
@@ -85,7 +106,7 @@ function RecipesPageContent() {
             ).map(([key, info]) => (
               <button
                 key={key}
-                onClick={() => setQuery(info.fullName)}
+                onClick={() => setCraftType(key)}
                 className={`px-3 py-1.5 text-sm rounded-full bg-bg-surface border border-border hover:border-border-focus transition-colors ${info.colorClass}`}
               >
                 {info.fullName}
@@ -115,7 +136,7 @@ function RecipesPageContent() {
       {showError && <ErrorState message={error!} onRetry={retry} />}
 
       {/* Empty state */}
-      {showEmpty && <EmptyState query={query} />}
+      {showEmpty && <EmptyState query={craftType ? `${activeCraftInfo?.fullName} recipes` : query} />}
 
       {/* Results grid */}
       {showResults && (

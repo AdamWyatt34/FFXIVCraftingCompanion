@@ -28,4 +28,10 @@ public sealed class XivApiItemFields
 
     [JsonPropertyName("ItemUICategory")]
     public XivApiRowRef? ItemUICategory { get; init; }
+
+    /// <summary>
+    /// The buy price from NPC vendors (in Gil). Used during vendor source sync.
+    /// </summary>
+    [JsonPropertyName("PriceMid")]
+    public int PriceMid { get; init; }
 }
