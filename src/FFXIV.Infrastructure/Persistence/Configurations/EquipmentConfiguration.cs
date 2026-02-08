@@ -16,7 +16,16 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
 
         builder.HasIndex(e => new { e.ClassJobCategory, e.EquipLevel });
         builder.HasIndex(e => new { e.ClassJobCategory, e.ItemLevel });
+        builder.HasIndex(e => e.EquipSlot);
+        builder.HasIndex(e => new { e.EquipSlot, e.ClassJobCategory, e.ItemLevel });
 
         builder.Property(e => e.EquipSlot).HasConversion<string>();
+        builder.Property(e => e.SourceType).HasConversion<string>();
+        builder.Property(e => e.SourceDetails).HasColumnType("text");
+
+        builder.HasOne(e => e.Recipe)
+            .WithMany()
+            .HasForeignKey(e => e.RecipeId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

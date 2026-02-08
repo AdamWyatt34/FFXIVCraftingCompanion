@@ -12,12 +12,14 @@ public sealed class SearchItemsQueryHandler : IRequestHandler<SearchItemsQuery, 
 {
     private readonly IItemRepository _itemRepository;
     private readonly IRecipeRepository _recipeRepository;
+    private readonly IEquipmentRepository _equipmentRepository;
     private readonly ICacheService _cache;
 
-    public SearchItemsQueryHandler(IItemRepository itemRepository, IRecipeRepository recipeRepository, ICacheService cache)
+    public SearchItemsQueryHandler(IItemRepository itemRepository, IRecipeRepository recipeRepository, IEquipmentRepository equipmentRepository, ICacheService cache)
     {
         _itemRepository = itemRepository;
         _recipeRepository = recipeRepository;
+        _equipmentRepository = equipmentRepository;
         _cache = cache;
     }
 
@@ -54,8 +56,14 @@ public sealed class SearchItemsQueryHandler : IRequestHandler<SearchItemsQuery, 
                     ? (g.FirstOrDefault(r => r.CraftType == request.CraftType.Value) ?? g.First()).RecipeId
                     : g.First().RecipeId);
 
+        // Batch lookup equipment IDs for all returned items
+        var equipmentIds = await _equipmentRepository.GetExistingItemIdsAsync(itemIds, cancellationToken);
+
         var itemDtos = items.Select(i =>
-            Mapper.ToDto(i, recipeByItemId.TryGetValue(i.ItemId, out var rid) ? rid : null)
+            Mapper.ToDto(
+                i,
+                recipeByItemId.TryGetValue(i.ItemId, out var rid) ? rid : null,
+                equipmentIds.Contains(i.ItemId))
         ).ToList();
 
         var result = new ItemSearchResultDto(

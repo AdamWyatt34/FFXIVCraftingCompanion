@@ -10,6 +10,7 @@ import {
   TreePine,
   ListOrdered,
   Info,
+  Shield,
 } from "lucide-react";
 import { getRecipe } from "@/lib/api-client";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
@@ -111,16 +112,18 @@ function RecipeDetailContent() {
   }
 
   const craftInfo = CRAFT_TYPE_INFO[recipe.craftType as CraftType];
+  const fromGear = searchParams.get("from") === "gear";
+  const equipInfo = recipe.equipmentInfo;
 
   return (
     <div className="p-4 space-y-6 max-w-2xl mx-auto">
       {/* Back navigation */}
       <button
-        onClick={() => router.back()}
+        onClick={() => fromGear ? router.push("/gear") : router.back()}
         className="flex items-center gap-1 text-text-secondary hover:text-gold transition-colors text-sm"
       >
         <ArrowLeft size={16} />
-        Back to search
+        {fromGear ? "Back to Gear Browser" : "Back to search"}
       </button>
 
       {/* Enhanced header */}
@@ -186,6 +189,63 @@ function RecipeDetailContent() {
           <StatBar label="Control" value={recipe.requiredControl} />
         </div>
       </div>
+
+      {/* Equipment info banner */}
+      {equipInfo && (
+        <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Shield size={18} className="text-gold" />
+            <span className="text-sm font-medium text-gold">
+              This is gear for {equipInfo.classJobCategory}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {equipInfo.craftsmanship > 0 && (
+              <div className="bg-bg-elevated rounded-md p-2 text-center">
+                <p className="text-sm font-bold text-text-primary">{equipInfo.craftsmanship}</p>
+                <p className="text-xs text-text-muted">Craftsmanship</p>
+              </div>
+            )}
+            {equipInfo.control > 0 && (
+              <div className="bg-bg-elevated rounded-md p-2 text-center">
+                <p className="text-sm font-bold text-text-primary">{equipInfo.control}</p>
+                <p className="text-xs text-text-muted">Control</p>
+              </div>
+            )}
+            {equipInfo.cp > 0 && (
+              <div className="bg-bg-elevated rounded-md p-2 text-center">
+                <p className="text-sm font-bold text-text-primary">{equipInfo.cp}</p>
+                <p className="text-xs text-text-muted">CP</p>
+              </div>
+            )}
+            {equipInfo.gathering > 0 && (
+              <div className="bg-bg-elevated rounded-md p-2 text-center">
+                <p className="text-sm font-bold text-text-primary">{equipInfo.gathering}</p>
+                <p className="text-xs text-text-muted">Gathering</p>
+              </div>
+            )}
+            {equipInfo.perception > 0 && (
+              <div className="bg-bg-elevated rounded-md p-2 text-center">
+                <p className="text-sm font-bold text-text-primary">{equipInfo.perception}</p>
+                <p className="text-xs text-text-muted">Perception</p>
+              </div>
+            )}
+            {equipInfo.gp > 0 && (
+              <div className="bg-bg-elevated rounded-md p-2 text-center">
+                <p className="text-sm font-bold text-text-primary">{equipInfo.gp}</p>
+                <p className="text-xs text-text-muted">GP</p>
+              </div>
+            )}
+          </div>
+          <Link
+            href={`/gear?job=${encodeURIComponent(equipInfo.classJobCategory.split(",")[0]?.trim() ?? "")}&level=${recipe.resultItem.itemLevel}&mode=recommend`}
+            className="inline-flex items-center gap-1.5 text-sm text-gold hover:text-gold-light transition-colors"
+          >
+            <Shield size={14} />
+            Compare with recommendations
+          </Link>
+        </div>
+      )}
 
       {/* Direct ingredients */}
       <div className="bg-bg-surface rounded-lg p-4 border border-border">
@@ -295,7 +355,24 @@ function RecipeDetailContent() {
                 summary={treeData.summary}
               />
             )}
-            {activeTab === "tree" && <MaterialTree tree={treeData.tree} />}
+            {activeTab === "tree" && (
+              <>
+                {equipInfo && (
+                  <div className="mb-3 px-3 py-2 rounded-md bg-gold/5 border border-gold/20 text-xs text-text-secondary">
+                    This gear provides:{" "}
+                    {[
+                      equipInfo.craftsmanship > 0 && `Craftsmanship +${equipInfo.craftsmanship}`,
+                      equipInfo.control > 0 && `Control +${equipInfo.control}`,
+                      equipInfo.cp > 0 && `CP +${equipInfo.cp}`,
+                      equipInfo.gathering > 0 && `Gathering +${equipInfo.gathering}`,
+                      equipInfo.perception > 0 && `Perception +${equipInfo.perception}`,
+                      equipInfo.gp > 0 && `GP +${equipInfo.gp}`,
+                    ].filter(Boolean).join(", ")}
+                  </div>
+                )}
+                <MaterialTree tree={treeData.tree} />
+              </>
+            )}
             {activeTab === "steps" && (
               <CraftingStepsView
                 intermediateCrafts={treeData.intermediateCrafts}

@@ -100,7 +100,7 @@ public static class XivApiDataMapper
         };
     }
 
-    private static string BuildIconUrl(XivApiIcon? icon)
+    public static string BuildIconUrl(XivApiIcon? icon)
     {
         if (icon is null || string.IsNullOrEmpty(icon.Path))
             return string.Empty;
@@ -144,5 +144,75 @@ public static class XivApiDataMapper
             GatheringType.Fishing => "FSH",
             _ => "MIN"
         };
+    }
+
+    /// <summary>
+    /// Maps XIVAPI EquipSlotCategory boolean fields to our EquipSlot enum.
+    /// Returns null if no recognized slot is set.
+    /// </summary>
+    public static EquipSlot? ResolveEquipSlot(XivApiEquipSlotCategoryFields fields)
+    {
+        if (fields.MainHand != 0) return EquipSlot.MainHand;
+        if (fields.OffHand != 0) return EquipSlot.OffHand;
+        if (fields.Head != 0) return EquipSlot.Head;
+        if (fields.Body != 0) return EquipSlot.Body;
+        if (fields.Gloves != 0) return EquipSlot.Hands;
+        if (fields.Legs != 0) return EquipSlot.Legs;
+        if (fields.Feet != 0) return EquipSlot.Feet;
+        if (fields.Ears != 0) return EquipSlot.Earring;
+        if (fields.Neck != 0) return EquipSlot.Necklace;
+        if (fields.Wrists != 0) return EquipSlot.Bracelet;
+        if (fields.FingerL != 0 || fields.FingerR != 0) return EquipSlot.Ring;
+        return null;
+    }
+
+    /// <summary>
+    /// Builds a comma-separated string of DoH/DoL job abbreviations from ClassJobCategory fields.
+    /// Returns empty string if no DoH/DoL jobs are set.
+    /// </summary>
+    public static string BuildClassJobString(XivApiClassJobCategoryFields fields)
+    {
+        var jobs = new List<string>(11);
+        if (fields.CRP) jobs.Add("CRP");
+        if (fields.BSM) jobs.Add("BSM");
+        if (fields.ARM) jobs.Add("ARM");
+        if (fields.GSM) jobs.Add("GSM");
+        if (fields.LTW) jobs.Add("LTW");
+        if (fields.WVR) jobs.Add("WVR");
+        if (fields.ALC) jobs.Add("ALC");
+        if (fields.CUL) jobs.Add("CUL");
+        if (fields.MIN) jobs.Add("MIN");
+        if (fields.BTN) jobs.Add("BTN");
+        if (fields.FSH) jobs.Add("FSH");
+        return string.Join(",", jobs);
+    }
+
+    /// <summary>
+    /// Extracts crafting/gathering stats from parallel BaseParam/BaseParamValue arrays.
+    /// BaseParam row_ids: 70=Craftsmanship, 71=Control, 11=CP, 72=Gathering, 73=Perception, 10=GP.
+    /// </summary>
+    public static (int Craftsmanship, int Control, int CP, int Gathering, int Perception, int GP)
+        ExtractEquipmentStats(List<int>? baseParams, List<int>? baseParamValues)
+    {
+        int craftsmanship = 0, control = 0, cp = 0, gathering = 0, perception = 0, gp = 0;
+
+        if (baseParams is null || baseParamValues is null)
+            return (craftsmanship, control, cp, gathering, perception, gp);
+
+        var count = Math.Min(baseParams.Count, baseParamValues.Count);
+        for (var i = 0; i < count; i++)
+        {
+            switch (baseParams[i])
+            {
+                case 70: craftsmanship = baseParamValues[i]; break;
+                case 71: control = baseParamValues[i]; break;
+                case 11: cp = baseParamValues[i]; break;
+                case 72: gathering = baseParamValues[i]; break;
+                case 73: perception = baseParamValues[i]; break;
+                case 10: gp = baseParamValues[i]; break;
+            }
+        }
+
+        return (craftsmanship, control, cp, gathering, perception, gp);
     }
 }

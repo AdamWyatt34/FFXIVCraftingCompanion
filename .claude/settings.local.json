@@ -15,7 +15,9 @@
       "Bash(npm run build:*)",
       "Bash(npm run lint:*)",
       "Bash(findstr:*)",
-      "WebFetch(domain:garlandtools.org)"
+      "WebFetch(domain:garlandtools.org)",
+      "Bash(git -C \"D:\\\\personal\\\\FinalFantasyXIVCraftingCompanion\" diff src/FFXIV.Domain/Entities/Equipment.cs)",
+      "Bash(npx next build:*)"
     ]
   }
 }

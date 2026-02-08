@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ItemDto } from "@/types/api";
 import { ITEM_CATEGORY_INFO } from "@/lib/constants";
 import { ItemIcon } from "./ItemIcon";
-import { Hammer } from "lucide-react";
+import { Hammer, Shield } from "lucide-react";
 
 interface ItemCardProps {
   item: ItemDto;
@@ -26,6 +26,11 @@ export function ItemCard({ item }: ItemCardProps) {
               <Hammer size={14} className="text-gold shrink-0" />
             </span>
           )}
+          {item.isEquipment && (
+            <span title="Equipment — View in Gear Browser">
+              <Shield size={14} className="text-blue-400 shrink-0" />
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-text-muted">iLv {item.itemLevel}</span>
@@ -42,6 +47,17 @@ export function ItemCard({ item }: ItemCardProps) {
   if (item.recipeId !== null) {
     return (
       <Link href={`/recipes/${item.recipeId}`} className="block">
+        {content}
+      </Link>
+    );
+  }
+
+  if (item.isEquipment) {
+    return (
+      <Link
+        href={`/gear?mode=search&search=${encodeURIComponent(item.name)}`}
+        className="block"
+      >
         {content}
       </Link>
     );

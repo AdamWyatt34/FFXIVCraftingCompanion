@@ -49,6 +49,7 @@ export function ItemIcon({
       height={px}
       className={`rounded shrink-0 ${className}`}
       onError={() => setHasError(true)}
+      loading="lazy"
       unoptimized
     />
   );

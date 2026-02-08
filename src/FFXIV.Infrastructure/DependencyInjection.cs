@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.Configure<DataSyncOptions>(configuration.GetSection(DataSyncOptions.SectionName));
         services.AddScoped<DataSyncOrchestrator>();
         services.AddScoped<SourceDataSyncService>();
+        services.AddScoped<EquipmentSyncService>();
         services.AddSingleton<DataSyncService>();
         services.AddSingleton<IDataSyncTrigger>(sp => sp.GetRequiredService<DataSyncService>());
         services.AddHostedService(sp => sp.GetRequiredService<DataSyncService>());

@@ -66,6 +66,9 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.Property<int>("CP")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("CanBeHQ")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ClassJobCategory")
                         .IsRequired()
                         .HasColumnType("text");
@@ -89,6 +92,10 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.Property<int>("Gathering")
                         .HasColumnType("integer");
 
+                    b.Property<string>("IconPath")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("ItemLevel")
                         .HasColumnType("integer");
 
@@ -102,11 +109,29 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.Property<int>("Perception")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Rarity")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RecipeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceDetails")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceType")
+                        .HasColumnType("text");
+
                     b.HasKey("EquipmentId");
+
+                    b.HasIndex("EquipSlot");
+
+                    b.HasIndex("RecipeId");
 
                     b.HasIndex("ClassJobCategory", "EquipLevel");
 
                     b.HasIndex("ClassJobCategory", "ItemLevel");
+
+                    b.HasIndex("EquipSlot", "ClassJobCategory", "ItemLevel");
 
                     b.ToTable("Equipment", (string)null);
                 });
@@ -365,6 +390,16 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.HasIndex("ItemId");
 
                     b.ToTable("VendorInfos", (string)null);
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.Equipment", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.Recipe", "Recipe")
+                        .WithMany()
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Recipe");
                 });
 
             modelBuilder.Entity("FFXIV.Domain.Entities.GatheringInfo", b =>

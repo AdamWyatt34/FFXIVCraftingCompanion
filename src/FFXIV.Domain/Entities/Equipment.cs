@@ -17,4 +17,12 @@ public class Equipment
     public int Perception { get; set; }
     public int GP { get; set; }
     public int MateriaSlots { get; set; }
+    public string IconPath { get; set; } = string.Empty;
+    public bool CanBeHQ { get; set; }
+    public int? RecipeId { get; set; }
+    public ItemSourceType? SourceType { get; set; }
+    public string? SourceDetails { get; set; }
+    public int Rarity { get; set; }
+
+    public Recipe? Recipe { get; set; }
 }

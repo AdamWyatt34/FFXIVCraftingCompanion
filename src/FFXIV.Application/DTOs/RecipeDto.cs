@@ -14,4 +14,16 @@ public sealed record RecipeDto(
     int RequiredControl,
     int Yield,
     List<RecipeIngredientDto> Ingredients,
-    MaterialSummaryDto? MaterialSummary = null);
+    MaterialSummaryDto? MaterialSummary = null,
+    RecipeEquipmentInfoDto? EquipmentInfo = null);
+
+public sealed record RecipeEquipmentInfoDto(
+    int EquipmentId,
+    string EquipSlot,
+    string ClassJobCategory,
+    int Craftsmanship,
+    int Control,
+    int CP,
+    int Gathering,
+    int Perception,
+    int GP);

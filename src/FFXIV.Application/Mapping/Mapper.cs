@@ -5,7 +5,7 @@ namespace FFXIV.Application.Mapping;
 
 public static class Mapper
 {
-    public static ItemDto ToDto(Item item, int? recipeId = null)
+    public static ItemDto ToDto(Item item, int? recipeId = null, bool isEquipment = false)
     {
         return new ItemDto(
             ItemId: item.ItemId,
@@ -14,7 +14,8 @@ public static class Mapper
             ItemLevel: item.ItemLevel,
             Category: item.Category.ToString(),
             CanBeHQ: item.CanBeHQ,
-            RecipeId: recipeId);
+            RecipeId: recipeId,
+            IsEquipment: isEquipment);
     }
 
     public static RecipeIngredientDto ToDto(RecipeIngredient ingredient, Item item)

@@ -25,6 +25,23 @@ public class ExceptionHandlingMiddleware
             _logger.LogInformation("Request was cancelled by the client");
             context.Response.StatusCode = 499; // Client Closed Request
         }
+        catch (ArgumentException argEx)
+        {
+            _logger.LogWarning(argEx, "Validation error processing {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                error = argEx.Message,
+                traceId = Activity.Current?.Id ?? context.TraceIdentifier,
+                timestamp = DateTimeOffset.UtcNow
+            };
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception processing {Method} {Path}", context.Request.Method, context.Request.Path);

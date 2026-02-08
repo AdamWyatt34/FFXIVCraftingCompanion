@@ -6,6 +6,14 @@ import type {
   ShoppingListResultDto,
   ApiError,
 } from "@/types/api";
+import type {
+  GearSetDto,
+  GearSlotDto,
+  StatWeightProfileDto,
+  GearStatsDto,
+  EquipmentDto,
+  CalculateGearStatsRequest,
+} from "@/types/gear";
 
 export class ApiClientError extends Error {
   constructor(
@@ -107,4 +115,71 @@ export function getShoppingList(
     `/api/recipes/${recipeId}/shoppinglist${params}`,
     { signal },
   );
+}
+
+// Gear API
+
+export function getGearRecommendations(
+  job: string,
+  level: number,
+  profile: string,
+  signal?: AbortSignal,
+): Promise<GearSetDto> {
+  const params = new URLSearchParams({
+    job,
+    level: String(level),
+    profile,
+  });
+  return fetchApi<GearSetDto>(`/api/gear/recommendations?${params}`, { signal });
+}
+
+export function getSlotRecommendation(
+  slot: string,
+  job: string,
+  level: number,
+  profile: string,
+  signal?: AbortSignal,
+): Promise<GearSlotDto> {
+  const params = new URLSearchParams({
+    job,
+    level: String(level),
+    profile,
+  });
+  return fetchApi<GearSlotDto>(`/api/gear/recommendations/${slot}?${params}`, { signal });
+}
+
+export function getStatWeightProfiles(
+  job: string,
+  signal?: AbortSignal,
+): Promise<StatWeightProfileDto[]> {
+  const params = new URLSearchParams({ job });
+  return fetchApi<StatWeightProfileDto[]>(`/api/gear/profiles?${params}`, { signal });
+}
+
+export function calculateGearStats(
+  request: CalculateGearStatsRequest,
+  signal?: AbortSignal,
+): Promise<GearStatsDto> {
+  return fetchApi<GearStatsDto>("/api/gear/calculate-stats", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function searchEquipment(
+  query: string,
+  job?: string,
+  slot?: string,
+  minLevel?: number,
+  maxLevel?: number,
+  signal?: AbortSignal,
+): Promise<EquipmentDto[]> {
+  const params = new URLSearchParams({ q: query });
+  if (job) params.set("job", job);
+  if (slot) params.set("slot", slot);
+  if (minLevel !== undefined) params.set("minLevel", String(minLevel));
+  if (maxLevel !== undefined) params.set("maxLevel", String(maxLevel));
+  return fetchApi<EquipmentDto[]>(`/api/gear/search?${params}`, { signal });
 }

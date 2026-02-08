@@ -16,6 +16,7 @@ public sealed class DataSyncOrchestrator
     private readonly IXivApiClient _xivApiClient;
     private readonly DataSyncOptions _options;
     private readonly SourceDataSyncService _sourceDataSync;
+    private readonly EquipmentSyncService _equipmentSync;
     private readonly GarlandDataEnricher _garlandEnricher;
     private readonly ICacheService _cache;
     private readonly ILogger<DataSyncOrchestrator> _logger;
@@ -30,6 +31,7 @@ public sealed class DataSyncOrchestrator
         IXivApiClient xivApiClient,
         IOptions<DataSyncOptions> options,
         SourceDataSyncService sourceDataSync,
+        EquipmentSyncService equipmentSync,
         GarlandDataEnricher garlandEnricher,
         ICacheService cache,
         ILogger<DataSyncOrchestrator> logger)
@@ -38,6 +40,7 @@ public sealed class DataSyncOrchestrator
         _xivApiClient = xivApiClient;
         _options = options.Value;
         _sourceDataSync = sourceDataSync;
+        _equipmentSync = equipmentSync;
         _garlandEnricher = garlandEnricher;
         _cache = cache;
         _logger = logger;
@@ -73,10 +76,6 @@ public sealed class DataSyncOrchestrator
         var recipeCount = await SyncRecipesAsync(ct);
         await UpdateSyncMetadataAsync("Recipe", recipeCount, versionKey, ct);
 
-        // TODO: Equipment sync — filter items by DoH/DoL ClassJobCategory or known equipment UICategory values
-        // var equipCount = await SyncEquipmentAsync(ct);
-        // await UpdateSyncMetadataAsync("Equipment", equipCount, versionKey, ct);
-
         if (_options.SyncSources)
         {
             var (sourceCount, gatheringCount, vendorCount) =
@@ -84,6 +83,13 @@ public sealed class DataSyncOrchestrator
             await UpdateSyncMetadataAsync("ItemSource", sourceCount, versionKey, ct);
             await UpdateSyncMetadataAsync("GatheringInfo", gatheringCount, versionKey, ct);
             await UpdateSyncMetadataAsync("VendorInfo", vendorCount, versionKey, ct);
+        }
+
+        var equipCount = 0;
+        if (_options.SyncEquipment)
+        {
+            equipCount = await _equipmentSync.SyncEquipmentAsync(ct);
+            await UpdateSyncMetadataAsync("Equipment", equipCount, versionKey, ct);
         }
 
         if (_options.EnrichFromGarlandTools)
@@ -98,12 +104,17 @@ public sealed class DataSyncOrchestrator
         await _cache.RemoveByPrefixAsync("materialtree:", ct);
         await _cache.RemoveByPrefixAsync("recipe:", ct);
         await _cache.RemoveByPrefixAsync("item:", ct);
+        await _cache.RemoveByPrefixAsync("equipment:", ct);
+        await _cache.RemoveByPrefixAsync("gearset:", ct);
+        await _cache.RemoveByPrefixAsync("gearslot:", ct);
+        await _cache.RemoveByPrefixAsync("gearprofiles:", ct);
+        await _cache.RemoveByPrefixAsync("gearsearch:", ct);
         _logger.LogInformation("Cache invalidation complete");
 
         stopwatch.Stop();
         _logger.LogInformation(
-            "Full data sync completed in {Duration}. Items: {ItemCount}, Recipes: {RecipeCount}",
-            stopwatch.Elapsed, itemCount, recipeCount);
+            "Full data sync completed in {Duration}. Items: {ItemCount}, Recipes: {RecipeCount}, Equipment: {EquipCount}",
+            stopwatch.Elapsed, itemCount, recipeCount, equipCount);
     }
 
     private async Task<(int Count, Dictionary<int, int> PriceLookup)> SyncItemsAsync(CancellationToken ct)

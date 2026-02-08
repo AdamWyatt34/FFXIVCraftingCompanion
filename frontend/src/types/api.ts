@@ -6,6 +6,7 @@ export interface ItemDto {
   category: ItemCategory;
   canBeHQ: boolean;
   recipeId: number | null;
+  isEquipment: boolean;
 }
 
 export interface RecipeDto {
@@ -21,6 +22,19 @@ export interface RecipeDto {
   yield: number;
   ingredients: RecipeIngredientDto[];
   materialSummary: MaterialSummaryDto | null;
+  equipmentInfo: RecipeEquipmentInfoDto | null;
+}
+
+export interface RecipeEquipmentInfoDto {
+  equipmentId: number;
+  equipSlot: string;
+  classJobCategory: string;
+  craftsmanship: number;
+  control: number;
+  cp: number;
+  gathering: number;
+  perception: number;
+  gp: number;
 }
 
 export interface RecipeIngredientDto {

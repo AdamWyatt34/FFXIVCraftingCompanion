@@ -9,15 +9,18 @@ namespace FFXIV.Application.Recipes.Queries;
 public sealed class GetRecipeByIdQueryHandler : IRequestHandler<GetRecipeByIdQuery, RecipeDto?>
 {
     private readonly IRecipeRepository _recipeRepository;
+    private readonly IEquipmentRepository _equipmentRepository;
     private readonly IRecipeTreeResolver _resolver;
     private readonly ICacheService _cache;
 
     public GetRecipeByIdQueryHandler(
         IRecipeRepository recipeRepository,
+        IEquipmentRepository equipmentRepository,
         IRecipeTreeResolver resolver,
         ICacheService cache)
     {
         _recipeRepository = recipeRepository;
+        _equipmentRepository = equipmentRepository;
         _resolver = resolver;
         _cache = cache;
     }
@@ -41,6 +44,25 @@ public sealed class GetRecipeByIdQueryHandler : IRequestHandler<GetRecipeByIdQue
             .ToList();
 
         var dto = Mapper.ToDto(recipe, recipe.ResultItem, ingredients);
+
+        // Check if this recipe produces equipment
+        var equipment = await _equipmentRepository.GetByRecipeIdAsync(request.RecipeId, cancellationToken);
+        if (equipment is not null)
+        {
+            dto = dto with
+            {
+                EquipmentInfo = new RecipeEquipmentInfoDto(
+                    EquipmentId: equipment.EquipmentId,
+                    EquipSlot: equipment.EquipSlot.ToString(),
+                    ClassJobCategory: equipment.ClassJobCategory,
+                    Craftsmanship: equipment.Craftsmanship,
+                    Control: equipment.Control,
+                    CP: equipment.CP,
+                    Gathering: equipment.Gathering,
+                    Perception: equipment.Perception,
+                    GP: equipment.GP)
+            };
+        }
 
         if (request.IncludeMaterials)
         {

@@ -1,3 +1,4 @@
+using FFXIV.Application.Gear;
 using FFXIV.Application.Recipes;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +15,7 @@ public static class DependencyInjection
 
         services.AddScoped<IRecipeTreeResolver, RecipeTreeResolver>();
         services.AddScoped<ITreeValidationService, TreeValidationService>();
+        services.AddScoped<IGearRecommendationService, GearRecommendationService>();
 
         return services;
     }

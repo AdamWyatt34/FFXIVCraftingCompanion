@@ -7,4 +7,5 @@ public sealed record ItemDto(
     int ItemLevel,
     string Category,
     bool CanBeHQ,
-    int? RecipeId = null);
+    int? RecipeId = null,
+    bool IsEquipment = false);
