@@ -17,6 +17,16 @@ const nextConfig: NextConfig = {
         hostname: "v2.xivapi.com",
         pathname: "/api/asset/**",
       },
+      {
+        protocol: "https",
+        hostname: "img2.finalfantasyxiv.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.discordapp.com",
+        pathname: "/**",
+      },
     ],
   },
   async rewrites() {

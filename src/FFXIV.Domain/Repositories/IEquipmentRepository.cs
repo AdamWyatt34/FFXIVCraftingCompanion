@@ -12,4 +12,5 @@ public interface IEquipmentRepository
     Task<IReadOnlyList<Equipment>> SearchEquipmentAsync(string query, string? job = null, EquipSlot? slot = null, int? minLevel = null, int? maxLevel = null, int limit = 50, CancellationToken cancellationToken = default);
     Task<HashSet<int>> GetExistingItemIdsAsync(IEnumerable<int> itemIds, CancellationToken cancellationToken = default);
     Task<Equipment?> GetByRecipeIdAsync(int recipeId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Equipment>> GetByNamesAsync(IEnumerable<string> names, CancellationToken cancellationToken = default);
 }

@@ -4,6 +4,7 @@ using FFXIV.Application;
 using FFXIV.Infrastructure;
 using FFXIV.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.OpenApi;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,24 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API for FFXIV crafting recipes, items, and simulation"
     });
 
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token"
+    });
+
+    options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer"),
+            new List<string>()
+        }
+    });
+
     var xmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -54,7 +73,8 @@ builder.Services.AddCors(options =>
 
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -85,6 +105,7 @@ app.UseHttpsRedirection();
 
 app.UseCors("DefaultPolicy");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

@@ -12,3 +12,6 @@ export { EquipmentSearchCard } from "./EquipmentSearchCard";
 export { GearEmptyState } from "./GearEmptyState";
 export { GearComparisonView } from "./GearComparisonView";
 export { GearShareButton } from "./GearShareButton";
+export { UpgradeSummaryBanner } from "./UpgradeSummaryBanner";
+export { SaveGearSetButton } from "./SaveGearSetButton";
+export { ApplyGearDialog } from "./ApplyGearDialog";

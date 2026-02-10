@@ -10,15 +10,18 @@ import {
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { getSlotGroup, type SlotGroup } from "@/lib/gear-constants";
 import type { GearSlotDto } from "@/types/gear";
+import type { SlotComparisonDto } from "@/types/gear-comparison";
 
 interface GearGridProps {
   slots: GearSlotDto[];
   isDoH: boolean;
+  slotComparisons?: SlotComparisonDto[];
+  onApplySingle?: (slotKey: string, equipmentId: number) => void;
 }
 
 const SECTION_ORDER: SlotGroup[] = ["Weapons", "Armor", "Accessories"];
 
-export function GearGrid({ slots, isDoH }: GearGridProps) {
+export function GearGrid({ slots, isDoH, slotComparisons, onApplySingle }: GearGridProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const isDesktop = useMediaQuery("(min-width: 640px)");
 
@@ -70,27 +73,33 @@ export function GearGrid({ slots, isDoH }: GearGridProps) {
 
             {/* Slot cards grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.map(({ slot, idx }) => (
-                <Fragment key={`${slot.slotKey}-${idx}`}>
-                  <GearSlotCard
-                    slot={slot}
-                    isDoH={isDoH}
-                    isExpanded={expandedIndex === idx}
-                    onToggleExpand={() => handleToggle(idx)}
-                    maxScore={maxScore}
-                  />
-                  {/* Desktop inline expansion */}
-                  {isDesktop && expandedIndex === idx && (
-                    <div className="col-span-full animate-expand-down rounded-lg border border-border bg-bg-surface p-4">
-                      <GearSlotExpandedContent
-                        slot={slot}
-                        isDoH={isDoH}
-                        onClose={() => setExpandedIndex(null)}
-                      />
-                    </div>
-                  )}
-                </Fragment>
-              ))}
+              {items.map(({ slot, idx }) => {
+                const slotComp = slotComparisons?.find(c => c.slotName === slot.slotName) ?? undefined;
+                return (
+                  <Fragment key={`${slot.slotKey}-${idx}`}>
+                    <GearSlotCard
+                      slot={slot}
+                      isDoH={isDoH}
+                      isExpanded={expandedIndex === idx}
+                      onToggleExpand={() => handleToggle(idx)}
+                      maxScore={maxScore}
+                      comparison={slotComp}
+                    />
+                    {/* Desktop inline expansion */}
+                    {isDesktop && expandedIndex === idx && (
+                      <div className="col-span-full animate-expand-down rounded-lg border border-border bg-bg-surface p-4">
+                        <GearSlotExpandedContent
+                          slot={slot}
+                          isDoH={isDoH}
+                          onClose={() => setExpandedIndex(null)}
+                          comparison={slotComp}
+                          onApplySingle={onApplySingle}
+                        />
+                      </div>
+                    )}
+                  </Fragment>
+                );
+              })}
             </div>
           </section>
         );
@@ -127,6 +136,8 @@ export function GearGrid({ slots, isDoH }: GearGridProps) {
             slot={slots[expandedIndex]}
             isDoH={isDoH}
             onClose={() => setExpandedIndex(null)}
+            comparison={slotComparisons?.find(c => c.slotName === slots[expandedIndex].slotName)}
+            onApplySingle={onApplySingle}
           />
         </BottomSheet>
       )}

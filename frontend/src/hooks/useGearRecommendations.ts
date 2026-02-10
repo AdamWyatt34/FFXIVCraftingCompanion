@@ -30,6 +30,7 @@ interface UseGearRecommendationsOptions {
   initialJob?: string | null;
   initialLevel?: number;
   initialProfile?: string;
+  jobLevels?: Record<string, { level: number }> | null;
 }
 
 export function useGearRecommendations(
@@ -92,9 +93,10 @@ export function useGearRecommendations(
 
   const recKey = job && debouncedLevel >= 1 ? `${job}:${debouncedLevel}:${profile}` : "";
   const cachedRec = recKey ? (recCache.get(recKey) ?? null) : null;
-  const data = cachedRec ?? (recResult.key === recKey ? recResult.data : null);
-  const error = cachedRec ? null : (recResult.key === recKey ? recResult.error : null);
   const isLoading = !cachedRec && recResult.key !== recKey && !!recKey;
+  // Stale-while-revalidate: keep previous results visible while loading new ones
+  const data = cachedRec ?? (recResult.key === recKey ? recResult.data : (isLoading ? recResult.data : null));
+  const error = cachedRec ? null : (recResult.key === recKey ? recResult.error : null);
 
   // Fetch recommendations when inputs change
   useEffect(() => {
@@ -130,7 +132,8 @@ export function useGearRecommendations(
     setRetryCount((c) => c + 1);
   }, [recKey]);
 
-  // When job changes, auto-set a sensible default level if still at 1
+  // When job changes, auto-set profile and level from user's character data
+  const jobLevels = options?.jobLevels;
   const handleSetJob = useCallback((newJob: string | null) => {
     setJob(newJob);
     if (newJob) {
@@ -139,8 +142,12 @@ export function useGearRecommendations(
         const defaultProfile = info.category === "DoL" ? "GatheringBalanced" : "Balanced";
         setProfile(defaultProfile);
       }
+      const stored = jobLevels?.[newJob];
+      if (stored) {
+        setLevel(stored.level);
+      }
     }
-  }, []);
+  }, [jobLevels]);
 
   return {
     job,

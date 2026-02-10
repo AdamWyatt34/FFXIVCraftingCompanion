@@ -14,6 +14,7 @@ import {
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 import type { GearSlotDto, EquipmentDto } from "@/types/gear";
+import type { SlotComparisonDto } from "@/types/gear-comparison";
 import { GearComparisonView } from "./GearComparisonView";
 import { RARITY_COLOR_CLASS } from "@/lib/gear-constants";
 
@@ -21,6 +22,8 @@ interface GearSlotExpandedProps {
   slot: GearSlotDto;
   isDoH: boolean;
   onClose: () => void;
+  comparison?: SlotComparisonDto;
+  onApplySingle?: (slotKey: string, equipmentId: number) => void;
 }
 
 // Stat diff helper (exported for GearComparisonView)
@@ -48,6 +51,8 @@ export function GearSlotExpandedContent({
   slot,
   isDoH,
   onClose,
+  comparison,
+  onApplySingle,
 }: GearSlotExpandedProps) {
   const { recommendation, alternatives, slotName } = slot;
   const [comparisonItem, setComparisonItem] = useState<EquipmentDto | null>(null);
@@ -172,6 +177,66 @@ export function GearSlotExpandedContent({
               </span>
             </p>
           )}
+        </div>
+      )}
+
+      {/* Your Current Gear (from profile) */}
+      {comparison?.currentEquipment && item && (
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wider text-text-muted font-semibold">
+            Your Current Gear
+          </p>
+          <div className="bg-bg-elevated rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <ItemIcon
+                iconUrl={comparison.currentEquipment.iconUrl}
+                alt={comparison.currentEquipment.name}
+                size="md"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p
+                    className={`text-sm font-medium truncate ${RARITY_COLOR_CLASS[comparison.currentEquipment.rarityName] ?? "text-text-primary"}`}
+                  >
+                    {comparison.currentEquipment.name}
+                  </p>
+                  <span className="text-xs text-text-muted shrink-0">
+                    iLv {comparison.currentEquipment.itemLevel}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {getStatDiffs(item, comparison.currentEquipment, isDoH).map(
+                    (d) => (
+                      <span
+                        key={d.label}
+                        className={`text-xs font-medium ${d.diff > 0 ? "text-rarity-uncommon" : "text-red-400"}`}
+                      >
+                        {d.diff > 0 ? "+" : ""}
+                        {d.diff} {d.label}
+                      </span>
+                    ),
+                  )}
+                  {getStatDiffs(item, comparison.currentEquipment, isDoH)
+                    .length === 0 && (
+                    <span className="text-xs text-text-muted">Same stats</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {comparison.comparison?.isUpgrade && onApplySingle && (
+              <button
+                onClick={() =>
+                  onApplySingle(
+                    comparison.profileSlotKey,
+                    item.equipmentId,
+                  )
+                }
+                className="w-full py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-sm font-medium hover:bg-emerald-500/25 transition-colors"
+              >
+                Use recommended
+              </button>
+            )}
+          </div>
         </div>
       )}
 

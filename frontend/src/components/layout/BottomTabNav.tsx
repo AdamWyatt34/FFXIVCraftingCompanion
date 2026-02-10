@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChefHat, Shield, FlaskConical, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const tabs = [
   { href: "/recipes", label: "Recipes", icon: ChefHat },
@@ -13,6 +14,7 @@ const tabs = [
 
 export function BottomTabNav() {
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-bg-secondary border-t border-border flex items-center justify-around">
@@ -31,7 +33,12 @@ export function BottomTabNav() {
             {isActive && (
               <span className="absolute top-0 left-1/4 right-1/4 h-0.5 bg-gold rounded-full" />
             )}
-            <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+            <span className="relative">
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+              {tab.href === "/profile" && isAuthenticated && !isActive && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-gold rounded-full" />
+              )}
+            </span>
             <span className="text-[10px] font-medium">{tab.label}</span>
           </Link>
         );

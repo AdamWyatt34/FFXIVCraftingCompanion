@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ItemIcon, SourceBadge } from "@/components/ui";
 import { CopyShoppingList } from "./CopyShoppingList";
+import { SaveShoppingListButton } from "./SaveShoppingListButton";
 import {
   categorizeShoppingList,
   getSourceDetailText,
@@ -30,6 +31,7 @@ interface ShoppingListViewProps {
   itemName: string;
   quantity: number;
   summary: TreeSummaryDto;
+  recipeId: number;
 }
 
 const GATHERING_CLASS_ICONS: Record<
@@ -48,6 +50,7 @@ export function ShoppingListView({
   itemName,
   quantity,
   summary,
+  recipeId,
 }: ShoppingListViewProps) {
   // Crystals start collapsed
   const [collapsed, setCollapsed] = useState<Set<string>>(
@@ -213,13 +216,20 @@ export function ShoppingListView({
               </span>
             )}
           </div>
-          <CopyShoppingList
-            shoppingList={shoppingList}
-            crystalRequirements={crystalRequirements}
-            intermediateCrafts={intermediateCrafts}
-            itemName={itemName}
-            quantity={quantity}
-          />
+          <div className="flex items-center gap-2">
+            <SaveShoppingListButton
+              recipeId={recipeId}
+              itemName={itemName}
+              quantity={quantity}
+            />
+            <CopyShoppingList
+              shoppingList={shoppingList}
+              crystalRequirements={crystalRequirements}
+              intermediateCrafts={intermediateCrafts}
+              itemName={itemName}
+              quantity={quantity}
+            />
+          </div>
         </div>
       </div>
     </div>

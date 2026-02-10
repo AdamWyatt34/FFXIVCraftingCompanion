@@ -11,6 +11,7 @@ import {
   ListOrdered,
   Info,
   Shield,
+  Heart,
 } from "lucide-react";
 import { getRecipe } from "@/lib/api-client";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
@@ -27,8 +28,12 @@ import {
   CraftingStepsView,
   ShoppingListSkeleton,
   CraftingStepsSkeleton,
+  RecipeCraftabilityBanner,
 } from "@/components/recipes";
 import { useMaterialTree } from "@/hooks/useMaterialTree";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useProfile } from "@/hooks/useProfile";
+import { ProtectedAction } from "@/components/ui/ProtectedAction";
 import type { RecipeDto, CraftType } from "@/types/api";
 
 type TabKey = "shopping" | "tree" | "steps";
@@ -51,6 +56,9 @@ function RecipeDetailContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [animatingFav, setAnimatingFav] = useState(false);
+  const { isFavorited, toggleFavorite } = useFavorites();
+  const { profile } = useProfile();
 
   const tabParam = searchParams.get("tab");
   const activeTab: TabKey = isValidTab(tabParam) ? tabParam : "shopping";
@@ -169,7 +177,27 @@ function RecipeDetailContent() {
             </div>
           )}
         </div>
+        <ProtectedAction message="Sign in to favorite recipes">
+          <button
+            onClick={async () => {
+              setAnimatingFav(true);
+              await toggleFavorite(recipeId);
+              setTimeout(() => setAnimatingFav(false), 300);
+            }}
+            className={`p-1.5 rounded-md transition-all duration-200 ${
+              isFavorited(recipeId)
+                ? "text-red-400 hover:text-red-300"
+                : "text-text-muted hover:text-red-400"
+            } ${animatingFav ? "scale-125" : "scale-100"}`}
+            aria-label={isFavorited(recipeId) ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Heart size={20} fill={isFavorited(recipeId) ? "currentColor" : "none"} />
+          </button>
+        </ProtectedAction>
       </div>
+
+      {/* Craftability banner */}
+      {profile && <RecipeCraftabilityBanner recipe={recipe} profile={profile} />}
 
       {/* Recipe stats - 2 column on desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -353,6 +381,7 @@ function RecipeDetailContent() {
                 itemName={recipe.resultItem.name}
                 quantity={quantity}
                 summary={treeData.summary}
+                recipeId={recipeId}
               />
             )}
             {activeTab === "tree" && (

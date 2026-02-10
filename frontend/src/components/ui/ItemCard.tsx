@@ -4,13 +4,14 @@ import Link from "next/link";
 import type { ItemDto } from "@/types/api";
 import { ITEM_CATEGORY_INFO } from "@/lib/constants";
 import { ItemIcon } from "./ItemIcon";
-import { Hammer, Shield } from "lucide-react";
+import { Hammer, Shield, Heart } from "lucide-react";
 
 interface ItemCardProps {
   item: ItemDto;
+  isFavorited?: boolean;
 }
 
-export function ItemCard({ item }: ItemCardProps) {
+export function ItemCard({ item, isFavorited }: ItemCardProps) {
   const categoryInfo = ITEM_CATEGORY_INFO[item.category];
 
   const content = (
@@ -29,6 +30,11 @@ export function ItemCard({ item }: ItemCardProps) {
           {item.isEquipment && (
             <span title="Equipment — View in Gear Browser">
               <Shield size={14} className="text-blue-400 shrink-0" />
+            </span>
+          )}
+          {isFavorited && (
+            <span title="Favorited">
+              <Heart size={14} className="text-red-400 fill-red-400 shrink-0" />
             </span>
           )}
         </div>

@@ -1,10 +1,13 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield } from "lucide-react";
+import { Shield, User } from "lucide-react";
 import { useGearRecommendations } from "@/hooks/useGearRecommendations";
+import { useGearComparison } from "@/hooks/useGearComparison";
 import { useEquipmentSearch } from "@/hooks/useEquipmentSearch";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   JobSelector,
   LevelInput,
@@ -17,16 +20,24 @@ import {
   EquipmentSearchCard,
   GearEmptyState,
   GearShareButton,
+  UpgradeSummaryBanner,
+  SaveGearSetButton,
+  ApplyGearDialog,
 } from "@/components/gear";
 import { GearSlotExpandedContent, BottomSheet } from "@/components/gear";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { ErrorState, LoadingSkeleton } from "@/components/ui/LoadingStates";
 import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
+import { gearSetToProfileSlots } from "@/lib/slot-mapping";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { EquipmentDto, GearSlotDto } from "@/types/gear";
 
 function GearPageContent() {
   const searchParams = useSearchParams();
+
+  // Auth & profile
+  const { isAuthenticated } = useAuth();
+  const { profile: userProfile, invalidate: invalidateProfile } = useProfile();
 
   // Read URL params for deep-linking / sharing
   const urlJob = searchParams.get("job");
@@ -34,6 +45,15 @@ function GearPageContent() {
   const urlProfile = searchParams.get("profile");
   const urlMode = searchParams.get("mode");
   const urlSearch = searchParams.get("search");
+
+  // Auto-fill from profile when no URL job param
+  const autoFilledFromProfile = !urlJob && !!userProfile;
+  const initialJob = urlJob ?? (userProfile?.activeJob || null);
+  const initialLevel = urlLevel
+    ? Number(urlLevel)
+    : autoFilledFromProfile
+      ? userProfile?.activeJobLevel
+      : undefined;
 
   const initialMode = urlMode === "search" ? "search" : "recommend";
   const [mode, setMode] = useState<"recommend" | "search">(initialMode);
@@ -52,10 +72,27 @@ function GearPageContent() {
     error,
     retry,
   } = useGearRecommendations({
-    initialJob: urlJob,
-    initialLevel: urlLevel ? Number(urlLevel) : undefined,
+    initialJob: initialJob,
+    initialLevel: initialLevel,
     initialProfile: urlProfile ?? undefined,
+    jobLevels: userProfile?.jobLevels,
   });
+
+  // Gear comparison (only when authenticated with gear data)
+  const hasProfileGear =
+    isAuthenticated && !!userProfile?.currentGear?.length;
+  const {
+    comparison: comparisonData,
+    invalidate: invalidateComparison,
+  } = useGearComparison(job, level, profile, hasProfileGear);
+
+  // Apply gear dialog state
+  const [applyDialog, setApplyDialog] = useState<{
+    open: boolean;
+    slots: Record<string, number>;
+    mode: "all" | "single";
+    slotName?: string;
+  }>({ open: false, slots: {}, mode: "all" });
 
   const equipSearch = useEquipmentSearch(urlSearch ?? "");
   const isDesktop = useMediaQuery("(min-width: 640px)");
@@ -65,6 +102,26 @@ function GearPageContent() {
 
   const jobInfo = job ? JOB_INFO[job as GearJob] : null;
   const isDoH = jobInfo?.category === "DoH";
+
+  const handleApplyAll = () => {
+    if (!data) return;
+    const slots = gearSetToProfileSlots(data.slots);
+    setApplyDialog({ open: true, slots, mode: "all" });
+  };
+
+  const handleApplySingle = (profileSlotKey: string, equipmentId: number) => {
+    setApplyDialog({
+      open: true,
+      slots: { [profileSlotKey]: equipmentId },
+      mode: "single",
+      slotName: profileSlotKey,
+    });
+  };
+
+  const handleApplySuccess = () => {
+    invalidateProfile();
+    invalidateComparison();
+  };
 
   // Create a wrapper slot for the expanded search result
   const expandedSearchSlot: GearSlotDto | null =
@@ -105,6 +162,19 @@ function GearPageContent() {
 
           {mode === "recommend" ? (
             <>
+              {/* Profile auto-fill banner */}
+              {autoFilledFromProfile && job && userProfile && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-elevated border border-border text-sm text-text-secondary">
+                  <User size={14} className="text-gold shrink-0" />
+                  <span>
+                    Auto-filled from your profile:{" "}
+                    <span className="text-text-primary font-medium">
+                      {userProfile.activeJobDisplayName} Lv.{userProfile.activeJobLevel}
+                    </span>
+                  </span>
+                </div>
+              )}
+
               {/* Step 1: Job selector */}
               {!job && (
                 <p className="text-text-secondary text-center">
@@ -144,17 +214,33 @@ function GearPageContent() {
                         profileName={data.profile.displayName}
                       />
                     </div>
-                    <GearShareButton
-                      job={data.job}
-                      level={data.level}
-                      profile={data.profile.name}
-                      gearSet={data}
-                    />
+                    <div className="flex items-center gap-2">
+                      <SaveGearSetButton gearSet={data} />
+                      <GearShareButton
+                        job={data.job}
+                        level={data.level}
+                        profile={data.profile.name}
+                        gearSet={data}
+                      />
+                    </div>
                   </div>
+                  {comparisonData?.upgradeSummary && (
+                    <UpgradeSummaryBanner
+                      summary={comparisonData.upgradeSummary}
+                      isDoH={isDoH}
+                      onApplyAll={handleApplyAll}
+                      isAuthenticated={isAuthenticated}
+                    />
+                  )}
                   {level < 10 && (
                     <GearEmptyState type="low-level" />
                   )}
-                  <GearGrid slots={data.slots} isDoH={isDoH} />
+                  <GearGrid
+                    slots={data.slots}
+                    isDoH={isDoH}
+                    slotComparisons={comparisonData?.slotComparisons}
+                    onApplySingle={handleApplySingle}
+                  />
                 </div>
               )}
             </>
@@ -245,6 +331,16 @@ function GearPageContent() {
           )}
         </div>
       </div>
+
+      {/* Apply gear dialog */}
+      <ApplyGearDialog
+        open={applyDialog.open}
+        onClose={() => setApplyDialog((prev) => ({ ...prev, open: false }))}
+        slots={applyDialog.slots}
+        mode={applyDialog.mode}
+        slotName={applyDialog.slotName}
+        onSuccess={handleApplySuccess}
+      />
     </div>
   );
 }

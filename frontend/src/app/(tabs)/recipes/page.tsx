@@ -13,12 +13,15 @@ import {
 } from "@/components/ui";
 import { useItemSearch } from "@/hooks/useItemSearch";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useFavorites } from "@/hooks/useFavorites";
 import { MIN_SEARCH_LENGTH, CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { CraftType } from "@/types/api";
 
 function RecipesPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
+
+  const { isFavorited } = useFavorites();
 
   const {
     query,
@@ -142,7 +145,11 @@ function RecipesPageContent() {
       {showResults && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
           {items.map((item) => (
-            <ItemCard key={item.itemId} item={item} />
+            <ItemCard
+              key={item.itemId}
+              item={item}
+              isFavorited={item.recipeId ? isFavorited(item.recipeId) : false}
+            />
           ))}
         </div>
       )}

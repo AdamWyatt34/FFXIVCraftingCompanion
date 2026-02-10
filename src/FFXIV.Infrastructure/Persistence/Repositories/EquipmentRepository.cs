@@ -99,4 +99,18 @@ public class EquipmentRepository : IEquipmentRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.RecipeId == recipeId, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Equipment>> GetByNamesAsync(
+        IEnumerable<string> names, CancellationToken cancellationToken = default)
+    {
+        var nameList = names.ToList();
+        if (nameList.Count == 0) return [];
+
+        var lowerNames = nameList.Select(n => n.ToLowerInvariant()).ToList();
+
+        return await _db.Equipment
+            .AsNoTracking()
+            .Where(e => lowerNames.Contains(e.Name.ToLower()))
+            .ToListAsync(cancellationToken);
+    }
 }

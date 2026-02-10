@@ -15,10 +15,13 @@ import {
   Link as LinkIcon,
   CircleDot,
   Hammer,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 import type { GearSlotDto } from "@/types/gear";
+import type { SlotComparisonDto } from "@/types/gear-comparison";
 import { RARITY_COLOR_CLASS } from "@/lib/gear-constants";
 import type { LucideIcon } from "lucide-react";
 
@@ -42,6 +45,7 @@ interface GearSlotCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   maxScore?: number;
+  comparison?: SlotComparisonDto;
 }
 
 export function GearSlotCard({
@@ -50,6 +54,7 @@ export function GearSlotCard({
   isExpanded,
   onToggleExpand,
   maxScore,
+  comparison,
 }: GearSlotCardProps) {
   const { recommendation, isEmpty, slotName, slotKey } = slot;
 
@@ -76,10 +81,34 @@ export function GearSlotCard({
       ? Math.max(0.4, item.weightedScore / maxScore)
       : 1;
 
+  const compStatus = comparison?.comparison?.status;
+  const isUpgrade = compStatus === "Upgrade";
+  const isEquipped = compStatus === "Equipped";
+  const isAlternative = compStatus === "Alternative";
+
+  // Build stat diffs for upgrade badge
+  const compStatDiffs =
+    comparison?.comparison?.statDifferences?.filter((d) => {
+      if (d.difference === 0) return false;
+      if (isDoH) {
+        return ["Craftsmanship", "Control", "CP"].includes(d.statName);
+      }
+      return ["Gathering", "Perception", "GP"].includes(d.statName);
+    }) ?? [];
+
+  const STAT_SHORT_NAMES: Record<string, string> = {
+    Craftsmanship: "Craft",
+    Control: "Ctrl",
+    CP: "CP",
+    Gathering: "Gath",
+    Perception: "Perc",
+    GP: "GP",
+  };
+
   return (
     <div
-      className={`rounded-lg border bg-bg-surface p-3 space-y-2 cursor-pointer transition-all
-        ${isExpanded ? "border-gold ring-1 ring-gold/30" : "border-border hover:border-gold/50 hover:bg-bg-elevated/50"}`}
+      className={`rounded-lg border bg-bg-surface p-3 space-y-2 cursor-pointer transition-all relative
+        ${isUpgrade ? "border-l-4 border-l-emerald-500 " : ""}${isExpanded ? "border-gold ring-1 ring-gold/30" : "border-border hover:border-gold/50 hover:bg-bg-elevated/50"}`}
       onClick={onToggleExpand}
       role="button"
       tabIndex={0}
@@ -91,6 +120,23 @@ export function GearSlotCard({
         }
       }}
     >
+      {/* Comparison badge */}
+      {isUpgrade && (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+          <TrendingUpMini /> Upgrade
+        </span>
+      )}
+      {isEquipped && (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-text-muted">
+          <Check size={12} /> Equipped
+        </span>
+      )}
+      {isAlternative && (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+          <ArrowRight size={12} /> Sidegrade
+        </span>
+      )}
+
       {/* Slot label */}
       <p className="text-xs uppercase tracking-wider text-text-muted">
         {slotName}
@@ -174,6 +220,17 @@ export function GearSlotCard({
         )}
       </div>
 
+      {/* Upgrade stat diffs */}
+      {isUpgrade && compStatDiffs.length > 0 && (
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
+          {compStatDiffs.map((d) => (
+            <span key={d.statName} className="font-medium text-emerald-400">
+              +{d.difference} {STAT_SHORT_NAMES[d.statName] ?? d.statName}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Source badge */}
       {item.source && (
         <div className="flex items-center gap-2">
@@ -215,5 +272,24 @@ function StatBadge({
       <span className="text-text-muted">{label}</span>{" "}
       <span className="text-text-primary font-medium">{value}</span>
     </span>
+  );
+}
+
+// Inline mini arrow icon for upgrade badge (avoids importing TrendingUp for a tiny indicator)
+function TrendingUpMini() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
   );
 }

@@ -81,6 +81,9 @@ public static class GearMapper
                 profile.Name.Replace("_", " ").Replace("-", " ").ToLowerInvariant()),
             Description: profile.Description);
 
+    public static string MapSlotToProfileKey(string slotKey, string slotName) =>
+        slotKey != "Ring" ? slotKey : slotName == "Ring 1" ? "Ring1" : "Ring2";
+
     private static string GetRarityName(int rarity) => rarity switch
     {
         0 => "Common",

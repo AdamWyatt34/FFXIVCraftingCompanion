@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Header, BottomTabNav } from "@/components/layout";
 import { ToastProvider } from "@/components/ui";
+import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,11 +30,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased">
-        <Header />
-        <ToastProvider>
-          <main className="flex-1 pb-16">{children}</main>
-        </ToastProvider>
-        <BottomTabNav />
+        <AuthProvider>
+          <Header />
+          <ToastProvider>
+            <main className="flex-1 pb-16">{children}</main>
+          </ToastProvider>
+          <BottomTabNav />
+        </AuthProvider>
       </body>
     </html>
   );

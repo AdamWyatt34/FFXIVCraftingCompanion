@@ -17,7 +17,13 @@
       "Bash(findstr:*)",
       "WebFetch(domain:garlandtools.org)",
       "Bash(git -C \"D:\\\\personal\\\\FinalFantasyXIVCraftingCompanion\" diff src/FFXIV.Domain/Entities/Equipment.cs)",
-      "Bash(npx next build:*)"
+      "Bash(npx next build:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:www.nuget.org)",
+      "WebFetch(domain:netstone.api.tawmy.net)",
+      "WebFetch(domain:xivapi.com)"
     ]
   }
 }

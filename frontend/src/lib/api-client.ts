@@ -14,6 +14,26 @@ import type {
   EquipmentDto,
   CalculateGearStatsRequest,
 } from "@/types/gear";
+import type {
+  AuthTokensDto,
+  RegisterRequest,
+  LoginRequest,
+  UserInfoDto,
+  DiscordAuthUrlDto,
+} from "@/types/auth";
+import type {
+  CharacterProfileDto,
+  CreateProfileRequest,
+  UpdateProfileRequest,
+  ImportLodestoneRequest,
+  LodestonePreviewDto,
+} from "@/types/profile";
+import type {
+  SavedListSummaryDto,
+  SavedListDto,
+  FavoriteRecipeDto,
+  FavoriteStatusDto,
+} from "@/types/saved-lists";
 
 export class ApiClientError extends Error {
   constructor(
@@ -59,11 +79,64 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
       throw new ApiClientError(response.status, body);
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return (await response.json()) as T;
   } finally {
     clearTimeout(timeout);
   }
 }
+
+// --- Auth interceptor wiring ---
+
+type TokenProvider = () => string | null;
+type OnUnauthorized = () => void;
+type RefreshFn = () => Promise<boolean>;
+
+let _getToken: TokenProvider = () => null;
+let _onUnauthorized: OnUnauthorized = () => {};
+let _refreshTokens: RefreshFn | null = null;
+
+export function configureAuth(
+  getToken: TokenProvider,
+  onUnauthorized: OnUnauthorized,
+  refreshTokens: RefreshFn,
+) {
+  _getToken = getToken;
+  _onUnauthorized = onUnauthorized;
+  _refreshTokens = refreshTokens;
+}
+
+async function authFetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = _getToken();
+  const headers: Record<string, string> = {
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    return await fetchApi<T>(path, { ...init, headers });
+  } catch (err) {
+    if (err instanceof ApiClientError && err.status === 401 && _refreshTokens) {
+      const refreshed = await _refreshTokens();
+      if (refreshed) {
+        const newToken = _getToken();
+        if (newToken) {
+          headers["Authorization"] = `Bearer ${newToken}`;
+          return fetchApi<T>(path, { ...init, headers });
+        }
+      }
+      _onUnauthorized();
+    }
+    throw err;
+  }
+}
+
+// --- Items API ---
 
 export function searchItems(
   query: string | null,
@@ -84,6 +157,8 @@ export function searchItems(
 export function getItem(id: number): Promise<ItemDto> {
   return fetchApi<ItemDto>(`/api/items/${id}`);
 }
+
+// --- Recipes API ---
 
 export function getRecipe(
   id: number,
@@ -117,7 +192,7 @@ export function getShoppingList(
   );
 }
 
-// Gear API
+// --- Gear API ---
 
 export function getGearRecommendations(
   job: string,
@@ -182,4 +257,230 @@ export function searchEquipment(
   if (minLevel !== undefined) params.set("minLevel", String(minLevel));
   if (maxLevel !== undefined) params.set("maxLevel", String(maxLevel));
   return fetchApi<EquipmentDto[]>(`/api/gear/search?${params}`, { signal });
+}
+
+// --- Auth API ---
+
+export function authRegister(req: RegisterRequest): Promise<AuthTokensDto> {
+  return fetchApi<AuthTokensDto>("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function authLogin(req: LoginRequest): Promise<AuthTokensDto> {
+  return fetchApi<AuthTokensDto>("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function authRefresh(refreshToken: string): Promise<AuthTokensDto> {
+  return fetchApi<AuthTokensDto>("/api/auth/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+}
+
+export function authLogout(accessToken: string, refreshToken: string): Promise<void> {
+  return fetchApi<void>("/api/auth/logout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+}
+
+export function authGetMe(): Promise<UserInfoDto> {
+  return authFetchApi<UserInfoDto>("/api/auth/me");
+}
+
+export function authGetDiscordUrl(): Promise<DiscordAuthUrlDto> {
+  return fetchApi<DiscordAuthUrlDto>("/api/auth/discord/url");
+}
+
+export function authDiscordCallback(code: string): Promise<AuthTokensDto> {
+  return fetchApi<AuthTokensDto>("/api/auth/discord/callback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+}
+
+// --- Profile API ---
+
+export function getProfile(signal?: AbortSignal): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile", { signal });
+}
+
+export function createProfile(req: CreateProfileRequest): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function updateProfile(req: UpdateProfileRequest): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function updateJobLevels(jobLevels: Record<string, number>): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile/jobs", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jobLevels }),
+  });
+}
+
+export function deleteProfile(): Promise<void> {
+  return authFetchApi<void>("/api/profile", { method: "DELETE" });
+}
+
+export function importLodestone(req: ImportLodestoneRequest): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile/import-lodestone", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function refreshLodestone(): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile/refresh-lodestone", {
+    method: "POST",
+  });
+}
+
+export function previewLodestone(
+  name: string,
+  server: string,
+  signal?: AbortSignal,
+): Promise<LodestonePreviewDto> {
+  const params = new URLSearchParams({ name, server });
+  return fetchApi<LodestonePreviewDto>(`/api/profile/lodestone-preview?${params}`, { signal });
+}
+
+// --- Saved Lists API ---
+
+export function getSavedLists(
+  type?: string,
+  signal?: AbortSignal,
+): Promise<SavedListSummaryDto[]> {
+  const params = type ? `?type=${type}` : "";
+  return authFetchApi<SavedListSummaryDto[]>(`/api/saved-lists${params}`, { signal });
+}
+
+export function getSavedListById(id: number): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>(`/api/saved-lists/${id}`);
+}
+
+export function updateSavedList(
+  id: number,
+  req: { name?: string; isPinned?: boolean },
+): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>(`/api/saved-lists/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function deleteSavedList(id: number): Promise<void> {
+  return authFetchApi<void>(`/api/saved-lists/${id}`, { method: "DELETE" });
+}
+
+// --- Favorites API ---
+
+export function getFavoriteRecipes(signal?: AbortSignal): Promise<FavoriteRecipeDto[]> {
+  return authFetchApi<FavoriteRecipeDto[]>("/api/favorites/recipes", { signal });
+}
+
+export function toggleFavoriteRecipe(
+  recipeId: number,
+  note?: string,
+): Promise<FavoriteStatusDto> {
+  return authFetchApi<FavoriteStatusDto>(`/api/favorites/recipes/${recipeId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: note ?? null }),
+  });
+}
+
+export function getFavoriteStatus(recipeId: number): Promise<FavoriteStatusDto> {
+  return authFetchApi<FavoriteStatusDto>(`/api/favorites/recipes/${recipeId}/status`);
+}
+
+// --- Gear Comparison API ---
+
+export function getGearComparison(
+  job: string,
+  level: number,
+  profile: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/gear-comparison").GearComparisonDto> {
+  const params = new URLSearchParams({
+    job,
+    level: String(level),
+    profile,
+  });
+  return authFetchApi(`/api/gear/recommendations/compare?${params}`, { signal });
+}
+
+// --- Profile Gear Update ---
+
+export function updateCurrentGear(
+  slots: Record<string, number>,
+): Promise<CharacterProfileDto> {
+  return authFetchApi<CharacterProfileDto>("/api/profile/gear", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slots }),
+  });
+}
+
+// --- Save Actions ---
+
+export function saveShoppingList(req: {
+  name: string;
+  recipeId: number;
+  quantity: number;
+  notes?: string;
+}): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>("/api/saved-lists/shopping-list", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function saveGearSet(req: {
+  name: string;
+  job: string;
+  slots: Record<string, number>;
+}): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>("/api/saved-lists/gear-set", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function saveCraftingPlan(req: {
+  name: string;
+  items: { recipeId: number; quantity: number }[];
+}): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>("/api/saved-lists/crafting-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
 }
