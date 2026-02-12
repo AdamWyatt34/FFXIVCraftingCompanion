@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, User } from "lucide-react";
+import { Shield, User, FlaskConical } from "lucide-react";
+import Link from "next/link";
 import { useGearRecommendations } from "@/hooks/useGearRecommendations";
 import { useGearComparison } from "@/hooks/useGearComparison";
 import { useEquipmentSearch } from "@/hooks/useEquipmentSearch";
@@ -222,6 +223,15 @@ function GearPageContent() {
                         profile={data.profile.name}
                         gearSet={data}
                       />
+                      {isDoH && (
+                        <Link
+                          href={`/simulator?craftsmanship=${data.totalStats.craftsmanship}&control=${data.totalStats.control}&cp=${data.totalStats.cp}&level=${data.level}`}
+                          className="p-2 rounded-lg border border-border text-text-secondary hover:text-gold hover:border-gold transition-colors"
+                          title="Test rotation with these stats"
+                        >
+                          <FlaskConical size={16} />
+                        </Link>
+                      )}
                     </div>
                   </div>
                   {comparisonData?.upgradeSummary && (

@@ -441,6 +441,49 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.ToTable("RecipeIngredients", (string)null);
                 });
 
+            modelBuilder.Entity("FFXIV.Domain.Entities.RecipeLevelEntry", b =>
+                {
+                    b.Property<int>("RecipeLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ClassJobLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Difficulty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Durability")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProgressDivider")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProgressModifier")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quality")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QualityDivider")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QualityModifier")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SuggestedControl")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SuggestedCraftsmanship")
+                        .HasColumnType("integer");
+
+                    b.HasKey("RecipeLevel");
+
+                    b.ToTable("RecipeLevelEntries", (string)null);
+                });
+
             modelBuilder.Entity("FFXIV.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")

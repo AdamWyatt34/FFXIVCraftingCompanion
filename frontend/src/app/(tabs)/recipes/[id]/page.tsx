@@ -12,6 +12,7 @@ import {
   Info,
   Shield,
   Heart,
+  FlaskConical,
 } from "lucide-react";
 import { getRecipe } from "@/lib/api-client";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
@@ -217,6 +218,15 @@ function RecipeDetailContent() {
           <StatBar label="Control" value={recipe.requiredControl} />
         </div>
       </div>
+
+      {/* Simulate link */}
+      <Link
+        href={`/simulator?recipeId=${recipeId}`}
+        className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
+      >
+        <FlaskConical className="text-gold shrink-0" size={18} />
+        <span className="text-sm text-text-primary">Simulate this Recipe</span>
+      </Link>
 
       {/* Equipment info banner */}
       {equipInfo && (

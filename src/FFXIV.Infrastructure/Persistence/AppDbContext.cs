@@ -22,6 +22,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CharacterProfile> CharacterProfiles => Set<CharacterProfile>();
     public DbSet<SavedList> SavedLists => Set<SavedList>();
     public DbSet<FavoriteRecipe> FavoriteRecipes => Set<FavoriteRecipe>();
+    public DbSet<RecipeLevelEntry> RecipeLevelEntries => Set<RecipeLevelEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

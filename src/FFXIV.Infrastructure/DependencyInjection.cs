@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<ICharacterProfileRepository, CharacterProfileRepository>();
         services.AddScoped<ISavedListRepository, SavedListRepository>();
         services.AddScoped<IFavoriteRecipeRepository, FavoriteRecipeRepository>();
+        services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
 
         // Data Sync
         services.Configure<DataSyncOptions>(configuration.GetSection(DataSyncOptions.SectionName));
@@ -71,6 +72,9 @@ public static class DependencyInjection
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>()
             ?? new RedisOptions();
 
+        // Always register IMemoryCache — used by RecipeLevelRepository and other in-process caches
+        services.AddMemoryCache();
+
         if (redisOptions.Enabled)
         {
             try
@@ -89,7 +93,6 @@ public static class DependencyInjection
             }
         }
 
-        services.AddMemoryCache();
         services.AddSingleton<ICacheService, InMemoryCacheService>();
     }
 

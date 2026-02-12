@@ -34,6 +34,18 @@ import type {
   FavoriteRecipeDto,
   FavoriteStatusDto,
 } from "@/types/saved-lists";
+import type {
+  SimulateRequest,
+  SimulationResult,
+  ExecuteActionRequest,
+  StepResult,
+  ActionInfo,
+  AvailableActionsRequest,
+  ActionAvailability,
+  ExportMacroRequest,
+  ExportMacroResult,
+  CraftingState,
+} from "@/types/simulator";
 
 export class ApiClientError extends Error {
   constructor(
@@ -483,4 +495,82 @@ export function saveCraftingPlan(req: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
+}
+
+// --- Crafting / Simulator API ---
+
+export function simulateCraft(
+  request: SimulateRequest,
+  signal?: AbortSignal,
+): Promise<SimulationResult> {
+  return authFetchApi<SimulationResult>("/api/crafting/simulate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function executeCraftingAction(
+  request: ExecuteActionRequest,
+  signal?: AbortSignal,
+): Promise<StepResult> {
+  return fetchApi<StepResult>("/api/crafting/execute-action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function getCraftingActions(
+  level?: number,
+  signal?: AbortSignal,
+): Promise<ActionInfo[]> {
+  const params = level !== undefined ? `?level=${level}` : "";
+  return fetchApi<ActionInfo[]>(`/api/crafting/actions${params}`, { signal });
+}
+
+export function getAvailableActions(
+  request: AvailableActionsRequest,
+  signal?: AbortSignal,
+): Promise<ActionAvailability[]> {
+  return fetchApi<ActionAvailability[]>("/api/crafting/available-actions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function exportCraftingMacro(
+  request: ExportMacroRequest,
+  signal?: AbortSignal,
+): Promise<ExportMacroResult> {
+  return fetchApi<ExportMacroResult>("/api/crafting/export-macro", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function getInitialCraftingState(
+  recipeId: number,
+  level: number,
+  craftsmanship: number,
+  control: number,
+  cp: number,
+  isSpecialist = false,
+  signal?: AbortSignal,
+): Promise<CraftingState> {
+  const params = new URLSearchParams({
+    recipeId: String(recipeId),
+    level: String(level),
+    craftsmanship: String(craftsmanship),
+    control: String(control),
+    cp: String(cp),
+    isSpecialist: String(isSpecialist),
+  });
+  return fetchApi<CraftingState>(`/api/crafting/initial-state?${params}`, { signal });
 }

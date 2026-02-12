@@ -26,6 +26,9 @@ public sealed class XivApiRecipeLevelTableFields
     [JsonPropertyName("SuggestedCraftsmanship")]
     public int SuggestedCraftsmanship { get; init; }
 
+    [JsonPropertyName("SuggestedControl")]
+    public int SuggestedControl { get; init; }
+
     [JsonPropertyName("ProgressDivider")]
     public int ProgressDivider { get; init; }
 

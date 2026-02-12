@@ -1,5 +1,7 @@
+using FFXIV.Application.CraftingEngine;
 using FFXIV.Application.Gear;
 using FFXIV.Application.Recipes;
+using FFXIV.Domain.CraftingEngine;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FFXIV.Application;
@@ -16,6 +18,8 @@ public static class DependencyInjection
         services.AddScoped<IRecipeTreeResolver, RecipeTreeResolver>();
         services.AddScoped<ITreeValidationService, TreeValidationService>();
         services.AddScoped<IGearRecommendationService, GearRecommendationService>();
+        services.AddScoped<IRecipeParameterFactory, RecipeParameterFactory>();
+        services.AddSingleton<ICraftingSimulator, CraftingSimulator>();
 
         return services;
     }

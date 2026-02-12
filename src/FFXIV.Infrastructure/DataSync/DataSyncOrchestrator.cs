@@ -25,6 +25,8 @@ public sealed class DataSyncOrchestrator
     private const string RecipeFields = "ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,DurabilityFactor,AmountResult,CanHq,Ingredient,AmountIngredient";
     private const int ItemPageSize = 500;
     private const int RecipePageSize = 50;
+    private const string RecipeLevelTableFieldList = "ClassJobLevel,Stars,Difficulty,Quality,Durability,SuggestedCraftsmanship,SuggestedControl,ProgressDivider,ProgressModifier,QualityDivider,QualityModifier";
+    private const int RecipeLevelTablePageSize = 500;
 
     public DataSyncOrchestrator(
         AppDbContext db,
@@ -75,6 +77,12 @@ public sealed class DataSyncOrchestrator
 
         var recipeCount = await SyncRecipesAsync(ct);
         await UpdateSyncMetadataAsync("Recipe", recipeCount, versionKey, ct);
+
+        if (_options.SyncRecipeLevelTable)
+        {
+            var rltCount = await SyncRecipeLevelTableAsync(ct);
+            await UpdateSyncMetadataAsync("RecipeLevelTable", rltCount, versionKey, ct);
+        }
 
         if (_options.SyncSources)
         {
@@ -286,6 +294,86 @@ public sealed class DataSyncOrchestrator
             }
 
             _db.RecipeIngredients.AddRange(ingredients);
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _db.ChangeTracker.Clear();
+    }
+
+    private async Task<int> SyncRecipeLevelTableAsync(CancellationToken ct)
+    {
+        _logger.LogInformation("Starting RecipeLevelTable sync...");
+        int? afterRowId = null;
+        var totalSynced = 0;
+        var batch = new List<RecipeLevelEntry>();
+
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var (rows, lastRowId) = await _xivApiClient.GetSheetAsync<XivApiRecipeLevelTableFields>(
+                "RecipeLevelTable", RecipeLevelTableFieldList,
+                limit: RecipeLevelTablePageSize, afterRowId: afterRowId, cancellationToken: ct);
+
+            if (rows.Count == 0)
+                break;
+
+            foreach (var row in rows)
+            {
+                if (row.RowId == 0 && row.Fields.ClassJobLevel == 0)
+                    continue;
+
+                batch.Add(XivApiDataMapper.ToRecipeLevelEntry(row.RowId, row.Fields));
+
+                if (batch.Count >= _options.BatchSize)
+                {
+                    await UpsertRecipeLevelBatchAsync(batch, ct);
+                    totalSynced += batch.Count;
+                    batch.Clear();
+                }
+            }
+
+            afterRowId = lastRowId;
+        }
+
+        if (batch.Count > 0)
+        {
+            await UpsertRecipeLevelBatchAsync(batch, ct);
+            totalSynced += batch.Count;
+            batch.Clear();
+        }
+
+        _logger.LogInformation("RecipeLevelTable sync complete. Total: {RecordCount}", totalSynced);
+        return totalSynced;
+    }
+
+    private async Task UpsertRecipeLevelBatchAsync(List<RecipeLevelEntry> entries, CancellationToken ct)
+    {
+        var levels = entries.Select(e => e.RecipeLevel).ToHashSet();
+        var existing = await _db.RecipeLevelEntries
+            .Where(r => levels.Contains(r.RecipeLevel))
+            .ToDictionaryAsync(r => r.RecipeLevel, ct);
+
+        foreach (var entry in entries)
+        {
+            if (existing.TryGetValue(entry.RecipeLevel, out var tracked))
+            {
+                tracked.ClassJobLevel = entry.ClassJobLevel;
+                tracked.Stars = entry.Stars;
+                tracked.Difficulty = entry.Difficulty;
+                tracked.Quality = entry.Quality;
+                tracked.Durability = entry.Durability;
+                tracked.SuggestedCraftsmanship = entry.SuggestedCraftsmanship;
+                tracked.SuggestedControl = entry.SuggestedControl;
+                tracked.ProgressDivider = entry.ProgressDivider;
+                tracked.ProgressModifier = entry.ProgressModifier;
+                tracked.QualityDivider = entry.QualityDivider;
+                tracked.QualityModifier = entry.QualityModifier;
+            }
+            else
+            {
+                _db.RecipeLevelEntries.Add(entry);
+            }
         }
 
         await _db.SaveChangesAsync(ct);

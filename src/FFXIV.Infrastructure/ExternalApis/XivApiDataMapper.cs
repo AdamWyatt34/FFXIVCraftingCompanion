@@ -72,6 +72,25 @@ public static class XivApiDataMapper
         return ingredients;
     }
 
+    public static RecipeLevelEntry ToRecipeLevelEntry(int rowId, XivApiRecipeLevelTableFields fields)
+    {
+        return new RecipeLevelEntry
+        {
+            RecipeLevel = rowId,
+            ClassJobLevel = fields.ClassJobLevel,
+            Stars = fields.Stars,
+            Difficulty = fields.Difficulty,
+            Quality = fields.Quality,
+            Durability = fields.Durability,
+            SuggestedCraftsmanship = fields.SuggestedCraftsmanship,
+            SuggestedControl = fields.SuggestedControl,
+            ProgressDivider = fields.ProgressDivider,
+            ProgressModifier = fields.ProgressModifier,
+            QualityDivider = fields.QualityDivider,
+            QualityModifier = fields.QualityModifier
+        };
+    }
+
     /// <summary>
     /// CraftType row_id maps directly to our enum by index.
     /// 0=CRP, 1=BSM, 2=ARM, 3=GSM, 4=LTW, 5=WVR, 6=ALC, 7=CUL

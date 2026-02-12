@@ -1,0 +1,49 @@
+using FFXIV.Domain.CraftingEngine.Models;
+
+namespace FFXIV.Domain.CraftingEngine.Actions.Progress;
+
+public class Groundwork : ProgressAction
+{
+    public override int Id => 100403;
+    public override string Name => "Groundwork";
+    public override string InGameName => "Groundwork";
+    public override int LevelRequirement => 72;
+    protected override int BaseCPCost => 18;
+    protected override int BaseDurabilityCost => 20;
+    protected override int Potency => 300;
+
+    protected override CraftingState ApplyEffect(
+        CraftingState state, CrafterStats stats, RecipeParameters recipe)
+    {
+        var effectivePotency = state.Durability < GetDurabilityCost(state) ? 150 : 300;
+
+        var baseProgress = FormulaCalculator.CalculateBaseProgress(
+            stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,
+            stats.Level, recipe.RecipeLevel);
+
+        var efficiency = effectivePotency;
+        if (state.VenerationTurns > 0)
+            efficiency += 50;
+        if (state.MuscleMemoryTurns > 0)
+            efficiency += 100;
+
+        var progressIncrease = (int)(baseProgress * efficiency / 100.0);
+        var newProgress = state.Progress + progressIncrease;
+
+        if (state.FinalAppraisalTurns > 0 && newProgress >= state.MaxProgress)
+        {
+            return state with
+            {
+                Progress = state.MaxProgress - 1,
+                FinalAppraisalTurns = 0,
+                MuscleMemoryTurns = 0,
+            };
+        }
+
+        return state with
+        {
+            Progress = Math.Min(newProgress, state.MaxProgress),
+            MuscleMemoryTurns = 0,
+        };
+    }
+}

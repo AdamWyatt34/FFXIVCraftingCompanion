@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Shield, ChefHat, Trash2 } from "lucide-react";
+import { User, Shield, ChefHat, FlaskConical, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -97,7 +97,7 @@ function ProfileDashboardContent() {
         <JobLevelsGrid jobLevels={profile.jobLevels} onUpdate={invalidate} />
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <Link
             href={`/gear?job=${profile.activeJob}&level=${profile.activeJobLevel}`}
             className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-border-focus transition-colors"
@@ -111,6 +111,13 @@ function ProfileDashboardContent() {
           >
             <ChefHat className="text-gold shrink-0" size={18} />
             <span className="text-sm text-text-primary">Browse Recipes</span>
+          </Link>
+          <Link
+            href={`/simulator?craftsmanship=${profile.stats.craftsmanship}&control=${profile.stats.control}&cp=${profile.stats.cp}&level=${profile.activeJobLevel}`}
+            className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-border-focus transition-colors"
+          >
+            <FlaskConical className="text-gold shrink-0" size={18} />
+            <span className="text-sm text-text-primary">Crafting Simulator</span>
           </Link>
         </div>
 

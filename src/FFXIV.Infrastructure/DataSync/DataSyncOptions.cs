@@ -14,5 +14,6 @@ public sealed class DataSyncOptions
     public bool SyncVendors { get; set; } = true;
     public bool SyncScrips { get; set; } = true;
     public bool SyncEquipment { get; set; } = true;
+    public bool SyncRecipeLevelTable { get; set; } = true;
     public bool EnrichFromGarlandTools { get; set; } = false;
 }

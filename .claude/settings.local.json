@@ -23,7 +23,12 @@
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:www.nuget.org)",
       "WebFetch(domain:netstone.api.tawmy.net)",
-      "WebFetch(domain:xivapi.com)"
+      "WebFetch(domain:xivapi.com)",
+      "Bash(ls:*)",
+      "Bash(/tmp/diag.csx << 'ENDSCRIPT'\n// Quick diagnostic - can't use csx directly, let me use a different approach\nENDSCRIPT)",
+      "Bash(npx next lint)",
+      "Bash(npx next lint --)",
+      "Bash(npx eslint:*)"
     ]
   }
 }
