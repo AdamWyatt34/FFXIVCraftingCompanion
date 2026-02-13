@@ -1,0 +1,523 @@
+{
+  "benchmarks": [
+    {
+      "id": "lv100_4star_endgame",
+      "name": "Lv100 4-Star Endgame (rlvl 690)",
+      "description": "Dawntrail 4-star craft, well-geared crafter. Standard endgame rotation.",
+      "recipe": {
+        "recipeId": 1001,
+        "recipeLevel": 690,
+        "classJobLevel": 100,
+        "difficulty": 3800,
+        "quality": 12000,
+        "durability": 70,
+        "stars": 4,
+        "progressDivider": 130,
+        "progressModifier": 80,
+        "qualityDivider": 115,
+        "qualityModifier": 70,
+        "suggestedCraftsmanship": 4300,
+        "suggestedControl": 4200
+      },
+      "stats": {
+        "level": 100,
+        "craftsmanship": 4500,
+        "control": 4400,
+        "cp": 700,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Teamcraft / Community Standard Lv100 4-star",
+        "actions": [
+          "MuscleMemory",
+          "Veneration",
+          "Manipulation",
+          "Groundwork",
+          "Groundwork",
+          "WasteNotII",
+          "TrainedPerfection",
+          "Innovation",
+          "PreparatoryTouch",
+          "PreparatoryTouch",
+          "PreparatoryTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "Groundwork"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 30
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 80,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv90_3star_standard",
+      "name": "Lv90 3-Star (rlvl 580)",
+      "description": "Endwalker 3-star craft. Classic quality-heavy rotation.",
+      "recipe": {
+        "recipeId": 1002,
+        "recipeLevel": 580,
+        "classJobLevel": 90,
+        "difficulty": 3200,
+        "quality": 7200,
+        "durability": 70,
+        "stars": 3,
+        "progressDivider": 130,
+        "progressModifier": 80,
+        "qualityDivider": 115,
+        "qualityModifier": 70,
+        "suggestedCraftsmanship": 3700,
+        "suggestedControl": 3280
+      },
+      "stats": {
+        "level": 90,
+        "craftsmanship": 3800,
+        "control": 3600,
+        "cp": 600,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Standard Lv90 3-star rotation",
+        "actions": [
+          "MuscleMemory",
+          "Manipulation",
+          "Veneration",
+          "Groundwork",
+          "Groundwork",
+          "Innovation",
+          "BasicTouch",
+          "StandardTouch",
+          "AdvancedTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "MastersMend",
+          "Veneration",
+          "Groundwork"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 20
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 80,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv80_2star_overgeared",
+      "name": "Lv80 2-Star Overgeared (rlvl 430)",
+      "description": "Lv80 recipe with Lv90 gear. Should achieve high quality easily.",
+      "recipe": {
+        "recipeId": 1003,
+        "recipeLevel": 430,
+        "classJobLevel": 80,
+        "difficulty": 1100,
+        "quality": 5200,
+        "durability": 70,
+        "stars": 2,
+        "progressDivider": 110,
+        "progressModifier": 100,
+        "qualityDivider": 100,
+        "qualityModifier": 100,
+        "suggestedCraftsmanship": 2480,
+        "suggestedControl": 2195
+      },
+      "stats": {
+        "level": 90,
+        "craftsmanship": 3800,
+        "control": 3600,
+        "cp": 600,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Overgeared trivial rotation",
+        "actions": [
+          "Reflect",
+          "Innovation",
+          "BasicTouch",
+          "StandardTouch",
+          "AdvancedTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "Groundwork"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 50
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 90,
+        "mctsTimeBudgetMs": 5000
+      }
+    },
+    {
+      "id": "lv70_standard",
+      "name": "Lv70 Standard (rlvl 350)",
+      "description": "Stormblood-era recipe. Mid-level crafter.",
+      "recipe": {
+        "recipeId": 1004,
+        "recipeLevel": 350,
+        "classJobLevel": 70,
+        "difficulty": 950,
+        "quality": 4000,
+        "durability": 70,
+        "stars": 0,
+        "progressDivider": 100,
+        "progressModifier": 100,
+        "qualityDivider": 100,
+        "qualityModifier": 100,
+        "suggestedCraftsmanship": 1320,
+        "suggestedControl": 1220
+      },
+      "stats": {
+        "level": 70,
+        "craftsmanship": 1500,
+        "control": 1400,
+        "cp": 450,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Lv70 standard rotation",
+        "actions": [
+          "Reflect",
+          "Innovation",
+          "WasteNotII",
+          "BasicTouch",
+          "StandardTouch",
+          "BasicTouch",
+          "StandardTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "CarefulSynthesis",
+          "CarefulSynthesis",
+          "CarefulSynthesis"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 20
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv60_standard",
+      "name": "Lv60 Standard (rlvl 220)",
+      "description": "Heavensward recipe, 80 durability. Limited toolkit.",
+      "recipe": {
+        "recipeId": 1005,
+        "recipeLevel": 220,
+        "classJobLevel": 60,
+        "difficulty": 850,
+        "quality": 2600,
+        "durability": 80,
+        "stars": 0,
+        "progressDivider": 80,
+        "progressModifier": 100,
+        "qualityDivider": 80,
+        "qualityModifier": 100,
+        "suggestedCraftsmanship": 850,
+        "suggestedControl": 820
+      },
+      "stats": {
+        "level": 60,
+        "craftsmanship": 900,
+        "control": 880,
+        "cp": 400,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Lv60 rotation (limited toolkit)",
+        "actions": [
+          "MuscleMemory",
+          "Innovation",
+          "WasteNotII",
+          "BasicTouch",
+          "StandardTouch",
+          "BasicTouch",
+          "StandardTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "BasicSynthesis",
+          "BasicSynthesis",
+          "BasicSynthesis"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 20
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv50_classic",
+      "name": "Lv50 Classic (rlvl 70)",
+      "description": "ARR endgame craft. Very limited toolkit (no Manipulation, Reflect, Groundwork).",
+      "recipe": {
+        "recipeId": 1006,
+        "recipeLevel": 70,
+        "classJobLevel": 50,
+        "difficulty": 400,
+        "quality": 1200,
+        "durability": 60,
+        "stars": 0,
+        "progressDivider": 50,
+        "progressModifier": 100,
+        "qualityDivider": 50,
+        "qualityModifier": 100,
+        "suggestedCraftsmanship": 325,
+        "suggestedControl": 325
+      },
+      "stats": {
+        "level": 50,
+        "craftsmanship": 400,
+        "control": 380,
+        "cp": 330,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Lv50 basic rotation",
+        "actions": [
+          "InnerQuiet",
+          "WasteNotII",
+          "Innovation",
+          "BasicTouch",
+          "StandardTouch",
+          "BasicTouch",
+          "StandardTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "BasicSynthesis",
+          "BasicSynthesis",
+          "BasicSynthesis"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 15
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 70,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv90_35dur_food",
+      "name": "Lv90 35-Durability Food Recipe",
+      "description": "Low durability food. Requires careful resource management.",
+      "recipe": {
+        "recipeId": 1007,
+        "recipeLevel": 560,
+        "classJobLevel": 90,
+        "difficulty": 1400,
+        "quality": 5000,
+        "durability": 35,
+        "stars": 0,
+        "progressDivider": 130,
+        "progressModifier": 80,
+        "qualityDivider": 115,
+        "qualityModifier": 70,
+        "suggestedCraftsmanship": 3420,
+        "suggestedControl": 3100
+      },
+      "stats": {
+        "level": 90,
+        "craftsmanship": 3800,
+        "control": 3600,
+        "cp": 600,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Low durability 35-dur rotation",
+        "actions": [
+          "MuscleMemory",
+          "Manipulation",
+          "Innovation",
+          "PrudentTouch",
+          "PrudentTouch",
+          "PrudentTouch",
+          "PrudentTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "Groundwork"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 15
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv100_40dur_potion",
+      "name": "Lv100 40-Durability Potion",
+      "description": "Dawntrail potion with tight durability. Tests resource management.",
+      "recipe": {
+        "recipeId": 1008,
+        "recipeLevel": 640,
+        "classJobLevel": 100,
+        "difficulty": 3500,
+        "quality": 8000,
+        "durability": 40,
+        "stars": 0,
+        "progressDivider": 130,
+        "progressModifier": 80,
+        "qualityDivider": 115,
+        "qualityModifier": 70,
+        "suggestedCraftsmanship": 3900,
+        "suggestedControl": 3800
+      },
+      "stats": {
+        "level": 100,
+        "craftsmanship": 4500,
+        "control": 4400,
+        "cp": 700,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Lv100 40-dur potion rotation",
+        "actions": [
+          "MuscleMemory",
+          "Manipulation",
+          "Veneration",
+          "Groundwork",
+          "TrainedPerfection",
+          "Groundwork",
+          "Innovation",
+          "PrudentTouch",
+          "PrudentTouch",
+          "PrudentTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "PrudentSynthesis"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 15
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv100_undergeared",
+      "name": "Lv100 Undergeared (minimum stats)",
+      "description": "Lv100 recipe with stats barely meeting minimum. Tests solver robustness.",
+      "recipe": {
+        "recipeId": 1009,
+        "recipeLevel": 640,
+        "classJobLevel": 100,
+        "difficulty": 3300,
+        "quality": 8000,
+        "durability": 70,
+        "stars": 0,
+        "progressDivider": 130,
+        "progressModifier": 80,
+        "qualityDivider": 115,
+        "qualityModifier": 70,
+        "suggestedCraftsmanship": 3900,
+        "suggestedControl": 3800
+      },
+      "stats": {
+        "level": 100,
+        "craftsmanship": 3900,
+        "control": 3800,
+        "cp": 550,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Undergeared basic rotation",
+        "actions": [
+          "MuscleMemory",
+          "Manipulation",
+          "Veneration",
+          "Groundwork",
+          "Groundwork",
+          "Innovation",
+          "BasicTouch",
+          "StandardTouch",
+          "AdvancedTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "Groundwork"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 10
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 70,
+        "mctsTimeBudgetMs": 10000
+      }
+    },
+    {
+      "id": "lv100_4star_progress_heavy",
+      "name": "Lv100 4-Star Progress-Heavy",
+      "description": "High difficulty recipe where completing progress is the primary challenge.",
+      "recipe": {
+        "recipeId": 1010,
+        "recipeLevel": 690,
+        "classJobLevel": 100,
+        "difficulty": 3700,
+        "quality": 12000,
+        "durability": 70,
+        "stars": 4,
+        "progressDivider": 130,
+        "progressModifier": 80,
+        "qualityDivider": 115,
+        "qualityModifier": 70,
+        "suggestedCraftsmanship": 4300,
+        "suggestedControl": 4200
+      },
+      "stats": {
+        "level": 100,
+        "craftsmanship": 4300,
+        "control": 4200,
+        "cp": 650,
+        "isSpecialist": false
+      },
+      "communityRotation": {
+        "source": "Progress-focused 4-star rotation (just-meeting-stats)",
+        "actions": [
+          "MuscleMemory",
+          "Veneration",
+          "WasteNot",
+          "Groundwork",
+          "Groundwork",
+          "Manipulation",
+          "Innovation",
+          "BasicTouch",
+          "StandardTouch",
+          "AdvancedTouch",
+          "GreatStrides",
+          "ByregotsBlessing",
+          "Veneration",
+          "Groundwork"
+        ],
+        "expectedCompletion": true,
+        "expectedMinQualityPercent": 10
+      },
+      "solverTargets": {
+        "greedyMustComplete": true,
+        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsTimeBudgetMs": 10000
+      }
+    }
+  ]
+}

@@ -17,6 +17,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FFXIV.Application\FFXIV.Application.csproj" />
+    <ProjectReference Include="..\..\src\FFXIV.Infrastructure\FFXIV.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="CraftingEngine\TestData\solver-benchmarks.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
