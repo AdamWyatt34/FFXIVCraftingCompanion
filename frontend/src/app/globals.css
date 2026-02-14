@@ -297,10 +297,82 @@ body {
   animation: slide-up-sheet 0.3s ease-out forwards;
 }
 
+/* Solver button gold shimmer */
+@keyframes gold-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-gold-shimmer {
+  background-size: 200% 100%;
+  animation: gold-shimmer 3s ease-in-out infinite;
+}
+
+/* Progress bar fill */
+@keyframes progress-fill {
+  from {
+    width: 0%;
+  }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 0.3s ease-out;
+}
+
 /* Focus ring for keyboard navigation */
 .focus-ring:focus-visible {
   outline: 2px solid var(--color-gold);
   outline-offset: 2px;
+}
+
+/* Timeline step highlight pulse (replay) */
+@keyframes step-highlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(230, 180, 34, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 4px rgba(230, 180, 34, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 180, 34, 0);
+  }
+}
+
+.animate-step-highlight {
+  animation: step-highlight 0.6s ease-out;
+}
+
+/* Replay state transition */
+@keyframes replay-transition {
+  from {
+    opacity: 0.5;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-replay-transition {
+  animation: replay-transition 0.2s ease-out;
+}
+
+@keyframes row-highlight {
+  from {
+    background-color: rgba(230, 180, 34, 0.15);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.animate-row-highlight {
+  animation: row-highlight 0.6s ease-out;
 }
 
 /* Reduced motion: disable all simulator animations */
@@ -318,7 +390,12 @@ body {
   .animate-slide-in-right,
   .animate-slide-out-right,
   .animate-expand-down,
-  .animate-slide-up-sheet {
+  .animate-slide-up-sheet,
+  .animate-gold-shimmer,
+  .animate-progress-fill,
+  .animate-step-highlight,
+  .animate-replay-transition,
+  .animate-row-highlight {
     animation: none !important;
   }
 }

@@ -28,7 +28,9 @@
       "Bash(/tmp/diag.csx << 'ENDSCRIPT'\n// Quick diagnostic - can't use csx directly, let me use a different approach\nENDSCRIPT)",
       "Bash(npx next lint)",
       "Bash(npx next lint --)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git -C D:/personal/FinalFantasyXIVCraftingCompanion log --oneline -10)"
     ]
   }
 }

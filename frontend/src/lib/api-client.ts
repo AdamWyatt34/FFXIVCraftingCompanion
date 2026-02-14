@@ -46,6 +46,17 @@ import type {
   ExportMacroResult,
   CraftingState,
 } from "@/types/simulator";
+import type {
+  SolveRequest,
+  SolverJob,
+  SolverResult,
+  QuickSolveParams,
+  SubmitRotationRequest,
+  RotationDetail,
+  RotationListResult,
+  RotationSearchParams,
+  UpvoteResult,
+} from "@/types/solver";
 
 export class ApiClientError extends Error {
   constructor(
@@ -573,4 +584,105 @@ export function getInitialCraftingState(
     isSpecialist: String(isSpecialist),
   });
   return fetchApi<CraftingState>(`/api/crafting/initial-state?${params}`, { signal });
+}
+
+// --- Solver API ---
+
+export function submitSolveJob(
+  request: SolveRequest,
+  signal?: AbortSignal,
+): Promise<SolverJob> {
+  return authFetchApi<SolverJob>("/api/crafting/solve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function getSolveJob(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<SolverJob> {
+  return fetchApi<SolverJob>(`/api/crafting/solve/${encodeURIComponent(jobId)}`, { signal });
+}
+
+export function cancelSolveJob(jobId: string): Promise<void> {
+  return fetchApi<void>(`/api/crafting/solve/${encodeURIComponent(jobId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function quickSolve(
+  params: QuickSolveParams,
+  signal?: AbortSignal,
+): Promise<SolverResult> {
+  const search = new URLSearchParams({
+    recipeId: String(params.recipeId),
+    craftsmanship: String(params.craftsmanship),
+    control: String(params.control),
+    cp: String(params.cp),
+    level: String(params.level),
+  });
+  return fetchApi<SolverResult>(`/api/crafting/solve/quick?${search}`, { signal });
+}
+
+// --- Rotation Library API ---
+
+export function submitRotation(
+  request: SubmitRotationRequest,
+): Promise<RotationDetail> {
+  return authFetchApi<RotationDetail>("/api/rotations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+}
+
+export function searchRotations(
+  params: RotationSearchParams,
+  signal?: AbortSignal,
+): Promise<RotationListResult> {
+  const search = new URLSearchParams();
+  if (params.recipeId) search.set("recipeId", String(params.recipeId));
+  if (params.craftType) search.set("craftType", params.craftType);
+  if (params.minLevel) search.set("minLevel", String(params.minLevel));
+  if (params.maxLevel) search.set("maxLevel", String(params.maxLevel));
+  if (params.source) search.set("source", params.source);
+  if (params.sortBy) search.set("sortBy", params.sortBy);
+  search.set("page", String(params.page ?? 1));
+  search.set("pageSize", String(params.pageSize ?? 20));
+  return fetchApi<RotationListResult>(`/api/rotations?${search}`, { signal });
+}
+
+export function getRotationById(
+  id: number,
+  signal?: AbortSignal,
+): Promise<RotationDetail> {
+  return fetchApi<RotationDetail>(`/api/rotations/${id}`, { signal });
+}
+
+export function toggleRotationUpvote(id: number): Promise<UpvoteResult> {
+  return authFetchApi<UpvoteResult>(`/api/rotations/${id}/upvote`, {
+    method: "POST",
+  });
+}
+
+export function deleteRotation(id: number): Promise<void> {
+  return authFetchApi<void>(`/api/rotations/${id}`, { method: "DELETE" });
+}
+
+// --- BiS Stats (from gear recommendations) ---
+
+export async function getBisStats(
+  job: string,
+  level: number,
+  signal?: AbortSignal,
+): Promise<{ craftsmanship: number; control: number; cp: number }> {
+  const gearSet = await getGearRecommendations(job, level, "balanced", signal);
+  return {
+    craftsmanship: gearSet.totalStats.craftsmanship,
+    control: gearSet.totalStats.control,
+    cp: gearSet.totalStats.cp,
+  };
 }

@@ -2,9 +2,14 @@
 
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { FlaskConical, Check, X } from "lucide-react";
+import Link from "next/link";
+import { FlaskConical, Check, X, Wrench, Sparkles, BookOpen, SlidersHorizontal } from "lucide-react";
 import { useSimulator } from "@/hooks/useSimulator";
-import { getRecipe } from "@/lib/api-client";
+import { useSolver } from "@/hooks/useSolver";
+import { useSolverConfig } from "@/hooks/useSolverConfig";
+import { useWhatIf } from "@/hooks/useWhatIf";
+import { getRecipe, submitRotation } from "@/lib/api-client";
+import { useAuth } from "@/contexts/AuthContext";
 import { parseRotationFromUrl } from "@/lib/format-utils";
 import { RecipeSelector } from "@/components/simulator/RecipeSelector";
 import { StatsInput } from "@/components/simulator/StatsInput";
@@ -20,8 +25,10 @@ import { UndoControls } from "@/components/simulator/UndoControls";
 import { StepHistory } from "@/components/simulator/StepHistory";
 import { StepHistoryMobile } from "@/components/simulator/StepHistoryMobile";
 import { MacroExportPanel } from "@/components/simulator/MacroExportPanel";
+import { SolverButton, SolverConfigPanel, SolverProgressOverlay, RotationResultPanel, RotationReplay, WhatIfPanel } from "@/components/solver";
 import { LoadingSkeleton } from "@/components/ui/LoadingStates";
 import { buildShareUrl } from "@/lib/format-utils";
+import { buildSolverShareUrl } from "@/lib/rotation-codec";
 import type { RecipeDto, CraftType } from "@/types/api";
 import type { CrafterStatsInput } from "@/types/simulator";
 
@@ -52,11 +59,23 @@ function SectionHeader({
 
 function SimulatorPageContent() {
   const simulator = useSimulator();
+  const solver = useSolver();
+  const solverConfig = useSolverConfig();
+  const whatIf = useWhatIf();
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [fullRecipe, setFullRecipe] = useState<RecipeDto | null>(null);
   const [showMacroPanel, setShowMacroPanel] = useState(false);
   const [shareConfirmation, setShareConfirmation] = useState(false);
+  const [showSolverOverlay, setShowSolverOverlay] = useState(false);
+  const [showRotationResult, setShowRotationResult] = useState(false);
+  const [showReplay, setShowReplay] = useState(false);
+  const [replayInitialStep, setReplayInitialStep] = useState<number | undefined>(undefined);
+  const [isSavingToLibrary, setIsSavingToLibrary] = useState(false);
+  const [saveToLibrarySuccess, setSaveToLibrarySuccess] = useState(false);
+  const [setupMode, setSetupMode] = useState<"craft" | "solve" | "whatif">("craft");
   const hasInitializedFromUrlRef = useRef(false);
+  const autoSolveTriggeredRef = useRef(false);
 
   // URL-driven initialization
   useEffect(() => {
@@ -89,9 +108,19 @@ function SimulatorPageContent() {
 
     const rotationIds = parseRotationFromUrl(rotationParam);
 
+    const solveParam = searchParams.get("solve") === "true";
+    const whatifParam = searchParams.get("whatif") === "true";
+    const compareParam = searchParams.get("compare") === "true";
+
     // If we have all three (recipe + stats + rotation), load as shared rotation
     if (recipeId && stats && rotationIds) {
-      simulator.loadSharedRotation(recipeId, stats, rotationIds);
+      if (compareParam) {
+        // Compare mode: show rotation result panel without entering craft view
+        simulator.loadSharedRotation(recipeId, stats, rotationIds);
+        setShowRotationResult(true);
+      } else {
+        simulator.loadSharedRotation(recipeId, stats, rotationIds);
+      }
       return;
     }
 
@@ -106,7 +135,26 @@ function SimulatorPageContent() {
     if (stats) {
       simulator.setStatsFromUrl(stats);
     }
+
+    if (whatifParam) {
+      setSetupMode("whatif");
+    } else if (solveParam) {
+      setSetupMode("solve");
+    }
   }, [searchParams, simulator]);
+
+  // Sync whatIf hook with simulator state
+  useEffect(() => {
+    if (simulator.crafterStats && simulator.selectedRecipe) {
+      whatIf.setBaseStats({
+        craftsmanship: simulator.crafterStats.craftsmanship,
+        control: simulator.crafterStats.control,
+        cp: simulator.crafterStats.cp,
+        level: simulator.crafterStats.level,
+      });
+      whatIf.setRecipeId(simulator.selectedRecipe.recipeId);
+    }
+  }, [simulator.crafterStats, simulator.selectedRecipe]);
 
   // Navigation warning during active simulation
   useEffect(() => {
@@ -181,6 +229,154 @@ function SimulatorPageContent() {
     }
   }, [searchParams, simulator.selectedRecipe, simulator.crafterStats, simulator.actionIds]);
 
+  // ── Solver handlers ──
+
+  const handleAutoSolve = useCallback(async () => {
+    if (!simulator.selectedRecipe || !simulator.crafterStats) return;
+    const request = solverConfig.buildSolveRequest(
+      simulator.selectedRecipe.recipeId,
+      simulator.crafterStats,
+    );
+    await solver.startSolve(request);
+  }, [simulator.selectedRecipe, simulator.crafterStats, solverConfig, solver]);
+
+  // Auto-solve trigger from URL param (must be after handleAutoSolve definition)
+  useEffect(() => {
+    if (autoSolveTriggeredRef.current) return;
+    if (setupMode !== "solve") return;
+    if (!simulator.isSetupComplete) return;
+
+    autoSolveTriggeredRef.current = true;
+    const timer = setTimeout(() => {
+      handleAutoSolve();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [setupMode, simulator.isSetupComplete, handleAutoSolve]);
+
+  const handleAutoSolveFromCraft = useCallback(async () => {
+    if (!simulator.selectedRecipe || !simulator.crafterStats) return;
+    setShowSolverOverlay(true);
+    const request = solverConfig.buildSolveRequest(
+      simulator.selectedRecipe.recipeId,
+      simulator.crafterStats,
+    );
+    await solver.startSolve(request);
+  }, [simulator.selectedRecipe, simulator.crafterStats, solverConfig, solver]);
+
+  const handleLoadPreview = useCallback(async () => {
+    const result = solver.quickResult;
+    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+    solver.cancelSolve();
+    setShowSolverOverlay(false);
+    await simulator.loadSharedRotation(
+      simulator.selectedRecipe.recipeId,
+      simulator.crafterStats,
+      result.actionIds,
+    );
+  }, [solver, simulator]);
+
+  const handleViewRotation = useCallback(() => {
+    setShowRotationResult(true);
+    setShowSolverOverlay(false);
+  }, []);
+
+  const handleCancelSolve = useCallback(async () => {
+    await solver.cancelSolve();
+    setShowSolverOverlay(false);
+  }, [solver]);
+
+  // ── Rotation result panel handlers ──
+
+  const handleOpenReplay = useCallback(() => {
+    setShowReplay(true);
+    setReplayInitialStep(undefined);
+  }, []);
+
+  const handleJumpToStep = useCallback((stepIndex: number) => {
+    setShowReplay(true);
+    setReplayInitialStep(stepIndex);
+  }, []);
+
+  const handleCloseReplay = useCallback(() => {
+    setShowReplay(false);
+    setReplayInitialStep(undefined);
+  }, []);
+
+  const handleLoadIntoSimulator = useCallback(async () => {
+    const result = solver.solverResult ?? solver.quickResult;
+    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+    await simulator.loadSharedRotation(
+      simulator.selectedRecipe.recipeId,
+      simulator.crafterStats,
+      result.actionIds,
+    );
+    solver.clearResult();
+    setShowRotationResult(false);
+    setShowReplay(false);
+  }, [solver, simulator]);
+
+  const handleSolverShare = useCallback(async () => {
+    const result = solver.solverResult ?? solver.quickResult;
+    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+
+    const url = buildSolverShareUrl({
+      recipeId: simulator.selectedRecipe.recipeId,
+      stats: simulator.crafterStats,
+      actionIds: result.actionIds,
+      algorithm: result.metrics.algorithmUsed,
+    });
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareConfirmation(true);
+      setTimeout(() => setShareConfirmation(false), 2000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setShareConfirmation(true);
+      setTimeout(() => setShareConfirmation(false), 2000);
+    }
+  }, [solver, simulator.selectedRecipe, simulator.crafterStats]);
+
+  const handleDismissResult = useCallback(() => {
+    setShowRotationResult(false);
+    solver.clearResult();
+  }, [solver]);
+
+  const handleSaveToLibrary = useCallback(async () => {
+    const result = solver.solverResult ?? solver.quickResult;
+    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+    setIsSavingToLibrary(true);
+    try {
+      await submitRotation({
+        recipeId: simulator.selectedRecipe.recipeId,
+        actionIds: result.actionIds,
+        stats: simulator.crafterStats,
+        source: "Solver",
+        algorithm: result.metrics.algorithmUsed,
+      });
+      setSaveToLibrarySuccess(true);
+      setTimeout(() => setSaveToLibrarySuccess(false), 3000);
+    } catch {
+      // Error is silently handled — could add toast later
+    } finally {
+      setIsSavingToLibrary(false);
+    }
+  }, [solver, simulator.selectedRecipe, simulator.crafterStats]);
+
+  // Auto-hide overlay when solver completes
+  useEffect(() => {
+    if (solver.solverStatus === "Completed" || solver.solverStatus === "Failed" || solver.solverStatus === "TimedOut") {
+      setShowSolverOverlay(false);
+    }
+  }, [solver.solverStatus]);
+
   const hasStats = simulator.crafterStats !== null;
 
   const lastDeltas =
@@ -218,6 +414,13 @@ function SimulatorPageContent() {
           <div className="flex items-center gap-2 mb-6">
             <FlaskConical className="text-gold" size={24} />
             <h1 className="text-xl font-bold">Crafting Simulator</h1>
+            <Link
+              href="/simulator/library"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-gold transition-colors"
+            >
+              <BookOpen size={16} />
+              Library
+            </Link>
           </div>
         </div>
       )}
@@ -291,6 +494,28 @@ function SimulatorPageContent() {
                 shareConfirmation={shareConfirmation}
               />
 
+              {/* Solver result (shown in crafting phase after solve completes) */}
+              {(solver.solverStatus === "Completed" || solver.solverStatus === "Failed" || solver.solverStatus === "TimedOut") && (
+                <SolverButton
+                  isSetupComplete={simulator.isSetupComplete}
+                  isSimulating={true}
+                  solverStatus={solver.solverStatus}
+                  solverResult={solver.solverResult}
+                  quickResult={solver.quickResult}
+                  elapsedMs={solver.elapsedMs}
+                  progressPercent={solver.progressPercent}
+                  error={solver.error}
+                  isSolving={solver.isSolving}
+                  onStartSolve={handleAutoSolveFromCraft}
+                  onCancelSolve={handleCancelSolve}
+                  onViewRotation={handleViewRotation}
+                  onReSolve={handleAutoSolveFromCraft}
+                  onClearResult={solver.clearResult}
+                  onLoadPreview={handleLoadPreview}
+                  configSummary={solverConfig.summaryText}
+                />
+              )}
+
               {/* Mobile step history strip */}
               {simulator.initialState && (
                 <div className="lg:hidden">
@@ -315,16 +540,41 @@ function SimulatorPageContent() {
                 />
               )}
 
-              {/* Action panel */}
+              {/* Action panel with solver overlay */}
               {simulator.currentState.status === "InProgress" && (
-                <ActionPanel
-                  actions={simulator.actions}
-                  availableActions={simulator.availableActions}
-                  isLoading={simulator.isLoading}
-                  onExecute={simulator.executeAction}
-                  onUndo={simulator.undoLastAction}
-                  onReset={simulator.resetCraft}
-                />
+                <div className="relative">
+                  {/* Inline Auto-Solve trigger */}
+                  {solver.solverStatus === "Idle" && (
+                    <button
+                      onClick={handleAutoSolveFromCraft}
+                      className="mb-3 flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 text-gold font-medium rounded-lg hover:bg-gold/20 border border-gold/30 transition-colors text-sm"
+                      aria-label="Auto-solve from current state"
+                    >
+                      <Sparkles size={14} />
+                      Auto-Solve
+                    </button>
+                  )}
+                  <ActionPanel
+                    actions={simulator.actions}
+                    availableActions={simulator.availableActions}
+                    isLoading={simulator.isLoading}
+                    onExecute={simulator.executeAction}
+                    onUndo={simulator.undoLastAction}
+                    onReset={simulator.resetCraft}
+                  />
+                  {showSolverOverlay && solver.isSolving && (
+                    <SolverProgressOverlay
+                      solverStatus={solver.solverStatus}
+                      solverResult={solver.solverResult}
+                      quickResult={solver.quickResult}
+                      elapsedMs={solver.elapsedMs}
+                      progressPercent={solver.progressPercent}
+                      error={solver.error}
+                      onLoadPreview={handleLoadPreview}
+                      onCancelSolve={handleCancelSolve}
+                    />
+                  )}
+                </div>
               )}
             </div>
 
@@ -400,17 +650,128 @@ function SimulatorPageContent() {
             </div>
           )}
 
-          {/* Start Crafting button */}
-          {simulator.isSetupComplete && (
-            <div className="animate-slide-up">
-              <button
-                onClick={handleStartCrafting}
-                disabled={simulator.isLoading}
-                className="w-full py-3 px-6 bg-gold text-bg-primary font-bold rounded-lg hover:bg-gold-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
-              >
-                {simulator.isLoading ? "Initializing..." : "Start Crafting"}
-              </button>
+          {/* Rotation result panel (shown after solver completes + View Rotation) */}
+          {showRotationResult && !showReplay && solver.solverStatus === "Completed" &&
+            (solver.solverResult?.simulation ?? solver.quickResult?.simulation) && (
+            <RotationResultPanel
+              solverResult={(solver.solverResult ?? solver.quickResult)!}
+              quickResult={solver.quickResult}
+              simulation={(solver.solverResult?.simulation ?? solver.quickResult?.simulation)!}
+              recipeId={simulator.selectedRecipe!.recipeId}
+              crafterStats={simulator.crafterStats!}
+              onReplay={handleOpenReplay}
+              onJumpToStep={handleJumpToStep}
+              onExportMacro={() => setShowMacroPanel(true)}
+              onShare={handleSolverShare}
+              onReSolve={handleAutoSolve}
+              onLoadIntoSimulator={handleLoadIntoSimulator}
+              onDismiss={handleDismissResult}
+              shareConfirmation={shareConfirmation}
+              onSaveToLibrary={user ? handleSaveToLibrary : undefined}
+              isSaving={isSavingToLibrary}
+              saveSuccess={saveToLibrarySuccess}
+            />
+          )}
+
+          {/* Action buttons — Start Crafting + Auto-Solve + What If */}
+          {simulator.isSetupComplete && !showRotationResult && (
+            <div className="animate-slide-up space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Manual craft button */}
+                <button
+                  onClick={handleStartCrafting}
+                  disabled={simulator.isLoading || solver.isSolving}
+                  className="flex items-center justify-center gap-2 py-3 px-6 bg-bg-surface border border-border text-text-primary font-bold rounded-lg hover:border-gold hover:text-gold disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
+                >
+                  <Wrench size={18} />
+                  {simulator.isLoading ? "Initializing..." : "Start Manual Craft"}
+                </button>
+
+                {/* Auto-Solve button */}
+                <SolverButton
+                  isSetupComplete={simulator.isSetupComplete}
+                  isSimulating={false}
+                  solverStatus={solver.solverStatus}
+                  solverResult={solver.solverResult}
+                  quickResult={solver.quickResult}
+                  elapsedMs={solver.elapsedMs}
+                  progressPercent={solver.progressPercent}
+                  error={solver.error}
+                  isSolving={solver.isSolving}
+                  onStartSolve={handleAutoSolve}
+                  onCancelSolve={handleCancelSolve}
+                  onViewRotation={handleViewRotation}
+                  onReSolve={handleAutoSolve}
+                  onClearResult={solver.clearResult}
+                  onLoadPreview={handleLoadPreview}
+                  configSummary={solverConfig.summaryText}
+                  disabledReason={
+                    !simulator.selectedRecipe
+                      ? "Select a recipe first"
+                      : !simulator.crafterStats
+                        ? "Enter crafter stats first"
+                        : undefined
+                  }
+                />
+
+                {/* What If button */}
+                <button
+                  onClick={() => setSetupMode(setupMode === "whatif" ? "craft" : "whatif")}
+                  className={`flex items-center justify-center gap-2 py-3 px-6 border font-bold rounded-lg transition-colors text-base ${
+                    setupMode === "whatif"
+                      ? "bg-gold/10 text-gold border-gold/50"
+                      : "bg-bg-surface border-border text-text-primary hover:border-gold hover:text-gold"
+                  }`}
+                >
+                  <SlidersHorizontal size={18} />
+                  What If
+                </button>
+              </div>
+
+              {/* Solver config panel */}
+              <SolverConfigPanel
+                config={solverConfig.config}
+                onAlgorithmChange={solverConfig.setAlgorithm}
+                onTimeBudgetChange={solverConfig.setTimeBudget}
+                onObjectiveChange={solverConfig.setObjective}
+                onTargetQualityChange={solverConfig.setTargetQuality}
+                onAllowUnsafeChange={solverConfig.setAllowUnsafe}
+                onResetDefaults={solverConfig.resetToDefaults}
+                summaryText={solverConfig.summaryText}
+                disabled={solver.isSolving}
+              />
+
+              {/* What If panel */}
+              {setupMode === "whatif" && (
+                <WhatIfPanel
+                  whatIf={whatIf}
+                  recipeName={fullRecipe?.resultItem?.name}
+                  recipeLevel={fullRecipe?.recipeLevel}
+                  craftType={fullRecipe?.craftType}
+                />
+              )}
             </div>
+          )}
+
+          {/* Macro export panel (for solver result context) */}
+          {showRotationResult && (
+            <MacroExportPanel
+              isOpen={showMacroPanel}
+              actionIds={(solver.solverResult ?? solver.quickResult)?.actionIds ?? []}
+              stateHistory={(solver.solverResult?.simulation ?? solver.quickResult?.simulation)?.steps ?? []}
+              currentState={(solver.solverResult?.simulation ?? solver.quickResult?.simulation)?.finalState ?? null}
+              onClose={() => setShowMacroPanel(false)}
+            />
+          )}
+
+          {/* Rotation replay overlay */}
+          {showReplay && (solver.solverResult?.simulation ?? solver.quickResult?.simulation) && (
+            <RotationReplay
+              simulation={(solver.solverResult?.simulation ?? solver.quickResult?.simulation)!}
+              initialStepIndex={replayInitialStep}
+              onClose={handleCloseReplay}
+              onLoadIntoSimulator={handleLoadIntoSimulator}
+            />
           )}
         </div>
       )}

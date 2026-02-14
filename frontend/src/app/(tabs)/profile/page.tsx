@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Shield, ChefHat, FlaskConical, Trash2 } from "lucide-react";
+import { User, Shield, ChefHat, FlaskConical, Trash2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -13,6 +13,7 @@ import {
   ProfileSetupWizard,
   SavedListsTabs,
   ProfileLoadingSkeleton,
+  ProfileRotationsList,
 } from "@/components/profile";
 import { ErrorState } from "@/components/ui";
 import { deleteProfile, updateProfile } from "@/lib/api-client";
@@ -119,6 +120,15 @@ function ProfileDashboardContent() {
             <FlaskConical className="text-gold shrink-0" size={18} />
             <span className="text-sm text-text-primary">Crafting Simulator</span>
           </Link>
+        </div>
+
+        {/* My Rotations */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles size={18} className="text-gold" />
+            <h2 className="text-lg font-bold text-text-primary">My Rotations</h2>
+          </div>
+          <ProfileRotationsList />
         </div>
 
         {/* Saved content */}

@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<ISavedListRepository, SavedListRepository>();
         services.AddScoped<IFavoriteRecipeRepository, FavoriteRecipeRepository>();
         services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
+        services.AddScoped<ISharedRotationRepository, SharedRotationRepository>();
 
         // Data Sync
         services.Configure<DataSyncOptions>(configuration.GetSection(DataSyncOptions.SectionName));

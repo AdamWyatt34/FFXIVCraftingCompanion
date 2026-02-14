@@ -8,3 +8,4 @@ export { JobLevelsGrid } from "./JobLevelsGrid";
 export { ProfileSetupWizard } from "./ProfileSetupWizard";
 export { SavedListsTabs } from "./SavedListsTabs";
 export { FavoriteRecipesList } from "./FavoriteRecipesList";
+export { ProfileRotationsList } from "./ProfileRotationsList";

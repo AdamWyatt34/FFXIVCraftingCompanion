@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, User, FlaskConical } from "lucide-react";
+import { Shield, User, FlaskConical, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useGearRecommendations } from "@/hooks/useGearRecommendations";
 import { useGearComparison } from "@/hooks/useGearComparison";
@@ -224,13 +224,22 @@ function GearPageContent() {
                         gearSet={data}
                       />
                       {isDoH && (
-                        <Link
-                          href={`/simulator?craftsmanship=${data.totalStats.craftsmanship}&control=${data.totalStats.control}&cp=${data.totalStats.cp}&level=${data.level}`}
-                          className="p-2 rounded-lg border border-border text-text-secondary hover:text-gold hover:border-gold transition-colors"
-                          title="Test rotation with these stats"
-                        >
-                          <FlaskConical size={16} />
-                        </Link>
+                        <>
+                          <Link
+                            href={`/simulator?craftsmanship=${data.totalStats.craftsmanship}&control=${data.totalStats.control}&cp=${data.totalStats.cp}&level=${data.level}`}
+                            className="p-2 rounded-lg border border-border text-text-secondary hover:text-gold hover:border-gold transition-colors"
+                            title="Test rotation with these stats"
+                          >
+                            <FlaskConical size={16} />
+                          </Link>
+                          <Link
+                            href={`/simulator?craftsmanship=${data.totalStats.craftsmanship}&control=${data.totalStats.control}&cp=${data.totalStats.cp}&level=${data.level}&whatif=true`}
+                            className="p-2 rounded-lg border border-border text-text-secondary hover:text-gold hover:border-gold transition-colors"
+                            title="Explore stat impact on crafting"
+                          >
+                            <SlidersHorizontal size={16} />
+                          </Link>
+                        </>
                       )}
                     </div>
                   </div>

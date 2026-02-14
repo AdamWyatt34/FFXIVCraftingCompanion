@@ -519,6 +519,35 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.ToTable("RefreshTokens", (string)null);
                 });
 
+            modelBuilder.Entity("FFXIV.Domain.Entities.RotationVote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RotationId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RotationId");
+
+                    b.HasIndex("UserId", "RotationId")
+                        .IsUnique();
+
+                    b.ToTable("RotationVotes", (string)null);
+                });
+
             modelBuilder.Entity("FFXIV.Domain.Entities.SavedList", b =>
                 {
                     b.Property<int>("Id")
@@ -561,6 +590,88 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "Type");
 
                     b.ToTable("SavedLists", (string)null);
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.SharedRotation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.PrimitiveCollection<string>("ActionIds")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Algorithm")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("CP")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Control")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("CraftCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("CrafterLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Craftsmanship")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("HQPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<decimal>("QualityPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("RecipeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalSteps")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Upvotes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("RecipeId");
+
+                    b.HasIndex("Upvotes");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("RecipeId", "QualityPercent");
+
+                    b.ToTable("SharedRotations", (string)null);
                 });
 
             modelBuilder.Entity("FFXIV.Domain.Entities.SyncMetadata", b =>
@@ -954,6 +1065,23 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FFXIV.Domain.Entities.RotationVote", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.SharedRotation", "Rotation")
+                        .WithMany()
+                        .HasForeignKey("RotationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FFXIV.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rotation");
+                });
+
             modelBuilder.Entity("FFXIV.Domain.Entities.SavedList", b =>
                 {
                     b.HasOne("FFXIV.Infrastructure.Identity.ApplicationUser", null)
@@ -961,6 +1089,23 @@ namespace FFXIV.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.SharedRotation", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.Recipe", "Recipe")
+                        .WithMany()
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FFXIV.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
                 });
 
             modelBuilder.Entity("FFXIV.Domain.Entities.VendorInfo", b =>

@@ -49,10 +49,65 @@ const ACTION_ICON_MAP: Record<string, string> = {
 
 const XIVAPI_ICON_BASE = "https://xivapi.com";
 
+/** Map from backend action ID to action name (for icon lookup from IDs). */
+export const ACTION_ID_TO_NAME: Record<number, string> = {
+  // Progress
+  100001: "BasicSynthesis",
+  100203: "CarefulSynthesis",
+  100033: "RapidSynthesis",
+  100235: "FocusedSynthesis",
+  100403: "Groundwork",
+  100315: "IntensiveSynthesis",
+  100427: "PrudentSynthesis",
+  100379: "MuscleMemory",
+  100323: "DelicateSynthesis",
+  // Quality
+  100002: "BasicTouch",
+  100004: "StandardTouch",
+  100411: "AdvancedTouch",
+  100355: "HastyTouch",
+  100243: "FocusedTouch",
+  100299: "PreparatoryTouch",
+  100227: "PrudentTouch",
+  100387: "Reflect",
+  100339: "ByregotsBlessing",
+  100435: "TrainedFinesse",
+  100283: "TrainedEye",
+  // Buffs
+  100252: "InnerQuiet",
+  100279: "WasteNot",
+  100285: "WasteNotII",
+  100297: "Veneration",
+  100209: "Innovation",
+  100260: "GreatStrides",
+  100278: "Manipulation",
+  100364: "FinalAppraisal",
+  100010: "Observe",
+  100317: "HeartAndSoul",
+  100451: "TrainedPerfection",
+  100443: "QuickInnovation",
+  // Repair
+  100003: "MastersMend",
+  100439: "ImmaculateMend",
+  // Other
+  100371: "TricksOfTheTrade",
+  100395: "CarefulObservation",
+};
+
+export function getActionNameById(actionId: number): string {
+  return ACTION_ID_TO_NAME[actionId] ?? `Unknown`;
+}
+
 export function getActionIconUrl(actionName: string): string {
   const path = ACTION_ICON_MAP[actionName];
   if (path) return `${XIVAPI_ICON_BASE}${path}`;
   return `${XIVAPI_ICON_BASE}/i/000000/000405.png`; // fallback generic icon
+}
+
+export function getActionIconUrlById(actionId: number): string {
+  const name = ACTION_ID_TO_NAME[actionId];
+  if (name) return getActionIconUrl(name);
+  return `${XIVAPI_ICON_BASE}/i/000000/000405.png`;
 }
 
 // ── Category colors ──

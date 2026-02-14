@@ -219,14 +219,23 @@ function RecipeDetailContent() {
         </div>
       </div>
 
-      {/* Simulate link */}
-      <Link
-        href={`/simulator?recipeId=${recipeId}`}
-        className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
-      >
-        <FlaskConical className="text-gold shrink-0" size={18} />
-        <span className="text-sm text-text-primary">Simulate this Recipe</span>
-      </Link>
+      {/* Simulate + Auto-Solve links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link
+          href={`/simulator?recipeId=${recipeId}`}
+          className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
+        >
+          <FlaskConical className="text-gold shrink-0" size={18} />
+          <span className="text-sm text-text-primary">Simulate this Recipe</span>
+        </Link>
+        <Link
+          href={`/simulator?recipeId=${recipeId}&solve=true`}
+          className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
+        >
+          <Sparkles className="text-gold shrink-0" size={18} />
+          <span className="text-sm text-text-primary">Auto-Solve this Recipe</span>
+        </Link>
+      </div>
 
       {/* Equipment info banner */}
       {equipInfo && (
