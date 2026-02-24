@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { Undo2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui";
 import { getActionIconUrl, ACTION_CATEGORY_COLORS } from "@/lib/action-icons";
@@ -135,12 +136,13 @@ function StepHistoryItem({
         <span className="text-xs text-text-muted font-mono w-5 shrink-0 text-right">
           {step.stepNumber}.
         </span>
-        <img
+        <Image
           src={getActionIconUrl(step.actionName)}
           alt=""
           width={16}
           height={16}
           className={`shrink-0 ${isFailed ? "grayscale opacity-50" : ""}`}
+          unoptimized
         />
         <span
           className={`text-sm font-semibold truncate ${

@@ -1,12 +1,50 @@
 import type { Metadata, Viewport } from "next";
-import { Header, BottomTabNav } from "@/components/layout";
-import { ToastProvider } from "@/components/ui";
+import { Header, BottomTabNav, Footer } from "@/components/layout";
+import { ToastProvider, Breadcrumbs, InstallBanner } from "@/components/ui";
+import { FeedbackButton } from "@/components/feedback";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CraftPlanProvider } from "@/contexts/CraftPlanContext";
+import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FFXIV Crafting Companion",
-  description: "A crafting companion app for Final Fantasy XIV",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
+  title: {
+    default:
+      "FFXIV Crafting Companion — Recipe Explorer, Simulator & Solver",
+    template: "%s | FFXIV Crafting Companion",
+  },
+  description:
+    "Free crafting companion for Final Fantasy XIV. Browse recipes, simulate rotations, auto-solve macros, plan shopping lists, and find best-in-slot gear for every crafter and gatherer.",
+  keywords: [
+    "FFXIV",
+    "Final Fantasy XIV",
+    "crafting",
+    "simulator",
+    "rotation solver",
+    "macro",
+    "recipe",
+    "gear",
+    "Dawntrail",
+    "shopping list",
+    "material tree",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "FFXIV Crafting Companion",
+    title: "FFXIV Crafting Companion — Recipe Explorer, Simulator & Solver",
+    description:
+      "Free crafting companion for Final Fantasy XIV. Browse recipes, simulate rotations, auto-solve macros, and find best-in-slot gear.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FFXIV Crafting Companion",
+    description:
+      "Browse recipes, simulate rotations, auto-solve macros, and find best-in-slot gear for FFXIV.",
+  },
+  robots: { index: true, follow: true },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -31,11 +69,19 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased">
         <AuthProvider>
-          <Header />
-          <ToastProvider>
-            <main className="flex-1 pb-16">{children}</main>
-          </ToastProvider>
-          <BottomTabNav />
+          <BreadcrumbProvider>
+            <Header />
+            <Breadcrumbs />
+            <CraftPlanProvider>
+              <ToastProvider>
+                <main className="flex-1 pb-16">{children}</main>
+              </ToastProvider>
+            </CraftPlanProvider>
+            <Footer />
+            <FeedbackButton />
+            <InstallBanner />
+            <BottomTabNav />
+          </BreadcrumbProvider>
         </AuthProvider>
       </body>
     </html>

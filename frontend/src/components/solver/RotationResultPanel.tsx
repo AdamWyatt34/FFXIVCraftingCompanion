@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import {
   Play,
   FileText,
@@ -214,13 +215,13 @@ export function RotationResultPanel({
                   role="listitem"
                   aria-label={`${label}, click to replay from this step`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={iconUrl}
                     alt=""
                     width={16}
                     height={16}
                     className="rounded-sm"
+                    unoptimized
                   />
                   <span>{label}</span>
                 </button>

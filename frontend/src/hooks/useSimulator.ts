@@ -43,6 +43,8 @@ export interface UseSimulatorReturn {
   selectedRecipe: RecipeSummaryDto | null;
   crafterStats: CrafterStatsInput | null;
   isSetupComplete: boolean;
+  startingQuality: number;
+  setStartingQuality: (value: number) => void;
 
   // Simulation state
   currentState: CraftingState | null;
@@ -84,6 +86,7 @@ export function useSimulator(): UseSimulatorReturn {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeSummaryDto | null>(null);
   const [recipeId, setRecipeId] = useState<number | null>(null);
   const [crafterStats, setCrafterStats] = useState<CrafterStatsInput | null>(null);
+  const [startingQuality, setStartingQuality] = useState(0);
 
   // Simulation
   const [currentState, setCurrentState] = useState<CraftingState | null>(null);
@@ -331,6 +334,7 @@ export function useSimulator(): UseSimulatorReturn {
         crafterStats.cp,
         crafterStats.isSpecialist ?? false,
         controller.signal,
+        startingQuality,
       );
 
       if (controller.signal.aborted) return;
@@ -349,7 +353,7 @@ export function useSimulator(): UseSimulatorReturn {
     } finally {
       if (!controller.signal.aborted) setIsLoading(false);
     }
-  }, [recipeId, crafterStats, refreshAvailableActions]);
+  }, [recipeId, crafterStats, startingQuality, refreshAvailableActions]);
 
   const executeAction = useCallback(
     async (actionId: number) => {
@@ -459,6 +463,7 @@ export function useSimulator(): UseSimulatorReturn {
         crafterStats.cp,
         crafterStats.isSpecialist ?? false,
         controller.signal,
+        startingQuality,
       );
 
       if (controller.signal.aborted) return;
@@ -476,7 +481,7 @@ export function useSimulator(): UseSimulatorReturn {
     } finally {
       if (!controller.signal.aborted) setIsLoading(false);
     }
-  }, [recipeId, crafterStats, refreshAvailableActions]);
+  }, [recipeId, crafterStats, startingQuality, refreshAvailableActions]);
 
   const exportMacro = useCallback(async () => {
     if (stateHistory.length === 0) return;
@@ -575,6 +580,8 @@ export function useSimulator(): UseSimulatorReturn {
     selectedRecipe,
     crafterStats,
     isSetupComplete,
+    startingQuality,
+    setStartingQuality,
     currentState,
     initialState,
     stateHistory,

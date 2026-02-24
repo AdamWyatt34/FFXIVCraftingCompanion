@@ -20,17 +20,26 @@ export function UpgradeSummaryBanner({
   if (summary.upgradeCount === 0) return null;
 
   const diffs = summary.totalStatDifference;
+  const isCombat = (diffs.vitality ?? 0) > 0 || (diffs.physicalDamage ?? 0) > 0;
   const statGains = isDoH
     ? [
         { label: "Craftsmanship", value: diffs.craftsmanship },
         { label: "Control", value: diffs.control },
         { label: "CP", value: diffs.cp },
       ]
-    : [
-        { label: "Gathering", value: diffs.gathering },
-        { label: "Perception", value: diffs.perception },
-        { label: "GP", value: diffs.gp },
-      ];
+    : isCombat
+      ? [
+          { label: "Weapon DMG", value: diffs.physicalDamage ?? 0 },
+          { label: "Vitality", value: diffs.vitality ?? 0 },
+          { label: "Crit", value: diffs.criticalHit ?? 0 },
+          { label: "Det", value: diffs.determination ?? 0 },
+          { label: "Direct Hit", value: diffs.directHitRate ?? 0 },
+        ]
+      : [
+          { label: "Gathering", value: diffs.gathering },
+          { label: "Perception", value: diffs.perception },
+          { label: "GP", value: diffs.gp },
+        ];
 
   const nonZeroGains = statGains.filter((s) => s.value !== 0);
 

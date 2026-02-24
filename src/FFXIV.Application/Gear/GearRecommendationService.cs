@@ -22,17 +22,33 @@ public sealed class GearRecommendationService : IGearRecommendationService
 
     public async Task<GearSet> GetRecommendationsAsync(
         string job, int level, string profile = "balanced",
-        CancellationToken ct = default)
+        bool craftedOnly = false, CancellationToken ct = default)
     {
         var weightProfile = ResolveProfile(job, profile);
         var slots = GetSlotsForJob(job);
+
+        // Batch-load candidates for all slots in a single query
+        var distinctSlots = slots.Select(s => s.Slot).Distinct();
+        var allCandidates = await _equipmentRepo.GetBestForSlotsAsync(
+            distinctSlots, job, level, craftedOnly ? 50 : 10, ct);
+
+        if (craftedOnly)
+            allCandidates = allCandidates
+                .Where(e => e.SourceType == ItemSourceType.Crafted)
+                .ToList();
+
+        var candidatesBySlot = allCandidates
+            .GroupBy(e => e.EquipSlot)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var recommendations = new List<GearSlotRecommendation>();
         int? firstRingEquipmentId = null;
 
         foreach (var (slot, label) in slots)
         {
-            var candidates = await _equipmentRepo.GetBestBySlotAsync(slot, job, level, 10, ct);
+            var candidates = candidatesBySlot.TryGetValue(slot, out var slotCandidates)
+                ? (IReadOnlyList<Equipment>)slotCandidates
+                : [];
 
             var scored = candidates
                 .Select(e => (Equipment: e, Score: CalculateScore(e, weightProfile)))
@@ -124,17 +140,16 @@ public sealed class GearRecommendationService : IGearRecommendationService
     {
         var stats = new GearStats();
 
+        var ids = equipmentIds.Values.Distinct().ToList();
+        if (ids.Count == 0) return stats;
+
+        var equipmentList = await _equipmentRepo.GetByIdsAsync(ids, ct);
+        var lookup = equipmentList.ToDictionary(e => e.EquipmentId);
+
         foreach (var (_, equipmentId) in equipmentIds)
         {
-            var equipment = await _equipmentRepo.GetByIdAsync(equipmentId, ct);
-            if (equipment is null) continue;
-
-            stats.Craftsmanship += equipment.Craftsmanship;
-            stats.Control += equipment.Control;
-            stats.CP += equipment.CP;
-            stats.Gathering += equipment.Gathering;
-            stats.Perception += equipment.Perception;
-            stats.GP += equipment.GP;
+            if (lookup.TryGetValue(equipmentId, out var equipment))
+                AccumulateStats(stats, equipment);
         }
 
         return stats;
@@ -144,6 +159,14 @@ public sealed class GearRecommendationService : IGearRecommendationService
     {
         if (JobClassification.IsDoL(job))
             return [.. StatWeightProfiles.DoLProfiles];
+
+        if (JobClassification.IsCombat(job))
+        {
+            var role = JobClassification.GetCombatRole(job);
+            return role.HasValue
+                ? [.. StatWeightProfiles.GetProfilesForRole(role.Value)]
+                : [StatWeightProfiles.TankBalanced];
+        }
 
         return [.. StatWeightProfiles.DoHProfiles];
     }
@@ -167,6 +190,28 @@ public sealed class GearRecommendationService : IGearRecommendationService
                                     || profile.CpWeight > 0;
             if (!isCraftingProfile)
                 return StatWeightProfiles.Balanced;
+        }
+        else if (JobClassification.IsCombat(job))
+        {
+            var isCombatProfile = profile.VitalityWeight > 0
+                                  || profile.StrengthWeight > 0
+                                  || profile.DexterityWeight > 0
+                                  || profile.IntelligenceWeight > 0
+                                  || profile.MindWeight > 0
+                                  || profile.PhysicalDamageWeight > 0;
+            if (!isCombatProfile)
+            {
+                var role = JobClassification.GetCombatRole(job);
+                return role switch
+                {
+                    CombatRole.Tank => StatWeightProfiles.TankBalanced,
+                    CombatRole.Healer => StatWeightProfiles.HealerBalanced,
+                    CombatRole.MeleeDPS => StatWeightProfiles.MeleeDPSBalanced,
+                    CombatRole.RangedDPS => StatWeightProfiles.RangedDPSBalanced,
+                    CombatRole.MagicDPS => StatWeightProfiles.MagicDPSBalanced,
+                    _ => StatWeightProfiles.TankBalanced
+                };
+            }
         }
 
         return profile;
@@ -203,7 +248,22 @@ public sealed class GearRecommendationService : IGearRecommendationService
              + (equipment.CP * profile.CpWeight)
              + (equipment.Gathering * profile.GatheringWeight)
              + (equipment.Perception * profile.PerceptionWeight)
-             + (equipment.GP * profile.GpWeight);
+             + (equipment.GP * profile.GpWeight)
+             + (equipment.Vitality * profile.VitalityWeight)
+             + (equipment.Strength * profile.StrengthWeight)
+             + (equipment.Dexterity * profile.DexterityWeight)
+             + (equipment.Intelligence * profile.IntelligenceWeight)
+             + (equipment.Mind * profile.MindWeight)
+             + (equipment.Piety * profile.PietyWeight)
+             + (equipment.Tenacity * profile.TenacityWeight)
+             + (equipment.DirectHitRate * profile.DirectHitWeight)
+             + (equipment.CriticalHit * profile.CriticalHitWeight)
+             + (equipment.Determination * profile.DeterminationWeight)
+             + (equipment.SkillSpeed * profile.SkillSpeedWeight)
+             + (equipment.SpellSpeed * profile.SpellSpeedWeight)
+             + (equipment.PhysicalDamage * profile.PhysicalDamageWeight)
+             + (equipment.Defense * profile.DefenseWeight)
+             + (equipment.MagicDefense * profile.MagicDefenseWeight);
     }
 
     private static EquipmentSourceInfo BuildSourceInfo(Equipment equipment)
@@ -284,6 +344,56 @@ public sealed class GearRecommendationService : IGearRecommendationService
         }
     }
 
+    private static void AccumulateStats(GearStats stats, Equipment equipment)
+    {
+        stats.Craftsmanship += equipment.Craftsmanship;
+        stats.Control += equipment.Control;
+        stats.CP += equipment.CP;
+        stats.Gathering += equipment.Gathering;
+        stats.Perception += equipment.Perception;
+        stats.GP += equipment.GP;
+        stats.Vitality += equipment.Vitality;
+        stats.Strength += equipment.Strength;
+        stats.Dexterity += equipment.Dexterity;
+        stats.Intelligence += equipment.Intelligence;
+        stats.Mind += equipment.Mind;
+        stats.Piety += equipment.Piety;
+        stats.Tenacity += equipment.Tenacity;
+        stats.DirectHitRate += equipment.DirectHitRate;
+        stats.CriticalHit += equipment.CriticalHit;
+        stats.Determination += equipment.Determination;
+        stats.SkillSpeed += equipment.SkillSpeed;
+        stats.SpellSpeed += equipment.SpellSpeed;
+        stats.PhysicalDamage += equipment.PhysicalDamage;
+        stats.Defense += equipment.Defense;
+        stats.MagicDefense += equipment.MagicDefense;
+    }
+
+    private static double CalculateTotalWeightedScore(GearStats stats, StatWeightProfile profile)
+    {
+        return (stats.Craftsmanship * profile.CraftsmanshipWeight)
+             + (stats.Control * profile.ControlWeight)
+             + (stats.CP * profile.CpWeight)
+             + (stats.Gathering * profile.GatheringWeight)
+             + (stats.Perception * profile.PerceptionWeight)
+             + (stats.GP * profile.GpWeight)
+             + (stats.Vitality * profile.VitalityWeight)
+             + (stats.Strength * profile.StrengthWeight)
+             + (stats.Dexterity * profile.DexterityWeight)
+             + (stats.Intelligence * profile.IntelligenceWeight)
+             + (stats.Mind * profile.MindWeight)
+             + (stats.Piety * profile.PietyWeight)
+             + (stats.Tenacity * profile.TenacityWeight)
+             + (stats.DirectHitRate * profile.DirectHitWeight)
+             + (stats.CriticalHit * profile.CriticalHitWeight)
+             + (stats.Determination * profile.DeterminationWeight)
+             + (stats.SkillSpeed * profile.SkillSpeedWeight)
+             + (stats.SpellSpeed * profile.SpellSpeedWeight)
+             + (stats.PhysicalDamage * profile.PhysicalDamageWeight)
+             + (stats.Defense * profile.DefenseWeight)
+             + (stats.MagicDefense * profile.MagicDefenseWeight);
+    }
+
     private static GearStats AggregateStats(
         List<GearSlotRecommendation> recommendations,
         StatWeightProfile profile)
@@ -293,22 +403,10 @@ public sealed class GearRecommendationService : IGearRecommendationService
         foreach (var rec in recommendations)
         {
             if (rec.RecommendedItem is null) continue;
-
-            stats.Craftsmanship += rec.RecommendedItem.Craftsmanship;
-            stats.Control += rec.RecommendedItem.Control;
-            stats.CP += rec.RecommendedItem.CP;
-            stats.Gathering += rec.RecommendedItem.Gathering;
-            stats.Perception += rec.RecommendedItem.Perception;
-            stats.GP += rec.RecommendedItem.GP;
+            AccumulateStats(stats, rec.RecommendedItem);
         }
 
-        stats.TotalWeightedScore =
-            (stats.Craftsmanship * profile.CraftsmanshipWeight)
-          + (stats.Control * profile.ControlWeight)
-          + (stats.CP * profile.CpWeight)
-          + (stats.Gathering * profile.GatheringWeight)
-          + (stats.Perception * profile.PerceptionWeight)
-          + (stats.GP * profile.GpWeight);
+        stats.TotalWeightedScore = CalculateTotalWeightedScore(stats, profile);
 
         return stats;
     }

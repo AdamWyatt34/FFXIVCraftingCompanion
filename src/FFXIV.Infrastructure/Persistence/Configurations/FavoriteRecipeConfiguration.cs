@@ -12,7 +12,7 @@ public class FavoriteRecipeConfiguration : IEntityTypeConfiguration<FavoriteReci
         builder.ToTable("FavoriteRecipes");
 
         builder.HasKey(fr => fr.Id);
-        builder.Property(fr => fr.Id).UseIdentityByDefaultColumn();
+        builder.Property(fr => fr.Id).ValueGeneratedOnAdd();
 
         builder.Property(fr => fr.UserId).HasMaxLength(450);
         builder.Property(fr => fr.Note).HasMaxLength(1024);

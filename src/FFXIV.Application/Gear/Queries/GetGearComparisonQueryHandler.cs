@@ -51,6 +51,28 @@ public sealed class GetGearComparisonQueryHandler
             if (!isCraftingProfile)
                 weightProfile = StatWeightProfiles.Balanced;
         }
+        else if (JobClassification.IsCombat(job))
+        {
+            var isCombatProfile = weightProfile.VitalityWeight > 0
+                                  || weightProfile.StrengthWeight > 0
+                                  || weightProfile.DexterityWeight > 0
+                                  || weightProfile.IntelligenceWeight > 0
+                                  || weightProfile.MindWeight > 0
+                                  || weightProfile.PhysicalDamageWeight > 0;
+            if (!isCombatProfile)
+            {
+                var role = JobClassification.GetCombatRole(job);
+                weightProfile = role switch
+                {
+                    CombatRole.Tank => StatWeightProfiles.TankBalanced,
+                    CombatRole.Healer => StatWeightProfiles.HealerBalanced,
+                    CombatRole.MeleeDPS => StatWeightProfiles.MeleeDPSBalanced,
+                    CombatRole.RangedDPS => StatWeightProfiles.RangedDPSBalanced,
+                    CombatRole.MagicDPS => StatWeightProfiles.MagicDPSBalanced,
+                    _ => StatWeightProfiles.TankBalanced
+                };
+            }
+        }
 
         // Load user profile
         var userProfile = await _profileRepo.GetByUserIdAsync(request.UserId, cancellationToken);
@@ -61,20 +83,19 @@ public sealed class GetGearComparisonQueryHandler
             return BuildEmptyComparison(gearSet);
         }
 
-        // Batch load all current equipment
+        // Batch load all current equipment in a single query
         var currentEquipmentIds = currentGear.Values.Distinct().ToList();
-        var equipmentLookup = new Dictionary<int, Domain.Entities.Equipment>();
-        foreach (var eqId in currentEquipmentIds)
-        {
-            var eq = await _equipmentRepo.GetByIdAsync(eqId, cancellationToken);
-            if (eq is not null)
-                equipmentLookup[eqId] = eq;
-        }
+        var equipmentList = await _equipmentRepo.GetByIdsAsync(currentEquipmentIds, cancellationToken);
+        var equipmentLookup = equipmentList.ToDictionary(e => e.EquipmentId);
 
         var slotComparisons = new List<SlotComparisonDto>();
         int upgradeCount = 0, equippedCount = 0, alternativeCount = 0, emptySlotCount = 0;
         int totalCraftDiff = 0, totalCtrlDiff = 0, totalCpDiff = 0;
         int totalGathDiff = 0, totalPercDiff = 0, totalGpDiff = 0;
+        int totalVitDiff = 0, totalStrDiff = 0, totalDexDiff = 0;
+        int totalIntDiff = 0, totalMndDiff = 0, totalPdmgDiff = 0;
+        int totalCritDiff = 0, totalDetDiff = 0, totalDhDiff = 0;
+        int totalDefDiff = 0, totalMdefDiff = 0;
 
         foreach (var slot in gearSet.Slots)
         {
@@ -90,14 +111,7 @@ public sealed class GetGearComparisonQueryHandler
                 currentEquipmentDto = GearMapper.ToDto(currentEquipment) with
                 {
                     WeightedScore = currentScore,
-                    Stats = new GearStatsDto(
-                        currentEquipment.Craftsmanship,
-                        currentEquipment.Control,
-                        currentEquipment.CP,
-                        currentEquipment.Gathering,
-                        currentEquipment.Perception,
-                        currentEquipment.GP,
-                        currentScore)
+                    Stats = MapEquipmentToStatsDto(currentEquipment, currentScore)
                 };
 
                 if (slot.Recommendation is not null)
@@ -128,6 +142,17 @@ public sealed class GetGearComparisonQueryHandler
                         totalGathDiff += slot.Recommendation.Stats.Gathering - currentEquipment.Gathering;
                         totalPercDiff += slot.Recommendation.Stats.Perception - currentEquipment.Perception;
                         totalGpDiff += slot.Recommendation.Stats.GP - currentEquipment.GP;
+                        totalVitDiff += slot.Recommendation.Stats.Vitality - currentEquipment.Vitality;
+                        totalStrDiff += slot.Recommendation.Stats.Strength - currentEquipment.Strength;
+                        totalDexDiff += slot.Recommendation.Stats.Dexterity - currentEquipment.Dexterity;
+                        totalIntDiff += slot.Recommendation.Stats.Intelligence - currentEquipment.Intelligence;
+                        totalMndDiff += slot.Recommendation.Stats.Mind - currentEquipment.Mind;
+                        totalPdmgDiff += slot.Recommendation.Stats.PhysicalDamage - currentEquipment.PhysicalDamage;
+                        totalCritDiff += slot.Recommendation.Stats.CriticalHit - currentEquipment.CriticalHit;
+                        totalDetDiff += slot.Recommendation.Stats.Determination - currentEquipment.Determination;
+                        totalDhDiff += slot.Recommendation.Stats.DirectHitRate - currentEquipment.DirectHitRate;
+                        totalDefDiff += slot.Recommendation.Stats.Defense - currentEquipment.Defense;
+                        totalMdefDiff += slot.Recommendation.Stats.MagicDefense - currentEquipment.MagicDefense;
                     }
                     else
                     {
@@ -156,6 +181,17 @@ public sealed class GetGearComparisonQueryHandler
                 totalGathDiff += slot.Recommendation.Stats.Gathering;
                 totalPercDiff += slot.Recommendation.Stats.Perception;
                 totalGpDiff += slot.Recommendation.Stats.GP;
+                totalVitDiff += slot.Recommendation.Stats.Vitality;
+                totalStrDiff += slot.Recommendation.Stats.Strength;
+                totalDexDiff += slot.Recommendation.Stats.Dexterity;
+                totalIntDiff += slot.Recommendation.Stats.Intelligence;
+                totalMndDiff += slot.Recommendation.Stats.Mind;
+                totalPdmgDiff += slot.Recommendation.Stats.PhysicalDamage;
+                totalCritDiff += slot.Recommendation.Stats.CriticalHit;
+                totalDetDiff += slot.Recommendation.Stats.Determination;
+                totalDhDiff += slot.Recommendation.Stats.DirectHitRate;
+                totalDefDiff += slot.Recommendation.Stats.Defense;
+                totalMdefDiff += slot.Recommendation.Stats.MagicDefense;
             }
             else
             {
@@ -178,10 +214,23 @@ public sealed class GetGearComparisonQueryHandler
             EmptySlotCount: emptySlotCount,
             TotalStatDifference: new StatDifferenceTotalDto(
                 totalCraftDiff, totalCtrlDiff, totalCpDiff,
-                totalGathDiff, totalPercDiff, totalGpDiff));
+                totalGathDiff, totalPercDiff, totalGpDiff,
+                totalVitDiff, totalStrDiff, totalDexDiff,
+                totalIntDiff, totalMndDiff, totalPdmgDiff,
+                totalCritDiff, totalDetDiff, totalDhDiff,
+                totalDefDiff, totalMdefDiff));
 
         return new GearComparisonDto(gearSet, slotComparisons, summary);
     }
+
+    private static GearStatsDto MapEquipmentToStatsDto(Domain.Entities.Equipment eq, double score) =>
+        new(eq.Craftsmanship, eq.Control, eq.CP,
+            eq.Gathering, eq.Perception, eq.GP,
+            eq.Vitality, eq.Strength, eq.Dexterity, eq.Intelligence, eq.Mind,
+            eq.Piety, eq.Tenacity, eq.DirectHitRate, eq.CriticalHit,
+            eq.Determination, eq.SkillSpeed, eq.SpellSpeed,
+            eq.PhysicalDamage, eq.Defense, eq.MagicDefense,
+            score);
 
     private static GearComparisonDto BuildEmptyComparison(GearSetDto gearSet)
     {
@@ -201,16 +250,16 @@ public sealed class GetGearComparisonQueryHandler
         var upgradeCount = slotComparisons.Count(c => c.Comparison?.Status == "Upgrade");
         var emptyCount = slotComparisons.Count(c => c.Comparison is null);
 
-        var totalCraft = gearSet.TotalStats.Craftsmanship;
-        var totalCtrl = gearSet.TotalStats.Control;
-        var totalCp = gearSet.TotalStats.CP;
-        var totalGath = gearSet.TotalStats.Gathering;
-        var totalPerc = gearSet.TotalStats.Perception;
-        var totalGp = gearSet.TotalStats.GP;
-
+        var ts = gearSet.TotalStats;
         var summary = new UpgradeSummaryDto(
             upgradeCount, 0, 0, emptyCount,
-            new StatDifferenceTotalDto(totalCraft, totalCtrl, totalCp, totalGath, totalPerc, totalGp));
+            new StatDifferenceTotalDto(
+                ts.Craftsmanship, ts.Control, ts.CP,
+                ts.Gathering, ts.Perception, ts.GP,
+                ts.Vitality, ts.Strength, ts.Dexterity,
+                ts.Intelligence, ts.Mind, ts.PhysicalDamage,
+                ts.CriticalHit, ts.Determination, ts.DirectHitRate,
+                ts.Defense, ts.MagicDefense));
 
         return new GearComparisonDto(gearSet, slotComparisons, summary);
     }
@@ -218,8 +267,8 @@ public sealed class GetGearComparisonQueryHandler
     private static List<StatDifferenceDto> BuildStatDifferences(
         Domain.Entities.Equipment current, EquipmentDto recommended)
     {
-        return
-        [
+        var diffs = new List<StatDifferenceDto>
+        {
             new("Craftsmanship", current.Craftsmanship, recommended.Stats.Craftsmanship,
                 recommended.Stats.Craftsmanship - current.Craftsmanship),
             new("Control", current.Control, recommended.Stats.Control,
@@ -232,20 +281,72 @@ public sealed class GetGearComparisonQueryHandler
                 recommended.Stats.Perception - current.Perception),
             new("GP", current.GP, recommended.Stats.GP,
                 recommended.Stats.GP - current.GP),
-        ];
+        };
+
+        // Include combat stats if either side has any
+        if (current.Vitality > 0 || recommended.Stats.Vitality > 0)
+        {
+            diffs.AddRange(
+            [
+                new("Vitality", current.Vitality, recommended.Stats.Vitality,
+                    recommended.Stats.Vitality - current.Vitality),
+                new("Strength", current.Strength, recommended.Stats.Strength,
+                    recommended.Stats.Strength - current.Strength),
+                new("Dexterity", current.Dexterity, recommended.Stats.Dexterity,
+                    recommended.Stats.Dexterity - current.Dexterity),
+                new("Intelligence", current.Intelligence, recommended.Stats.Intelligence,
+                    recommended.Stats.Intelligence - current.Intelligence),
+                new("Mind", current.Mind, recommended.Stats.Mind,
+                    recommended.Stats.Mind - current.Mind),
+                new("PhysicalDamage", current.PhysicalDamage, recommended.Stats.PhysicalDamage,
+                    recommended.Stats.PhysicalDamage - current.PhysicalDamage),
+                new("CriticalHit", current.CriticalHit, recommended.Stats.CriticalHit,
+                    recommended.Stats.CriticalHit - current.CriticalHit),
+                new("Determination", current.Determination, recommended.Stats.Determination,
+                    recommended.Stats.Determination - current.Determination),
+                new("DirectHitRate", current.DirectHitRate, recommended.Stats.DirectHitRate,
+                    recommended.Stats.DirectHitRate - current.DirectHitRate),
+                new("Defense", current.Defense, recommended.Stats.Defense,
+                    recommended.Stats.Defense - current.Defense),
+                new("MagicDefense", current.MagicDefense, recommended.Stats.MagicDefense,
+                    recommended.Stats.MagicDefense - current.MagicDefense),
+            ]);
+        }
+
+        return diffs;
     }
 
     private static List<StatDifferenceDto> BuildStatDifferencesFromNothing(EquipmentDto recommended)
     {
-        return
-        [
+        var diffs = new List<StatDifferenceDto>
+        {
             new("Craftsmanship", 0, recommended.Stats.Craftsmanship, recommended.Stats.Craftsmanship),
             new("Control", 0, recommended.Stats.Control, recommended.Stats.Control),
             new("CP", 0, recommended.Stats.CP, recommended.Stats.CP),
             new("Gathering", 0, recommended.Stats.Gathering, recommended.Stats.Gathering),
             new("Perception", 0, recommended.Stats.Perception, recommended.Stats.Perception),
             new("GP", 0, recommended.Stats.GP, recommended.Stats.GP),
-        ];
+        };
+
+        if (recommended.Stats.Vitality > 0)
+        {
+            diffs.AddRange(
+            [
+                new("Vitality", 0, recommended.Stats.Vitality, recommended.Stats.Vitality),
+                new("Strength", 0, recommended.Stats.Strength, recommended.Stats.Strength),
+                new("Dexterity", 0, recommended.Stats.Dexterity, recommended.Stats.Dexterity),
+                new("Intelligence", 0, recommended.Stats.Intelligence, recommended.Stats.Intelligence),
+                new("Mind", 0, recommended.Stats.Mind, recommended.Stats.Mind),
+                new("PhysicalDamage", 0, recommended.Stats.PhysicalDamage, recommended.Stats.PhysicalDamage),
+                new("CriticalHit", 0, recommended.Stats.CriticalHit, recommended.Stats.CriticalHit),
+                new("Determination", 0, recommended.Stats.Determination, recommended.Stats.Determination),
+                new("DirectHitRate", 0, recommended.Stats.DirectHitRate, recommended.Stats.DirectHitRate),
+                new("Defense", 0, recommended.Stats.Defense, recommended.Stats.Defense),
+                new("MagicDefense", 0, recommended.Stats.MagicDefense, recommended.Stats.MagicDefense),
+            ]);
+        }
+
+        return diffs;
     }
 
     private static double CalculateScore(Domain.Entities.Equipment equipment, Domain.Models.StatWeightProfile profile)
@@ -255,6 +356,21 @@ public sealed class GetGearComparisonQueryHandler
              + (equipment.CP * profile.CpWeight)
              + (equipment.Gathering * profile.GatheringWeight)
              + (equipment.Perception * profile.PerceptionWeight)
-             + (equipment.GP * profile.GpWeight);
+             + (equipment.GP * profile.GpWeight)
+             + (equipment.Vitality * profile.VitalityWeight)
+             + (equipment.Strength * profile.StrengthWeight)
+             + (equipment.Dexterity * profile.DexterityWeight)
+             + (equipment.Intelligence * profile.IntelligenceWeight)
+             + (equipment.Mind * profile.MindWeight)
+             + (equipment.Piety * profile.PietyWeight)
+             + (equipment.Tenacity * profile.TenacityWeight)
+             + (equipment.DirectHitRate * profile.DirectHitWeight)
+             + (equipment.CriticalHit * profile.CriticalHitWeight)
+             + (equipment.Determination * profile.DeterminationWeight)
+             + (equipment.SkillSpeed * profile.SkillSpeedWeight)
+             + (equipment.SpellSpeed * profile.SpellSpeedWeight)
+             + (equipment.PhysicalDamage * profile.PhysicalDamageWeight)
+             + (equipment.Defense * profile.DefenseWeight)
+             + (equipment.MagicDefense * profile.MagicDefenseWeight);
     }
 }

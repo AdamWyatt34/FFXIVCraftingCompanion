@@ -31,6 +31,17 @@ function getComparisonStats(
       { label: "CP", recValue: rec.stats.cp, altValue: alt.stats.cp },
     ];
   }
+  const isCombat = rec.stats.vitality > 0 || alt.stats.vitality > 0;
+  if (isCombat) {
+    return [
+      { label: "Weapon DMG", recValue: rec.stats.physicalDamage, altValue: alt.stats.physicalDamage },
+      { label: "Vitality", recValue: rec.stats.vitality, altValue: alt.stats.vitality },
+      { label: "Crit", recValue: rec.stats.criticalHit, altValue: alt.stats.criticalHit },
+      { label: "Det", recValue: rec.stats.determination, altValue: alt.stats.determination },
+      { label: "Direct Hit", recValue: rec.stats.directHitRate, altValue: alt.stats.directHitRate },
+      { label: "Defense", recValue: rec.stats.defense, altValue: alt.stats.defense },
+    ].filter(r => r.recValue > 0 || r.altValue > 0);
+  }
   return [
     { label: "Gathering", recValue: rec.stats.gathering, altValue: alt.stats.gathering },
     { label: "Perception", recValue: rec.stats.perception, altValue: alt.stats.perception },

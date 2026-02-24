@@ -18,6 +18,9 @@ public static class SolverMapper
             Stats = resolvedStats,
             Constraints = ToDomain(dto.Constraints),
             Settings = ToDomain(dto.Settings),
+            HQIngredients = dto.HQIngredients?
+                .Select(h => new HQIngredientInput(h.ItemId, h.HQQuantity))
+                .ToList(),
         };
     }
 

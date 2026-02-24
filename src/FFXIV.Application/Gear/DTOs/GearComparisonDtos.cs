@@ -38,4 +38,15 @@ public sealed record StatDifferenceTotalDto(
     int CP,
     int Gathering,
     int Perception,
-    int GP);
+    int GP,
+    int Vitality = 0,
+    int Strength = 0,
+    int Dexterity = 0,
+    int Intelligence = 0,
+    int Mind = 0,
+    int PhysicalDamage = 0,
+    int CriticalHit = 0,
+    int Determination = 0,
+    int DirectHitRate = 0,
+    int Defense = 0,
+    int MagicDefense = 0);

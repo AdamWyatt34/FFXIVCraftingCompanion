@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Heart, Map } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useFavorites } from "@/hooks/useFavorites";
 
 export function FavoriteRecipesList() {
+  const router = useRouter();
   const { favorites, isLoading, error, toggleFavorite } = useFavorites();
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
@@ -48,10 +50,13 @@ export function FavoriteRecipesList() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {favorites.map((fav) => (
-        <Link
+        <div
           key={fav.recipeId}
-          href={`/recipes/${fav.recipeId}`}
-          className="flex items-center gap-3 p-3 bg-bg-surface rounded-lg border border-border hover:border-border-focus transition-colors"
+          role="button"
+          tabIndex={0}
+          onClick={() => router.push(`/recipes/${fav.recipeId}`)}
+          onKeyDown={(e) => { if (e.key === "Enter") router.push(`/recipes/${fav.recipeId}`); }}
+          className="flex items-center gap-3 p-3 bg-bg-surface rounded-lg border border-border hover:border-border-focus transition-colors cursor-pointer"
         >
           <ItemIcon iconUrl={fav.iconUrl} alt={fav.itemName} size="lg" />
           <div className="flex-1 min-w-0">
@@ -63,9 +68,16 @@ export function FavoriteRecipesList() {
               <span>Lv. {fav.recipeLevel}</span>
             </div>
           </div>
+          <Link
+            href={`/recipes/${fav.recipeId}/journey`}
+            onClick={(e) => e.stopPropagation()}
+            className="p-1.5 rounded text-text-muted hover:text-gold transition-colors shrink-0"
+            aria-label="Start journey"
+          >
+            <Map size={14} />
+          </Link>
           <button
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
               handleUnfavorite(fav.recipeId);
             }}
@@ -79,7 +91,7 @@ export function FavoriteRecipesList() {
               <Heart size={14} fill="currentColor" />
             )}
           </button>
-        </Link>
+        </div>
       ))}
     </div>
   );

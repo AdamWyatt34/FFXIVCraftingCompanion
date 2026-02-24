@@ -127,6 +127,11 @@ export interface SimulationOptions {
   forceCondition?: string;
 }
 
+export interface HQIngredientInput {
+  itemId: number;
+  hqQuantity: number;
+}
+
 export interface SimulateRequest {
   recipeId: number;
   stats?: CrafterStatsInput;
@@ -134,6 +139,7 @@ export interface SimulateRequest {
   actionIds: number[];
   actionNames?: string[];
   options?: SimulationOptions;
+  hqIngredients?: HQIngredientInput[];
 }
 
 export interface ExecuteActionRequest {

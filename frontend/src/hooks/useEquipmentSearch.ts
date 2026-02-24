@@ -36,7 +36,8 @@ export function useEquipmentSearch(initialQuery = ""): UseEquipmentSearchReturn 
     forSlot: string | null;
   }>({ results: [], error: null, forQuery: "", forJob: null, forSlot: null });
 
-  const isActive = debouncedQuery.length >= MIN_QUERY_LENGTH;
+  const hasFilters = jobFilter !== null || slotFilter !== null;
+  const isActive = debouncedQuery.length >= MIN_QUERY_LENGTH || hasFilters;
 
   const resultMatchesCurrent =
     fetchResult.forQuery === debouncedQuery &&
@@ -107,7 +108,8 @@ export function useEquipmentSearch(initialQuery = ""): UseEquipmentSearchReturn 
 
   const showLoading =
     isFetching ||
-    (query.length >= MIN_QUERY_LENGTH && query !== debouncedQuery);
+    (query.length >= MIN_QUERY_LENGTH && query !== debouncedQuery) ||
+    (hasFilters && !resultMatchesCurrent);
 
   const retry = useCallback(() => {
     searchCache.clear();

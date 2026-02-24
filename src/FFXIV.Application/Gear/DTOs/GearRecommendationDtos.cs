@@ -47,6 +47,22 @@ public sealed record GearStatsDto(
     int Gathering,
     int Perception,
     int GP,
+    // Combat stats
+    int Vitality,
+    int Strength,
+    int Dexterity,
+    int Intelligence,
+    int Mind,
+    int Piety,
+    int Tenacity,
+    int DirectHitRate,
+    int CriticalHit,
+    int Determination,
+    int SkillSpeed,
+    int SpellSpeed,
+    int PhysicalDamage,
+    int Defense,
+    int MagicDefense,
     double TotalWeightedScore);
 
 public sealed record StatWeightProfileDto(

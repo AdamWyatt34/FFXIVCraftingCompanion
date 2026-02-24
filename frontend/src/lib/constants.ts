@@ -78,6 +78,37 @@ export const SOURCE_TYPE_INFO: Record<
     bgClass: "bg-teal-500/20",
     textClass: "text-teal-400",
   },
+  // C# enum name aliases (backend sends these as SourceType.ToString())
+  Scrip: {
+    label: "Scrip",
+    bgClass: "bg-violet-500/20",
+    textClass: "text-violet-400",
+  },
+  MobDrop: {
+    label: "Mob Drop",
+    bgClass: "bg-red-500/20",
+    textClass: "text-red-400",
+  },
+  Quest: {
+    label: "Quest",
+    bgClass: "bg-cyan-500/20",
+    textClass: "text-cyan-400",
+  },
+  Dungeon: {
+    label: "Dungeon",
+    bgClass: "bg-orange-500/20",
+    textClass: "text-orange-400",
+  },
+  Desynth: {
+    label: "Desynth",
+    bgClass: "bg-pink-500/20",
+    textClass: "text-pink-400",
+  },
+  Reduction: {
+    label: "Reduction",
+    bgClass: "bg-teal-500/20",
+    textClass: "text-teal-400",
+  },
   Other: {
     label: "Other",
     bgClass: "bg-gray-500/20",
@@ -203,3 +234,59 @@ export const WHAT_IF_PRESETS = [
 ] as const;
 
 export const STAT_SLIDER_RANGE = 500;
+
+export const RECOMMENDATION_INFO: Record<
+  string,
+  { label: string; colorClass: string; bgClass: string }
+> = {
+  StatsExcellent: {
+    label: "Excellent",
+    colorClass: "text-emerald-400",
+    bgClass: "bg-emerald-500/10 border-emerald-500/20",
+  },
+  StatsGood: {
+    label: "Good",
+    colorClass: "text-blue-400",
+    bgClass: "bg-blue-500/10 border-blue-500/20",
+  },
+  StatsAdequate: {
+    label: "Adequate",
+    colorClass: "text-amber-400",
+    bgClass: "bg-amber-500/10 border-amber-500/20",
+  },
+  UpgradeGear: {
+    label: "Upgrade Gear",
+    colorClass: "text-red-400",
+    bgClass: "bg-red-500/10 border-red-500/20",
+  },
+};
+
+export const GATHERING_CLASS_INFO: Record<
+  string,
+  { label: string; colorClass: string }
+> = {
+  Miner: { label: "Mining", colorClass: "text-amber-400" },
+  Botanist: { label: "Botany", colorClass: "text-emerald-400" },
+  Fisher: { label: "Fishing", colorClass: "text-blue-400" },
+};
+
+export const NODE_TYPE_INFO: Record<
+  string,
+  { label: string; colorClass: string }
+> = {
+  Standard: { label: "Standard", colorClass: "text-text-secondary" },
+  Unspoiled: { label: "Unspoiled", colorClass: "text-amber-400" },
+  Ephemeral: { label: "Ephemeral", colorClass: "text-violet-400" },
+  Legendary: { label: "Legendary", colorClass: "text-gold" },
+};
+
+export const MARKET_CONSTANTS = {
+  DEFAULT_WORLD_KEY: "ffxiv_market_world",
+  STALE_THRESHOLD_HOURS: 24,
+} as const;
+
+export const NOTIFICATION_CONSTANTS = {
+  POLL_INTERVAL_MS: 60_000,
+  STORAGE_KEY: "ffxiv_dismissed_notifications",
+  MAX_DISPLAYED: 20,
+} as const;

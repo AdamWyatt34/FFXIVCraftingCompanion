@@ -34,7 +34,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
         AddCaching(services, configuration);
         AddSolverServices(services);
@@ -51,6 +51,9 @@ public static class DependencyInjection
         services.AddScoped<IFavoriteRecipeRepository, FavoriteRecipeRepository>();
         services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
         services.AddScoped<ISharedRotationRepository, SharedRotationRepository>();
+        services.AddScoped<ICraftPlanRepository, CraftPlanRepository>();
+        services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
+        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 
         // Data Sync
         services.Configure<DataSyncOptions>(configuration.GetSection(DataSyncOptions.SectionName));
@@ -63,6 +66,7 @@ public static class DependencyInjection
 
         AddXivApiClient(services, configuration);
         AddGarlandToolsClient(services, configuration);
+        AddUniversalisClient(services, configuration);
         services.AddScoped<GarlandDataEnricher>();
 
         AddLodestoneServices(services);
@@ -227,6 +231,44 @@ public static class DependencyInjection
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true,
                 Delay = TimeSpan.FromSeconds(3)
+            });
+
+            builder.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));
+        });
+    }
+
+    private static void AddUniversalisClient(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var optionsSection = configuration.GetSection(UniversalisOptions.SectionName);
+        services.Configure<UniversalisOptions>(optionsSection);
+        var options = optionsSection.Get<UniversalisOptions>() ?? new UniversalisOptions();
+
+        services.AddHttpClient<IUniversalisClient, UniversalisClient>(client =>
+        {
+            client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
+            client.DefaultRequestHeaders.Add("User-Agent", "FFXIVCraftingCompanion/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        })
+        .AddResilienceHandler("UniversalisPipeline", builder =>
+        {
+            builder.AddRateLimiter(new SlidingWindowRateLimiter(
+                new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = options.RateLimitPermitCount,
+                    Window = TimeSpan.FromSeconds(options.RateLimitWindowSeconds),
+                    SegmentsPerWindow = 4,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 100
+                }));
+
+            builder.AddRetry(new HttpRetryStrategyOptions
+            {
+                MaxRetryAttempts = options.MaxRetryAttempts,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                Delay = TimeSpan.FromSeconds(2)
             });
 
             builder.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));

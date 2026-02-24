@@ -37,7 +37,7 @@ public class ItemRepository : IItemRepository
         if (!string.IsNullOrWhiteSpace(query))
         {
             var pattern = $"%{query}%";
-            baseQuery = baseQuery.Where(i => EF.Functions.ILike(i.Name, pattern));
+            baseQuery = baseQuery.Where(i => EF.Functions.Like(i.Name, pattern));
         }
 
         var totalCount = await baseQuery.CountAsync(cancellationToken);
@@ -47,7 +47,7 @@ public class ItemRepository : IItemRepository
         {
             var startsWithPattern = $"{query}%";
             orderedQuery = baseQuery
-                .OrderBy(i => EF.Functions.ILike(i.Name, startsWithPattern) ? 0 : 1)
+                .OrderBy(i => EF.Functions.Like(i.Name, startsWithPattern) ? 0 : 1)
                 .ThenBy(i => i.Name);
         }
         else

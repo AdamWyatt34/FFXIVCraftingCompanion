@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { Eye, Copy, Wrench, ThumbsUp } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { Eye, Copy, Wrench, ThumbsUp, Map } from "lucide-react";
 import { getActionIconUrlById } from "@/lib/action-icons";
 import { CRAFT_TYPE_INFO, ROTATION_SOURCE_INFO } from "@/lib/constants";
 import { exportCraftingMacro } from "@/lib/api-client";
@@ -153,13 +155,13 @@ export function RotationCard({
           const iconUrl = getActionIconUrlById(actionId);
           return (
             <span key={`${actionId}-${i}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={iconUrl}
                 alt=""
                 width={20}
                 height={20}
                 className="rounded-sm"
+                unoptimized
               />
             </span>
           );
@@ -194,6 +196,13 @@ export function RotationCard({
           <Wrench size={14} />
           Load in Simulator
         </button>
+        <Link
+          href={`/recipes/${rotation.recipeId}/journey`}
+          className="flex items-center gap-1 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-gold border border-border transition-colors text-xs"
+        >
+          <Map size={14} />
+          Journey
+        </Link>
 
         {/* Upvote button */}
         <button

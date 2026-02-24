@@ -10,6 +10,13 @@ public sealed record SimulateRequest
     public List<int> ActionIds { get; init; } = new();
     public List<string>? ActionNames { get; init; }
     public SimulationOptionsInput? Options { get; init; }
+    public List<HQIngredientInputDto>? HQIngredients { get; init; }
+}
+
+public sealed record HQIngredientInputDto
+{
+    public int ItemId { get; init; }
+    public int HQQuantity { get; init; }
 }
 
 public sealed record CrafterStatsInput

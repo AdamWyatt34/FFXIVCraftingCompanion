@@ -8,12 +8,14 @@ import type {
   QuickSolveParams,
 } from "@/types/solver";
 import { isSolverJob } from "@/types/solver";
+import * as Sentry from "@sentry/nextjs";
 import {
   submitSolveJob,
   getSolveJob,
   cancelSolveJob,
   quickSolve,
   ApiClientError,
+  trackAnalyticsEvent,
 } from "@/lib/api-client";
 import { SOLVER_CONSTANTS } from "@/lib/constants";
 
@@ -181,6 +183,7 @@ export function useSolver(): UseSolverReturn {
           setSolverStatus("Completed");
           setSolverResult(response.result);
           setElapsedMs(response.elapsedMs);
+          trackAnalyticsEvent("solver_run", { recipeId: request.recipeId, algorithm: request.settings?.algorithm, cached: true });
         } else {
           // 202: job enqueued — start polling
           const id = response.jobId;
@@ -197,6 +200,10 @@ export function useSolver(): UseSolverReturn {
             ? err.body.error
             : "Failed to start solve";
         setError(msg);
+        Sentry.withScope((scope) => {
+          scope.setContext("solver", { recipeId: request.recipeId, algorithm: request.settings?.algorithm });
+          Sentry.captureException(err);
+        });
         // If greedy already fired, status stays usable; otherwise idle
         setSolverStatus("Failed");
       }

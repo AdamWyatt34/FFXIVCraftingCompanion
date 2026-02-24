@@ -26,5 +26,9 @@ public sealed record MCTSConfig
     public double RolloutCPPenalty { get; init; } = 0.05;
     public double RolloutDurabilityPenalty { get; init; } = 0.03;
 
+    // === Early termination ===
+    public int EarlyTerminationThreshold { get; init; } = 5000;
+    public double PerfectRewardThreshold { get; init; } = 0.999;
+
     public static MCTSConfig Default => new();
 }

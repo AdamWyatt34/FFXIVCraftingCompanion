@@ -3,6 +3,7 @@ using System.Diagnostics;
 using FFXIV.Application.CraftingEngine;
 using FFXIV.Application.CraftingEngine.Solver;
 using FFXIV.Domain.CraftingEngine;
+using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.CraftingEngine.Solver.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -132,6 +133,17 @@ public sealed class SolverJobService : ISolverJobService
                 return;
             }
 
+            // Apply HQ ingredient starting quality
+            if (job.Request.HQIngredients is { Count: > 0 })
+            {
+                var startingQuality = HQCalculator.CalculateStartingQuality(
+                    recipe.Quality, recipe.MaterialQualityFactor,
+                    recipe.Ingredients, job.Request.HQIngredients);
+
+                if (startingQuality > 0)
+                    recipe = recipe with { StartingQuality = startingQuality };
+            }
+
             // Check cache first
             var cached = await _cacheService.GetCachedResultAsync(
                 job.Request.RecipeId, job.Request.Stats,
@@ -146,18 +158,22 @@ public sealed class SolverJobService : ISolverJobService
                 return;
             }
 
+            // Adapt time budget based on recipe difficulty
+            var adaptedSettings = _solverFactory.AdaptSettings(
+                job.Request.Settings, recipe, job.Request.Stats);
+
             // Set up hard timeout
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(job.Cts.Token);
-            timeoutCts.CancelAfter(job.Request.Settings.TimeBudgetMs + HardTimeoutBufferMs);
+            timeoutCts.CancelAfter(adaptedSettings.TimeBudgetMs + HardTimeoutBufferMs);
 
             var algorithm = _solverFactory.ResolveAlgorithm(
-                job.Request.Settings.Algorithm, job.Request.Constraints);
+                adaptedSettings.Algorithm, job.Request.Constraints);
             var solver = _solverFactory.Create(algorithm);
 
             var sw = Stopwatch.StartNew();
             var result = await solver.SolveAsync(
                 recipe, job.Request.Stats,
-                job.Request.Constraints, job.Request.Settings,
+                job.Request.Constraints, adaptedSettings,
                 timeoutCts.Token);
             sw.Stop();
 

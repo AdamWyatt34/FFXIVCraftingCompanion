@@ -128,15 +128,18 @@ public sealed class SourceDataSyncService
             var gatheringType = XivApiDataMapper.MapGatheringType(pointBase.GatheringTypeRowId);
             var classJob = XivApiDataMapper.GatheringTypeToClassJob(gatheringType);
 
-            // Check if this is a timed node
+            // Check if this is a timed node and derive NodeType
             var isTimed = false;
             string? spawnTimes = null;
+            var nodeType = Domain.Enums.NodeType.Standard;
             if (transients.TryGetValue(pointRowId, out var transient))
             {
                 if (transient.StartTime != 0 || transient.EndTime != 0)
                 {
                     isTimed = true;
                     spawnTimes = JsonSerializer.Serialize(new[] { $"{transient.StartTime}:00", $"{transient.EndTime}:00" });
+                    var duration = (transient.EndTime - transient.StartTime + 24) % 24;
+                    nodeType = duration >= 4 ? Domain.Enums.NodeType.Ephemeral : Domain.Enums.NodeType.Unspoiled;
                 }
             }
 
@@ -164,12 +167,22 @@ public sealed class SourceDataSyncService
                     ZoneName = zoneName,
                     IsTimed = isTimed,
                     SpawnTimes = spawnTimes,
-                    IsHidden = gatheringItem.IsHidden
+                    IsHidden = gatheringItem.IsHidden,
+                    NodeType = nodeType
                 });
 
                 processedItemIds.Add(gatheringItem.ItemId);
             }
         }
+
+        // Deduplicate gathering infos by natural key
+        var rawCount = gatheringInfos.Count;
+        gatheringInfos = gatheringInfos
+            .GroupBy(g => (g.ItemId, g.GatheringType, g.ZoneName, g.IsTimed))
+            .Select(g => g.First())
+            .ToList();
+        if (rawCount != gatheringInfos.Count)
+            _logger.LogInformation("Deduplicated gathering infos: {Before} -> {After}", rawCount, gatheringInfos.Count);
 
         // Build ItemSource entries for gathered items
         foreach (var itemId in processedItemIds)

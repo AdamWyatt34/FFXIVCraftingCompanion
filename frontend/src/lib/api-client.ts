@@ -75,7 +75,30 @@ function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5159";
 }
 
+// In-flight GET request deduplication
+const inflightGets = new Map<string, Promise<unknown>>();
+
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method?.toUpperCase() ?? "GET";
+  // Only deduplicate GETs without a caller-provided abort signal.
+  // Requests with signals manage their own lifecycle (e.g. hooks with
+  // AbortControllers) and must not receive a promise that another
+  // controller may abort — otherwise React Strict Mode double-mount
+  // causes a permanent loading state.
+  if (method === "GET" && !init?.signal) {
+    const existing = inflightGets.get(path);
+    if (existing) return existing as Promise<T>;
+
+    const promise = fetchApiInternal<T>(path, init).finally(() => {
+      inflightGets.delete(path);
+    });
+    inflightGets.set(path, promise);
+    return promise;
+  }
+  return fetchApiInternal<T>(path, init);
+}
+
+async function fetchApiInternal<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${getBaseUrl()}${path}`;
 
   const timeoutController = new AbortController();
@@ -222,12 +245,14 @@ export function getGearRecommendations(
   level: number,
   profile: string,
   signal?: AbortSignal,
+  craftedOnly?: boolean,
 ): Promise<GearSetDto> {
   const params = new URLSearchParams({
     job,
     level: String(level),
     profile,
   });
+  if (craftedOnly) params.set("craftedOnly", "true");
   return fetchApi<GearSetDto>(`/api/gear/recommendations?${params}`, { signal });
 }
 
@@ -274,7 +299,8 @@ export function searchEquipment(
   maxLevel?: number,
   signal?: AbortSignal,
 ): Promise<EquipmentDto[]> {
-  const params = new URLSearchParams({ q: query });
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
   if (job) params.set("job", job);
   if (slot) params.set("slot", slot);
   if (minLevel !== undefined) params.set("minLevel", String(minLevel));
@@ -419,6 +445,26 @@ export function updateSavedList(
 
 export function deleteSavedList(id: number): Promise<void> {
   return authFetchApi<void>(`/api/saved-lists/${id}`, { method: "DELETE" });
+}
+
+export function addItemToSavedList(
+  listId: number,
+  req: { itemId: number; itemName: string; quantity: number; category?: string },
+): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>(`/api/saved-lists/${listId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export function removeItemFromSavedList(
+  listId: number,
+  itemId: number,
+): Promise<SavedListDto> {
+  return authFetchApi<SavedListDto>(`/api/saved-lists/${listId}/items/${itemId}`, {
+    method: "DELETE",
+  });
 }
 
 // --- Favorites API ---
@@ -574,6 +620,7 @@ export function getInitialCraftingState(
   cp: number,
   isSpecialist = false,
   signal?: AbortSignal,
+  startingQuality = 0,
 ): Promise<CraftingState> {
   const params = new URLSearchParams({
     recipeId: String(recipeId),
@@ -583,6 +630,7 @@ export function getInitialCraftingState(
     cp: String(cp),
     isSpecialist: String(isSpecialist),
   });
+  if (startingQuality > 0) params.set("startingQuality", String(startingQuality));
   return fetchApi<CraftingState>(`/api/crafting/initial-state?${params}`, { signal });
 }
 
@@ -672,6 +720,178 @@ export function deleteRotation(id: number): Promise<void> {
   return authFetchApi<void>(`/api/rotations/${id}`, { method: "DELETE" });
 }
 
+// --- Journey API ---
+
+export function getCraftingJourney(
+  recipeId: number,
+  signal?: AbortSignal,
+): Promise<import("@/types/journey").CraftingJourneyDto> {
+  return fetchApi(`/api/crafting/journey/${recipeId}`, { signal });
+}
+
+export function analyzeSufficiency(
+  recipeId: number,
+  request: import("@/types/journey").SufficiencyRequestDto,
+  signal?: AbortSignal,
+): Promise<import("@/types/journey").StatSufficiencyResultDto> {
+  return authFetchApi(`/api/recipes/${recipeId}/sufficiency`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  });
+}
+
+export function getItemContext(
+  itemId: number,
+  signal?: AbortSignal,
+): Promise<import("@/types/journey").ItemContextDto> {
+  return fetchApi(`/api/items/${itemId}/context`, { signal });
+}
+
+// --- Market API ---
+
+export function getMarketPrices(
+  world: string,
+  itemIds: number[],
+  signal?: AbortSignal,
+): Promise<Record<number, import("@/types/market").MarketBoardDataDto>> {
+  const params = new URLSearchParams({
+    world,
+    items: itemIds.join(","),
+  });
+  return fetchApi(`/api/market/prices?${params}`, { signal });
+}
+
+export function getWorldList(
+  signal?: AbortSignal,
+): Promise<import("@/types/market").WorldGroupDto[]> {
+  return fetchApi("/api/market/worlds", { signal });
+}
+
+export function getRecipeCost(
+  recipeId: number,
+  world: string,
+  quantity = 1,
+  options?: { useMinPrice?: boolean; includeGatheredItemPrices?: boolean },
+  signal?: AbortSignal,
+): Promise<import("@/types/market").CostEstimateDto> {
+  const params = new URLSearchParams({
+    world,
+    quantity: String(quantity),
+  });
+  if (options?.useMinPrice) params.set("useMinPrice", "true");
+  if (options?.includeGatheredItemPrices === false) params.set("includeGatheredPrices", "false");
+  return fetchApi(`/api/recipes/${recipeId}/cost?${params}`, { signal });
+}
+
+// --- Gathering API ---
+
+export function getGatheringGuide(
+  items: import("@/types/gathering").GatheringGuideItemInput[],
+  signal?: AbortSignal,
+): Promise<import("@/types/gathering").GatheringGuideDto> {
+  return fetchApi("/api/gathering/guide", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+    signal,
+  });
+}
+
+export function getEorzeanTime(
+  signal?: AbortSignal,
+): Promise<import("@/types/gathering").EorzeanTimeResponse> {
+  return fetchApi("/api/gathering/eorzean-time", { signal });
+}
+
+// --- Craft Plans API ---
+
+export function resolveCraftPlan(
+  items: import("@/types/craft-plan").CraftPlanItemInput[],
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
+  return fetchApi("/api/craft-plans/resolve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+    signal,
+  });
+}
+
+export function exportCraftPlan(
+  items: import("@/types/craft-plan").CraftPlanItemInput[],
+  format: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").ExportResultDto> {
+  return fetchApi("/api/craft-plans/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items, format }),
+    signal,
+  });
+}
+
+export function createCraftPlan(
+  name: string,
+  items: import("@/types/craft-plan").CraftPlanItemInput[],
+): Promise<import("@/types/craft-plan").CraftPlanDto> {
+  return authFetchApi("/api/craft-plans", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, items }),
+  });
+}
+
+export function getCraftPlans(
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").CraftPlanDto[]> {
+  return authFetchApi("/api/craft-plans", { signal });
+}
+
+export function getCraftPlanById(
+  id: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").CraftPlanDto> {
+  return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, { signal });
+}
+
+export function getResolvedCraftPlan(
+  id: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
+  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/resolved`, { signal });
+}
+
+export function updateCraftPlan(
+  id: string,
+  request: import("@/types/craft-plan").UpdateCraftPlanRequest,
+): Promise<import("@/types/craft-plan").CraftPlanDto> {
+  return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+}
+
+export function deleteCraftPlan(id: string): Promise<void> {
+  return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function getCraftPlanCost(
+  id: string,
+  world: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/market").CostEstimateDto> {
+  const params = new URLSearchParams({ world });
+  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/cost?${params}`, {
+    method: "POST",
+    signal,
+  });
+}
+
 // --- BiS Stats (from gear recommendations) ---
 
 export async function getBisStats(
@@ -679,10 +899,69 @@ export async function getBisStats(
   level: number,
   signal?: AbortSignal,
 ): Promise<{ craftsmanship: number; control: number; cp: number }> {
-  const gearSet = await getGearRecommendations(job, level, "balanced", signal);
+  const gearSet = await getGearRecommendations(job, level, "balanced", signal, false);
   return {
     craftsmanship: gearSet.totalStats.craftsmanship,
     control: gearSet.totalStats.control,
     cp: gearSet.totalStats.cp,
   };
+}
+
+// --- Notifications API ---
+
+export function getNotifications(
+  signal?: AbortSignal,
+): Promise<import("@/types/notifications").NotificationDto[]> {
+  return authFetchApi("/api/notifications", { signal });
+}
+
+export function markNotificationRead(id: string): Promise<void> {
+  return authFetchApi(`/api/notifications/${encodeURIComponent(id)}/read`, {
+    method: "POST",
+  });
+}
+
+export function markAllNotificationsRead(): Promise<void> {
+  return authFetchApi("/api/notifications/read-all", {
+    method: "POST",
+  });
+}
+
+// --- Feedback API ---
+
+export function submitFeedback(request: {
+  category: string;
+  message: string;
+  email?: string;
+  pageUrl?: string;
+}): Promise<{ id: number; createdAt: string }> {
+  return fetchApi("/api/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+}
+
+// --- Analytics API ---
+
+export function trackAnalyticsEvent(
+  event: string,
+  metadata?: Record<string, unknown>,
+  pageUrl?: string,
+) {
+  try {
+    const url = `${getBaseUrl()}/api/analytics/event`;
+    const body: Record<string, unknown> = { event };
+    if (metadata) body.metadata = JSON.stringify(metadata);
+    if (pageUrl) body.pageUrl = pageUrl;
+    if (typeof document !== "undefined") body.referrer = document.referrer || undefined;
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // fire-and-forget — never throw
+  }
 }

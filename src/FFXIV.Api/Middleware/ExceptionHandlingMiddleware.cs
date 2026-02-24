@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Sentry;
 
 namespace FFXIV.Api.Middleware;
 
@@ -44,6 +45,7 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
+            SentrySdk.CaptureException(ex);
             _logger.LogError(ex, "Unhandled exception processing {Method} {Path}", context.Request.Method, context.Request.Path);
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;

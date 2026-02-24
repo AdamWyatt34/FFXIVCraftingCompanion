@@ -1,0 +1,12 @@
+frontend/
+tests/
+.git/
+node_modules/
+**/bin/
+**/obj/
+.vs/
+.vscode/
+*.md
+!Dockerfile
+.github/
+infra/

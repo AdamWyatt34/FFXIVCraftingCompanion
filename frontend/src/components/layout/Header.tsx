@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function Header() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export function Header() {
         >
           <Search size={20} />
         </button>
+
+        {isAuthenticated && <NotificationBell />}
 
         {!isLoading && (
           isAuthenticated ? (

@@ -9,3 +9,6 @@ export { SourceBadge } from "./SourceBadge";
 export { ToastProvider, useToast } from "./Toast";
 export { ProtectedAction } from "./ProtectedAction";
 export { ConfirmDialog } from "./ConfirmDialog";
+export { ItemLink } from "./ItemLink";
+export { Breadcrumbs } from "./Breadcrumbs";
+export { InstallBanner } from "./InstallBanner";

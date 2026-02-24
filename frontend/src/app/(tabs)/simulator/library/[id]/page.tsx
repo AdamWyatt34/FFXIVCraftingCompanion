@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -341,13 +342,13 @@ export default function RotationDetailPage() {
                   }}
                   role="listitem"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={iconUrl}
                     alt=""
                     width={16}
                     height={16}
                     className="rounded-sm"
+                    unoptimized
                   />
                   <span>{label}</span>
                 </span>

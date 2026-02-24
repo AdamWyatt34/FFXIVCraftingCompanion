@@ -1,5 +1,6 @@
 using FFXIV.Application.CraftingEngine.Solver;
 using FFXIV.Domain.CraftingEngine;
+using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.CraftingEngine.Solver;
 using FFXIV.Domain.CraftingEngine.Solver.Models;
 using FFXIV.Infrastructure.Solver.MCTS;
@@ -8,6 +9,8 @@ namespace FFXIV.Infrastructure.Solver;
 
 public sealed class SolverFactory : ISolverFactory
 {
+    private const int DefaultTimeBudgetMs = 10000;
+
     private readonly ICraftingSimulator _simulator;
     private readonly GreedySolverConfig _greedyConfig;
     private readonly MCTSConfig _mctsConfig;
@@ -40,4 +43,17 @@ public sealed class SolverFactory : ISolverFactory
             _simulator, new GreedySolver(_simulator, _greedyConfig), _mctsConfig),
         _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, "Unknown solver algorithm"),
     };
+
+    public SolverSettings AdaptSettings(
+        SolverSettings settings, RecipeParameters recipe, CrafterStats stats)
+    {
+        // Only adapt if the user hasn't customized the time budget
+        if (settings.TimeBudgetMs != DefaultTimeBudgetMs)
+            return settings;
+
+        var difficulty = RecipeDifficultyClassifier.Classify(recipe, stats);
+        var adaptedBudget = RecipeDifficultyClassifier.GetAdaptiveTimeBudgetMs(difficulty);
+
+        return settings with { TimeBudgetMs = adaptedBudget };
+    }
 }

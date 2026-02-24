@@ -30,7 +30,10 @@
       "Bash(npx next lint --)",
       "Bash(npx eslint:*)",
       "Bash(npx tsc:*)",
-      "Bash(git -C D:/personal/FinalFantasyXIVCraftingCompanion log --oneline -10)"
+      "Bash(git -C D:/personal/FinalFantasyXIVCraftingCompanion log --oneline -10)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)"
     ]
   }
 }

@@ -14,6 +14,6 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
 
         builder.HasIndex(u => u.DiscordId)
             .IsUnique()
-            .HasFilter("\"DiscordId\" IS NOT NULL");
+            .HasFilter("[DiscordId] IS NOT NULL");
     }
 }

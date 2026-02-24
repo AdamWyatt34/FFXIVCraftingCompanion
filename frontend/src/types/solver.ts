@@ -1,4 +1,4 @@
-import type { CrafterStatsInput, SimulationResult } from "./simulator";
+import type { CrafterStatsInput, HQIngredientInput, SimulationResult } from "./simulator";
 
 // ── Enums (string unions matching backend) ──
 
@@ -68,6 +68,7 @@ export interface SolveRequest {
   useProfileStats?: boolean;
   constraints?: SolverConstraints;
   settings?: SolverSettings;
+  hqIngredients?: HQIngredientInput[];
 }
 
 export interface QuickSolveParams {

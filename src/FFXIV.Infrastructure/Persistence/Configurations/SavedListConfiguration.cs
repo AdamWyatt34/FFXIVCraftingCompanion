@@ -12,11 +12,11 @@ public class SavedListConfiguration : IEntityTypeConfiguration<SavedList>
         builder.ToTable("SavedLists");
 
         builder.HasKey(sl => sl.Id);
-        builder.Property(sl => sl.Id).UseIdentityByDefaultColumn();
+        builder.Property(sl => sl.Id).ValueGeneratedOnAdd();
 
         builder.Property(sl => sl.UserId).HasMaxLength(450);
         builder.Property(sl => sl.Name).HasMaxLength(256);
-        builder.Property(sl => sl.Data).HasColumnType("jsonb");
+        builder.Property(sl => sl.Data);
         builder.Property(sl => sl.Type).HasConversion<string>();
 
         builder.HasIndex(sl => new { sl.UserId, sl.Type });

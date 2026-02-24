@@ -14,7 +14,7 @@ public class CharacterProfileConfiguration : IEntityTypeConfiguration<CharacterP
         builder.ToTable("CharacterProfiles");
 
         builder.HasKey(cp => cp.Id);
-        builder.Property(cp => cp.Id).UseIdentityByDefaultColumn();
+        builder.Property(cp => cp.Id).ValueGeneratedOnAdd();
 
         builder.Property(cp => cp.UserId).HasMaxLength(450);
         builder.HasIndex(cp => cp.UserId).IsUnique();
@@ -33,7 +33,7 @@ public class CharacterProfileConfiguration : IEntityTypeConfiguration<CharacterP
         builder.Property(cp => cp.LodestoneId).HasMaxLength(64);
         builder.HasIndex(cp => cp.LodestoneId)
             .IsUnique()
-            .HasFilter("\"LodestoneId\" IS NOT NULL");
+            .HasFilter("[LodestoneId] IS NOT NULL");
 
         builder.Property(cp => cp.Source).HasConversion<string>();
 
@@ -52,14 +52,12 @@ public class CharacterProfileConfiguration : IEntityTypeConfiguration<CharacterP
                 JsonSerializer.Serialize(v, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null));
 
         builder.Property(cp => cp.JobLevels)
-            .HasColumnType("jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                 v => JsonSerializer.Deserialize<Dictionary<string, int>>(v, (JsonSerializerOptions?)null)!)
             .Metadata.SetValueComparer(dictComparer);
 
         builder.Property(cp => cp.CurrentGear)
-            .HasColumnType("jsonb")
             .HasConversion(
                 v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                 v => v == null ? null : JsonSerializer.Deserialize<Dictionary<string, int>>(v, (JsonSerializerOptions?)null))

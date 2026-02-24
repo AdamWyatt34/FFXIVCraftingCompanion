@@ -1,5 +1,7 @@
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Items.Queries;
+using FFXIV.Application.Journey.DTOs;
+using FFXIV.Application.Journey.Queries;
 using FFXIV.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -71,6 +73,25 @@ public class ItemsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _mediator.Send(new GetItemByIdQuery(id));
+        if (result is null)
+            return NotFound(new { error = $"Item {id} not found." });
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get contextual links and cross-feature navigation for an item.
+    /// </summary>
+    /// <param name="id">The item ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns contextual links for the item.</response>
+    /// <response code="404">Item not found.</response>
+    [HttpGet("{id:int}/context")]
+    [ProducesResponseType(typeof(ItemContextDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContext(int id, CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetItemContextQuery(id), ct);
         if (result is null)
             return NotFound(new { error = $"Item {id} not found." });
 

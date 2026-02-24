@@ -25,6 +25,10 @@ public class RecipeParameterFactory : IRecipeParameterFactory
         var rlt = await _recipeLevelRepository.GetByLevelAsync(recipe.RecipeLevel, cancellationToken);
         if (rlt is null) return null;
 
+        var ingredients = recipe.Ingredients
+            .Select(i => new RecipeIngredientInfo(i.ItemId, i.Quantity, i.CanBeHQ))
+            .ToList();
+
         return new RecipeParameters
         {
             RecipeId = recipe.RecipeId,
@@ -40,6 +44,8 @@ public class RecipeParameterFactory : IRecipeParameterFactory
             Stars = rlt.Stars,
             SuggestedCraftsmanship = rlt.SuggestedCraftsmanship,
             SuggestedControl = rlt.SuggestedControl,
+            MaterialQualityFactor = recipe.MaterialQualityFactor,
+            Ingredients = ingredients,
         };
     }
 }

@@ -16,6 +16,16 @@ public class GearRecommendationServiceTests
         _itemSourceRepo.GetByItemIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, List<ItemSource>>());
 
+        // Default: batch slot load returns empty
+        _equipmentRepo.GetBestForSlotsAsync(
+            Arg.Any<IEnumerable<EquipSlot>>(), Arg.Any<string>(), Arg.Any<int>(),
+            Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Equipment>().AsReadOnly());
+
+        // Default: batch ID load returns empty
+        _equipmentRepo.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Equipment>().AsReadOnly());
+
         _service = new GearRecommendationService(_equipmentRepo, _itemSourceRepo);
     }
 
@@ -73,9 +83,9 @@ public class GearRecommendationServiceTests
         var secondRing = EquipmentTestDataBuilder.CreateDoHEquipment(
             11, "Second Ring", EquipSlot.Ring, craftsmanship: 75, control: 75, cp: 5);
 
-        _equipmentRepo.GetBestBySlotAsync(EquipSlot.Ring, "BSM", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _equipmentRepo.GetBestForSlotsAsync(
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { bestRing, secondRing }.AsReadOnly());
-        SetupEmptySlots("BSM", 90, EquipSlot.Ring);
 
         // Act
         var result = await _service.GetRecommendationsAsync("BSM", 90);
@@ -118,7 +128,8 @@ public class GearRecommendationServiceTests
         var pickaxe = EquipmentTestDataBuilder.CreateDoLEquipment(
             20, "Miner Pickaxe", EquipSlot.MainHand, gathering: 100, perception: 50, gp: 10);
 
-        _equipmentRepo.GetBestBySlotAsync(Arg.Any<EquipSlot>(), "MIN", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _equipmentRepo.GetBestForSlotsAsync(
+            Arg.Any<IEnumerable<EquipSlot>>(), "MIN", 90, 10, Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { pickaxe }.AsReadOnly());
 
         // Act — request "Balanced" (a DoH profile) for a DoL job
@@ -131,9 +142,7 @@ public class GearRecommendationServiceTests
     [Fact]
     public async Task EmptySlots_WhenNoEquipmentFound_SetsNullRecommendation()
     {
-        // Arrange
-        _equipmentRepo.GetBestBySlotAsync(Arg.Any<EquipSlot>(), "BSM", 1, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Equipment>().AsReadOnly());
+        // Arrange — default mock returns empty list
 
         // Act
         var result = await _service.GetRecommendationsAsync("BSM", 1);
@@ -153,11 +162,9 @@ public class GearRecommendationServiceTests
         var body = EquipmentTestDataBuilder.CreateDoHEquipment(
             2, "Coat", EquipSlot.Body, craftsmanship: 60, control: 40, cp: 8);
 
-        _equipmentRepo.GetBestBySlotAsync(EquipSlot.Head, "BSM", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Equipment> { head }.AsReadOnly());
-        _equipmentRepo.GetBestBySlotAsync(EquipSlot.Body, "BSM", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Equipment> { body }.AsReadOnly());
-        SetupEmptySlots("BSM", 90, EquipSlot.Head, EquipSlot.Body);
+        _equipmentRepo.GetBestForSlotsAsync(
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
+            .Returns(new List<Equipment> { head, body }.AsReadOnly());
 
         // Act
         var result = await _service.GetRecommendationsAsync("BSM", 90);
@@ -171,9 +178,7 @@ public class GearRecommendationServiceTests
     [Fact]
     public async Task CUL_DoesNotIncludeOffHandSlot()
     {
-        // Arrange
-        _equipmentRepo.GetBestBySlotAsync(Arg.Any<EquipSlot>(), "CUL", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Equipment>().AsReadOnly());
+        // Arrange — default mock returns empty list
 
         // Act
         var result = await _service.GetRecommendationsAsync("CUL", 90);
@@ -186,9 +191,7 @@ public class GearRecommendationServiceTests
     [Fact]
     public async Task BSM_IncludesOffHandSlot()
     {
-        // Arrange
-        _equipmentRepo.GetBestBySlotAsync(Arg.Any<EquipSlot>(), "BSM", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Equipment>().AsReadOnly());
+        // Arrange — default mock returns empty list
 
         // Act
         var result = await _service.GetRecommendationsAsync("BSM", 90);
@@ -205,9 +208,9 @@ public class GearRecommendationServiceTests
         var head = EquipmentTestDataBuilder.CreateDoHEquipment(
             1, "Hat", EquipSlot.Head, craftsmanship: 50);
 
-        _equipmentRepo.GetBestBySlotAsync(EquipSlot.Head, "BSM", 90, Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _equipmentRepo.GetBestForSlotsAsync(
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { head }.AsReadOnly());
-        SetupEmptySlots("BSM", 90, EquipSlot.Head);
 
         // Act
         var result = await _service.GetRecommendationsAsync("BSM", 90);
@@ -225,8 +228,8 @@ public class GearRecommendationServiceTests
         var body = EquipmentTestDataBuilder.CreateDoHEquipment(
             2, "Coat", EquipSlot.Body, craftsmanship: 60, control: 40, cp: 8);
 
-        _equipmentRepo.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(head);
-        _equipmentRepo.GetByIdAsync(2, Arg.Any<CancellationToken>()).Returns(body);
+        _equipmentRepo.GetByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Equipment> { head, body }.AsReadOnly());
 
         var equipmentIds = new Dictionary<EquipSlot, int>
         {
@@ -262,17 +265,5 @@ public class GearRecommendationServiceTests
         result.Source.SourceType.Should().Be(ItemSourceType.Crafted);
         result.Source.RecipeId.Should().Be(42);
         result.Source.Description.Should().Contain("Recipe #42");
-    }
-
-    private void SetupEmptySlots(string job, int level, params EquipSlot[] except)
-    {
-        var exceptSet = new HashSet<EquipSlot>(except);
-
-        foreach (var slot in Enum.GetValues<EquipSlot>())
-        {
-            if (exceptSet.Contains(slot)) continue;
-            _equipmentRepo.GetBestBySlotAsync(slot, job, level, Arg.Any<int>(), Arg.Any<CancellationToken>())
-                .Returns(new List<Equipment>().AsReadOnly());
-        }
     }
 }

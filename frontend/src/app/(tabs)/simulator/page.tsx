@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import Link from "next/link";
-import { FlaskConical, Check, X, Wrench, Sparkles, BookOpen, SlidersHorizontal } from "lucide-react";
+import { FlaskConical, Check, X, Wrench, Sparkles, BookOpen, SlidersHorizontal, Zap } from "lucide-react";
 import { useSimulator } from "@/hooks/useSimulator";
 import { useSolver } from "@/hooks/useSolver";
 import { useSolverConfig } from "@/hooks/useSolverConfig";
@@ -24,13 +26,36 @@ import { ActionPanel } from "@/components/simulator/ActionPanel";
 import { UndoControls } from "@/components/simulator/UndoControls";
 import { StepHistory } from "@/components/simulator/StepHistory";
 import { StepHistoryMobile } from "@/components/simulator/StepHistoryMobile";
-import { MacroExportPanel } from "@/components/simulator/MacroExportPanel";
-import { SolverButton, SolverConfigPanel, SolverProgressOverlay, RotationResultPanel, RotationReplay, WhatIfPanel } from "@/components/solver";
+import { SolverButton } from "@/components/solver/SolverButton";
+import { SolverConfigPanel } from "@/components/solver/SolverConfigPanel";
+import { SolverProgressOverlay } from "@/components/solver/SolverProgressOverlay";
 import { LoadingSkeleton } from "@/components/ui/LoadingStates";
 import { buildShareUrl } from "@/lib/format-utils";
 import { buildSolverShareUrl } from "@/lib/rotation-codec";
+
+// Lazy-load heavy components that are conditionally rendered
+const MacroExportPanel = dynamic(
+  () => import("@/components/simulator/MacroExportPanel").then(m => ({ default: m.MacroExportPanel })),
+  { ssr: false },
+);
+const HQIngredientSelector = dynamic(
+  () => import("@/components/simulator/HQIngredientSelector").then(m => ({ default: m.HQIngredientSelector })),
+  { ssr: false },
+);
+const RotationResultPanel = dynamic(
+  () => import("@/components/solver/RotationResultPanel").then(m => ({ default: m.RotationResultPanel })),
+  { ssr: false },
+);
+const RotationReplay = dynamic(
+  () => import("@/components/solver/RotationReplay").then(m => ({ default: m.RotationReplay })),
+  { ssr: false },
+);
+const WhatIfPanel = dynamic(
+  () => import("@/components/solver/WhatIfPanel").then(m => ({ default: m.WhatIfPanel })),
+  { ssr: false },
+);
 import type { RecipeDto, CraftType } from "@/types/api";
-import type { CrafterStatsInput } from "@/types/simulator";
+import type { CrafterStatsInput, HQIngredientInput } from "@/types/simulator";
 
 function SectionHeader({
   number,
@@ -65,7 +90,13 @@ function SimulatorPageContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const [fullRecipe, setFullRecipe] = useState<RecipeDto | null>(null);
+  const [hqIngredients, setHqIngredients] = useState<HQIngredientInput[]>([]);
   const [showMacroPanel, setShowMacroPanel] = useState(false);
+  const { setBreadcrumbs } = useBreadcrumbs();
+
+  useEffect(() => {
+    setBreadcrumbs([{ label: "Simulator" }]);
+  }, [setBreadcrumbs]);
   const [shareConfirmation, setShareConfirmation] = useState(false);
   const [showSolverOverlay, setShowSolverOverlay] = useState(false);
   const [showRotationResult, setShowRotationResult] = useState(false);
@@ -73,6 +104,8 @@ function SimulatorPageContent() {
   const [replayInitialStep, setReplayInitialStep] = useState<number | undefined>(undefined);
   const [isSavingToLibrary, setIsSavingToLibrary] = useState(false);
   const [saveToLibrarySuccess, setSaveToLibrarySuccess] = useState(false);
+  const [isSavingManual, setIsSavingManual] = useState(false);
+  const [saveManualSuccess, setSaveManualSuccess] = useState(false);
   const [setupMode, setSetupMode] = useState<"craft" | "solve" | "whatif">("craft");
   const hasInitializedFromUrlRef = useRef(false);
   const autoSolveTriggeredRef = useRef(false);
@@ -176,6 +209,7 @@ function SimulatorPageContent() {
 
   const handleRecipeCleared = useCallback(() => {
     setFullRecipe(null);
+    setHqIngredients([]);
   }, []);
 
   const handleStatsChange = useCallback(
@@ -236,9 +270,10 @@ function SimulatorPageContent() {
     const request = solverConfig.buildSolveRequest(
       simulator.selectedRecipe.recipeId,
       simulator.crafterStats,
+      hqIngredients.length > 0 ? hqIngredients : undefined,
     );
     await solver.startSolve(request);
-  }, [simulator.selectedRecipe, simulator.crafterStats, solverConfig, solver]);
+  }, [simulator.selectedRecipe, simulator.crafterStats, solverConfig, solver, hqIngredients]);
 
   // Auto-solve trigger from URL param (must be after handleAutoSolve definition)
   useEffect(() => {
@@ -253,15 +288,27 @@ function SimulatorPageContent() {
     return () => clearTimeout(timer);
   }, [setupMode, simulator.isSetupComplete, handleAutoSolve]);
 
+  const handleQuickSolve = useCallback(async () => {
+    if (!simulator.selectedRecipe || !simulator.crafterStats) return;
+    await solver.startQuickSolve({
+      recipeId: simulator.selectedRecipe.recipeId,
+      craftsmanship: simulator.crafterStats.craftsmanship,
+      control: simulator.crafterStats.control,
+      cp: simulator.crafterStats.cp,
+      level: simulator.crafterStats.level,
+    });
+  }, [simulator.selectedRecipe, simulator.crafterStats, solver]);
+
   const handleAutoSolveFromCraft = useCallback(async () => {
     if (!simulator.selectedRecipe || !simulator.crafterStats) return;
     setShowSolverOverlay(true);
     const request = solverConfig.buildSolveRequest(
       simulator.selectedRecipe.recipeId,
       simulator.crafterStats,
+      hqIngredients.length > 0 ? hqIngredients : undefined,
     );
     await solver.startSolve(request);
-  }, [simulator.selectedRecipe, simulator.crafterStats, solverConfig, solver]);
+  }, [simulator.selectedRecipe, simulator.crafterStats, solverConfig, solver, hqIngredients]);
 
   const handleLoadPreview = useCallback(async () => {
     const result = solver.quickResult;
@@ -369,6 +416,25 @@ function SimulatorPageContent() {
       setIsSavingToLibrary(false);
     }
   }, [solver, simulator.selectedRecipe, simulator.crafterStats]);
+
+  const handleSaveManualToLibrary = useCallback(async () => {
+    if (!simulator.selectedRecipe || !simulator.crafterStats || simulator.actionIds.length === 0) return;
+    setIsSavingManual(true);
+    try {
+      await submitRotation({
+        recipeId: simulator.selectedRecipe.recipeId,
+        actionIds: simulator.actionIds,
+        stats: simulator.crafterStats,
+        source: "Manual",
+      });
+      setSaveManualSuccess(true);
+      setTimeout(() => setSaveManualSuccess(false), 3000);
+    } catch {
+      // Error is silently handled
+    } finally {
+      setIsSavingManual(false);
+    }
+  }, [simulator.selectedRecipe, simulator.crafterStats, simulator.actionIds]);
 
   // Auto-hide overlay when solver completes
   useEffect(() => {
@@ -537,22 +603,35 @@ function SimulatorPageContent() {
                   onReset={simulator.resetCraft}
                   onUndo={simulator.undoLastAction}
                   onShareRotation={handleShareRotation}
+                  onSaveToLibrary={user ? handleSaveManualToLibrary : undefined}
+                  isSaving={isSavingManual}
+                  saveSuccess={saveManualSuccess}
                 />
               )}
 
               {/* Action panel with solver overlay */}
               {simulator.currentState.status === "InProgress" && (
                 <div className="relative">
-                  {/* Inline Auto-Solve trigger */}
+                  {/* Inline solve triggers */}
                   {solver.solverStatus === "Idle" && (
-                    <button
-                      onClick={handleAutoSolveFromCraft}
-                      className="mb-3 flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 text-gold font-medium rounded-lg hover:bg-gold/20 border border-gold/30 transition-colors text-sm"
-                      aria-label="Auto-solve from current state"
-                    >
-                      <Sparkles size={14} />
-                      Auto-Solve
-                    </button>
+                    <div className="mb-3 flex items-center gap-2">
+                      <button
+                        onClick={handleQuickSolve}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-gold hover:border-gold/30 border border-border transition-colors text-sm"
+                        aria-label="Quick solve from current state"
+                      >
+                        <Zap size={14} />
+                        Quick Solve
+                      </button>
+                      <button
+                        onClick={handleAutoSolveFromCraft}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 text-gold font-medium rounded-lg hover:bg-gold/20 border border-gold/30 transition-colors text-sm"
+                        aria-label="Auto-solve from current state"
+                      >
+                        <Sparkles size={14} />
+                        Auto-Solve
+                      </button>
+                    </div>
                   )}
                   <ActionPanel
                     actions={simulator.actions}
@@ -650,6 +729,54 @@ function SimulatorPageContent() {
             </div>
           )}
 
+          {/* HQ Ingredient Selector */}
+          {fullRecipe && hasStats && (
+            <section className="animate-slide-up">
+              <HQIngredientSelector
+                recipe={fullRecipe}
+                onChange={setHqIngredients}
+              />
+            </section>
+          )}
+
+          {/* Starting Quality Input */}
+          {fullRecipe && hasStats && (
+            <section className="animate-slide-up">
+              <div className="bg-bg-surface border border-border rounded-lg p-4">
+                <label
+                  htmlFor="starting-quality"
+                  className="block text-sm font-semibold text-text-primary mb-2"
+                >
+                  Starting Quality
+                </label>
+                <p className="text-xs text-text-muted mb-3">
+                  Quality bonus from using HQ materials. Leave at 0 for no bonus.
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="starting-quality"
+                    type="number"
+                    min={0}
+                    value={simulator.startingQuality}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                      simulator.setStartingQuality(val);
+                    }}
+                    className="w-32 px-3 py-1.5 bg-bg-elevated border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-gold/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  {simulator.startingQuality > 0 && (
+                    <button
+                      onClick={() => simulator.setStartingQuality(0)}
+                      className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Rotation result panel (shown after solver completes + View Rotation) */}
           {showRotationResult && !showReplay && solver.solverStatus === "Completed" &&
             (solver.solverResult?.simulation ?? solver.quickResult?.simulation) && (
@@ -673,10 +800,10 @@ function SimulatorPageContent() {
             />
           )}
 
-          {/* Action buttons — Start Crafting + Auto-Solve + What If */}
+          {/* Action buttons — Start Crafting + Quick Solve + Auto-Solve + What If */}
           {simulator.isSetupComplete && !showRotationResult && (
             <div className="animate-slide-up space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Manual craft button */}
                 <button
                   onClick={handleStartCrafting}
@@ -685,6 +812,19 @@ function SimulatorPageContent() {
                 >
                   <Wrench size={18} />
                   {simulator.isLoading ? "Initializing..." : "Start Manual Craft"}
+                </button>
+
+                {/* Quick Solve button */}
+                <button
+                  onClick={handleQuickSolve}
+                  disabled={simulator.isLoading || solver.isSolving}
+                  className="flex flex-col items-center justify-center gap-0.5 py-3 px-6 bg-bg-surface border border-border text-text-primary font-bold rounded-lg hover:border-gold hover:text-gold disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
+                >
+                  <div className="flex items-center gap-2">
+                    <Zap size={18} />
+                    Quick Solve
+                  </div>
+                  <span className="text-xs font-normal text-text-muted">Instant greedy result</span>
                 </button>
 
                 {/* Auto-Solve button */}

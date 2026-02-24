@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useMemo } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -220,13 +221,13 @@ export function RotationReplay({
             className="rounded-lg border border-border bg-bg-surface p-4 animate-replay-transition"
           >
             <div className="flex items-center gap-3 mb-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={getActionIconUrl(replay.currentStep.actionName)}
                 alt=""
                 width={32}
                 height={32}
                 className="rounded"
+                unoptimized
               />
               <div>
                 <div className="font-bold text-text-primary">
@@ -366,13 +367,13 @@ export function RotationReplay({
                     aria-selected={isCurrent}
                     aria-label={`Step ${stepIndex}: ${step.actionName}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={getActionIconUrl(step.actionName)}
                       alt=""
                       width={16}
                       height={16}
                       className="rounded-sm"
+                      unoptimized
                     />
                     <span
                       className="hidden sm:inline font-medium"

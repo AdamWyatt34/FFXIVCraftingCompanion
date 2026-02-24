@@ -55,6 +55,7 @@ public sealed class MCTSSolver : IRotationSolver
         };
 
         int timeBudgetMs = settings.TimeBudgetMs;
+        long iterationsWithoutImprovement = 0;
 
         while (stopwatch.ElapsedMilliseconds < timeBudgetMs)
         {
@@ -83,10 +84,27 @@ public sealed class MCTSSolver : IRotationSolver
                 {
                     bestReward = rolloutReward;
                     bestActionSequence = candidateActions;
+                    iterationsWithoutImprovement = 0;
                 }
+                else
+                {
+                    iterationsWithoutImprovement++;
+                }
+            }
+            else
+            {
+                iterationsWithoutImprovement++;
             }
 
             iterationsCompleted++;
+
+            // Early termination: perfect quality achieved
+            if (bestReward >= _config.PerfectRewardThreshold)
+                break;
+
+            // Early termination: convergence (no improvement for threshold iterations)
+            if (iterationsWithoutImprovement >= _config.EarlyTerminationThreshold)
+                break;
         }
 
         stopwatch.Stop();

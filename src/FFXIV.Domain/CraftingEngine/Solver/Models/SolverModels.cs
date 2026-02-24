@@ -1,5 +1,7 @@
 using FFXIV.Domain.CraftingEngine.Models;
 
+// HQIngredientInput is in Domain/CraftingEngine/HQCalculator.cs
+
 namespace FFXIV.Domain.CraftingEngine.Solver.Models;
 
 public enum SolverAlgorithm
@@ -24,6 +26,7 @@ public sealed record SolveRequest
     public CrafterStats Stats { get; init; } = null!;
     public SolverConstraints Constraints { get; init; } = new();
     public SolverSettings Settings { get; init; } = new();
+    public List<HQIngredientInput>? HQIngredients { get; init; }
 }
 
 public sealed record SolverConstraints

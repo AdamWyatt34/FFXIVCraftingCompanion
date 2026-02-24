@@ -5,6 +5,22 @@ export interface GearStatsDto {
   gathering: number;
   perception: number;
   gp: number;
+  // Combat stats
+  vitality: number;
+  strength: number;
+  dexterity: number;
+  intelligence: number;
+  mind: number;
+  piety: number;
+  tenacity: number;
+  directHitRate: number;
+  criticalHit: number;
+  determination: number;
+  skillSpeed: number;
+  spellSpeed: number;
+  physicalDamage: number;
+  defense: number;
+  magicDefense: number;
   totalWeightedScore: number;
 }
 

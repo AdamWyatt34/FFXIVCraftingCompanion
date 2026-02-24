@@ -7,7 +7,7 @@ public interface IGearRecommendationService
 {
     Task<GearSet> GetRecommendationsAsync(
         string job, int level, string profile = "balanced",
-        CancellationToken ct = default);
+        bool craftedOnly = false, CancellationToken ct = default);
 
     Task<GearSlotRecommendation> GetSlotRecommendationAsync(
         EquipSlot slot, string job, int level, string profile = "balanced",

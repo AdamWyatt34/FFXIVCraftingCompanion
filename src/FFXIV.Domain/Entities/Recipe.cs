@@ -14,6 +14,7 @@ public class Recipe
     public int RequiredCraftsmanship { get; set; }
     public int RequiredControl { get; set; }
     public int Yield { get; set; } = 1;
+    public int MaterialQualityFactor { get; set; }
 
     public Item ResultItem { get; set; } = null!;
     public ICollection<RecipeIngredient> Ingredients { get; set; } = new List<RecipeIngredient>();

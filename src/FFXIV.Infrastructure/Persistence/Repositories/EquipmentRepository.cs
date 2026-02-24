@@ -21,6 +21,18 @@ public class EquipmentRepository : IEquipmentRepository
             .FirstOrDefaultAsync(e => e.EquipmentId == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Equipment>> GetByIdsAsync(
+        IEnumerable<int> ids, CancellationToken cancellationToken = default)
+    {
+        var idList = ids.ToList();
+        if (idList.Count == 0) return [];
+
+        return await _db.Equipment
+            .AsNoTracking()
+            .Where(e => idList.Contains(e.EquipmentId))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Equipment>> GetByJobAndLevelAsync(
         string job, int level, CancellationToken cancellationToken = default)
     {
@@ -52,13 +64,35 @@ public class EquipmentRepository : IEquipmentRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Equipment>> GetBestForSlotsAsync(
+        IEnumerable<EquipSlot> slots, string job, int level, int limitPerSlot = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var slotList = slots.ToList();
+        if (slotList.Count == 0) return [];
+
+        var all = await _db.Equipment
+            .AsNoTracking()
+            .Where(e => slotList.Contains(e.EquipSlot)
+                        && e.ClassJobCategory.Contains(job)
+                        && e.EquipLevel <= level)
+            .OrderByDescending(e => e.ItemLevel)
+            .ToListAsync(cancellationToken);
+
+        return all
+            .GroupBy(e => e.EquipSlot)
+            .SelectMany(g => g.Take(limitPerSlot))
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<Equipment>> SearchEquipmentAsync(
         string query, string? job = null, EquipSlot? slot = null, int? minLevel = null,
         int? maxLevel = null, int limit = 50, CancellationToken cancellationToken = default)
     {
         var q = _db.Equipment.AsNoTracking().AsQueryable();
 
-        q = q.Where(e => EF.Functions.ILike(e.Name, $"%{query}%"));
+        if (!string.IsNullOrWhiteSpace(query))
+            q = q.Where(e => EF.Functions.Like(e.Name, $"%{query}%"));
 
         if (!string.IsNullOrEmpty(job))
             q = q.Where(e => e.ClassJobCategory.Contains(job));

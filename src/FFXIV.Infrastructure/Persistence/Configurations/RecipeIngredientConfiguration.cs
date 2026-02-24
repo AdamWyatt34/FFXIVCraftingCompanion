@@ -12,6 +12,8 @@ public class RecipeIngredientConfiguration : IEntityTypeConfiguration<RecipeIngr
 
         builder.HasKey(ri => new { ri.RecipeId, ri.ItemId });
 
+        builder.HasIndex(ri => ri.ItemId);
+
         builder.HasOne(ri => ri.Item)
             .WithMany()
             .HasForeignKey(ri => ri.ItemId)

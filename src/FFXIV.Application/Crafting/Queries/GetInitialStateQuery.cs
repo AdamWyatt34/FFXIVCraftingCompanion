@@ -5,7 +5,7 @@ using MediatR;
 
 namespace FFXIV.Application.Crafting.Queries;
 
-public sealed record GetInitialStateQuery(int RecipeId, CrafterStatsInput Stats)
+public sealed record GetInitialStateQuery(int RecipeId, CrafterStatsInput Stats, int StartingQuality = 0)
     : IRequest<(CraftingStateDto? Result, string? Error)>;
 
 public sealed class GetInitialStateQueryHandler
@@ -31,6 +31,13 @@ public sealed class GetInitialStateQueryHandler
         var recipeParams = await _recipeParamFactory.CreateAsync(request.RecipeId, cancellationToken);
         if (recipeParams is null)
             return (null, $"Recipe {request.RecipeId} not found.");
+
+        // Apply manual starting quality if provided
+        if (request.StartingQuality > 0)
+        {
+            var clamped = Math.Min(request.StartingQuality, recipeParams.Quality);
+            recipeParams = recipeParams with { StartingQuality = clamped };
+        }
 
         var stats = CraftingMapper.ToDomain(request.Stats);
         var state = _simulator.CreateInitialState(recipeParams, stats);

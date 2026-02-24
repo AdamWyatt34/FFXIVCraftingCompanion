@@ -22,7 +22,7 @@ public sealed class DataSyncOrchestrator
     private readonly ILogger<DataSyncOrchestrator> _logger;
 
     private const string ItemFields = "Name,LevelItem,CanBeHq,Icon,ItemSearchCategory,ItemUICategory,PriceMid";
-    private const string RecipeFields = "ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,DurabilityFactor,AmountResult,CanHq,Ingredient,AmountIngredient";
+    private const string RecipeFields = "ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,DurabilityFactor,AmountResult,CanHq,MaterialQualityFactor,Ingredient,AmountIngredient";
     private const int ItemPageSize = 500;
     private const int RecipePageSize = 50;
     private const string RecipeLevelTableFieldList = "ClassJobLevel,Stars,Difficulty,Quality,Durability,SuggestedCraftsmanship,SuggestedControl,ProgressDivider,ProgressModifier,QualityDivider,QualityModifier";
@@ -287,6 +287,7 @@ public sealed class DataSyncOrchestrator
                 tracked.RequiredCraftsmanship = recipe.RequiredCraftsmanship;
                 tracked.RequiredControl = recipe.RequiredControl;
                 tracked.Yield = recipe.Yield;
+                tracked.MaterialQualityFactor = recipe.MaterialQualityFactor;
             }
             else
             {

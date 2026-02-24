@@ -3,8 +3,12 @@ namespace FFXIV.Domain.CraftingEngine.Solver.Models;
 public sealed record GreedySolverConfig
 {
     // === Phase transition thresholds ===
-    public int FinishingCPBuffer { get; init; } = 50;
-    public int FinishingDurabilityBuffer { get; init; } = 10;
+    public int FinishingCPBuffer { get; init; } = 30;
+    public int FinishingDurabilityBuffer { get; init; } = 15;
+
+    // === Durability-aware scoring ===
+    public bool EnableDurabilityAwareScoring { get; init; } = true;
+    public double DurabilityAwarePenalty { get; init; } = 15.0;
 
     // === Universal scoring penalties ===
     public double CPPenaltyWeight { get; init; } = 0.1;
@@ -23,7 +27,7 @@ public sealed record GreedySolverConfig
 
     // === Quality phase — Byregot's ===
     public double ByregotsHighIQGreatStridesScore { get; init; } = 150;
-    public int ByregotsHighIQThreshold { get; init; } = 8;
+    public int ByregotsHighIQThreshold { get; init; } = 6;
     public double ByregotsMidIQScore { get; init; } = 60;
     public int ByregotsMidIQThreshold { get; init; } = 5;
 
@@ -38,7 +42,7 @@ public sealed record GreedySolverConfig
     public double ImmaculateMendScore { get; init; } = 85;
     public int ImmaculateMendDurThreshold { get; init; } = 15;
     public int ImmaculateMendCPThreshold { get; init; } = 200;
-    public double ManipulationScore { get; init; } = 78;
+    public double ManipulationScore { get; init; } = 90;
     public int ManipulationDurThreshold { get; init; } = 40;
     public double MastersMendQualityScore { get; init; } = 72;
     public int MastersMendDurThreshold { get; init; } = 25;
@@ -81,4 +85,7 @@ public sealed record GreedySolverConfig
     public double FinishFallbackScore { get; init; } = -20;
 
     public static GreedySolverConfig Default => new();
+
+    public int GetEffectiveDurabilityBuffer(int maxDurability) =>
+        maxDurability <= 40 ? 10 : FinishingDurabilityBuffer;
 }

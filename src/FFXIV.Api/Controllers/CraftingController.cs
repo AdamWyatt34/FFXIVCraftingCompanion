@@ -2,6 +2,8 @@ using FFXIV.Application.Crafting.Commands;
 using FFXIV.Application.Crafting.DTOs;
 using FFXIV.Application.Crafting.Queries;
 using FFXIV.Application.CraftingEngine.Solver;
+using FFXIV.Application.Journey.DTOs;
+using FFXIV.Application.Journey.Queries;
 using FFXIV.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.RateLimiting;
@@ -125,6 +127,7 @@ public class CraftingController : ControllerBase
     /// <param name="control">Control stat.</param>
     /// <param name="cp">CP stat.</param>
     /// <param name="isSpecialist">Whether the crafter is a specialist.</param>
+    /// <param name="startingQuality">Starting quality from HQ materials (default 0).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the initial crafting state.</response>
     /// <response code="400">Invalid input.</response>
@@ -138,6 +141,7 @@ public class CraftingController : ControllerBase
         [FromQuery] int control,
         [FromQuery] int cp,
         [FromQuery] bool isSpecialist = false,
+        [FromQuery] int startingQuality = 0,
         CancellationToken ct = default)
     {
         if (level is < 1 or > 100)
@@ -145,6 +149,9 @@ public class CraftingController : ControllerBase
 
         if (craftsmanship < 0 || control < 0 || cp < 0)
             return BadRequest(new { error = "Stats must be non-negative." });
+
+        if (startingQuality < 0)
+            return BadRequest(new { error = "Starting quality must be non-negative." });
 
         var stats = new CrafterStatsInput
         {
@@ -155,7 +162,8 @@ public class CraftingController : ControllerBase
             IsSpecialist = isSpecialist,
         };
 
-        var (result, error) = await _mediator.Send(new GetInitialStateQuery(recipeId, stats), ct);
+        var (result, error) = await _mediator.Send(
+            new GetInitialStateQuery(recipeId, stats, startingQuality), ct);
 
         return result is not null ? Ok(result) : BadRequest(new { error });
     }
@@ -272,5 +280,28 @@ public class CraftingController : ControllerBase
         return cancelled
             ? Ok(new { message = "Job cancelled." })
             : NotFound(new { error = $"Job '{jobId}' not found or already completed." });
+    }
+
+    // ── Journey Endpoint ──
+
+    /// <summary>
+    /// Get a complete crafting journey for a recipe: materials, stat sufficiency, gear upgrades, and contextual links.
+    /// </summary>
+    /// <param name="recipeId">The recipe ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the crafting journey.</response>
+    /// <response code="404">Recipe not found.</response>
+    [HttpGet("journey/{recipeId:int}")]
+    [ProducesResponseType(typeof(CraftingJourneyDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetJourney(int recipeId, CancellationToken ct = default)
+    {
+        var userId = _currentUser.IsAuthenticated ? _currentUser.UserId : null;
+        var (result, error) = await _mediator.Send(
+            new GetCraftingJourneyQuery(recipeId, userId), ct);
+
+        return result is not null
+            ? Ok(result)
+            : NotFound(new { error });
     }
 }

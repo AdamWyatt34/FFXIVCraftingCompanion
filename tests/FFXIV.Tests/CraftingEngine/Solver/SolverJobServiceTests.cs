@@ -66,6 +66,11 @@ public class SolverJobServiceTests
                 Arg.Any<SolverConstraints>(), Arg.Any<CancellationToken>())
             .Returns((SolverResult?)null);
 
+        // Default: AdaptSettings returns default settings (pass-through)
+        _solverFactory.AdaptSettings(
+                Arg.Any<SolverSettings>(), Arg.Any<RecipeParameters>(), Arg.Any<CrafterStats>())
+            .Returns(callInfo => callInfo.ArgAt<SolverSettings>(0) ?? new SolverSettings());
+
         _service = new SolverJobService(
             _scopeFactory, _solverFactory, _cacheService, _simulator, _logger);
     }

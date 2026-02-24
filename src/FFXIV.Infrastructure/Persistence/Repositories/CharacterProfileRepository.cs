@@ -35,7 +35,10 @@ public class CharacterProfileRepository : ICharacterProfileRepository
 
     public async Task<CharacterProfile> UpdateAsync(CharacterProfile profile, CancellationToken cancellationToken = default)
     {
-        _db.CharacterProfiles.Update(profile);
+        var entry = _db.Entry(profile);
+        if (entry.State == EntityState.Detached)
+            _db.CharacterProfiles.Update(profile);
+        // else: already tracked, change tracker handles it
         await _db.SaveChangesAsync(cancellationToken);
         return profile;
     }

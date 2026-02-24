@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Threading.RateLimiting;
 using FFXIV.Api.Health;
 using FFXIV.Api.Middleware;
@@ -5,7 +6,9 @@ using FFXIV.Application;
 using FFXIV.Infrastructure;
 using FFXIV.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi;
 using Serilog;
 
@@ -24,11 +27,32 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+// Sentry error monitoring (conditional)
+if (builder.Configuration.GetValue<bool>("Sentry:Enabled"))
+{
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
+        o.TracesSampleRate = builder.Configuration.GetValue<double>("Sentry:TracesSampleRate", 0.1);
+        o.SendDefaultPii = false;
+    });
+}
+
 // Add services to the container
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();
+
+// Response Compression
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+    options.Level = CompressionLevel.Fastest);
 
 // Rate Limiting
 builder.Services.AddRateLimiter(options =>
@@ -39,6 +63,22 @@ builder.Services.AddRateLimiter(options =>
     {
         limiterOptions.PermitLimit = 20;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("analytics", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 60;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("feedback", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 5;
+        limiterOptions.Window = TimeSpan.FromHours(1);
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         limiterOptions.QueueLimit = 0;
     });
@@ -103,13 +143,22 @@ builder.Services.AddCors(options =>
 
 // Health Checks
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>("postgresql")
+    .AddDbContextCheck<AppDbContext>("database")
     .AddCheck<XivApiHealthCheck>("xivapi")
     .AddCheck<RedisHealthCheck>("redis");
 
 var app = builder.Build();
 
+// Apply pending migrations on startup if configured
+if (app.Configuration.GetValue<bool>("ApplyMigrationsOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Configure the HTTP request pipeline
+app.UseResponseCompression();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ApiVersionHeaderMiddleware>();
 

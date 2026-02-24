@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FFXIV.Api.Controllers;
 
 /// <summary>
-/// Provides endpoints for gear recommendations and equipment search for DoH/DoL jobs.
+/// Provides endpoints for gear recommendations and equipment search for all jobs.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -29,9 +29,10 @@ public class GearController : ControllerBase
     /// <summary>
     /// Get a full gear set recommendation for a job and level.
     /// </summary>
-    /// <param name="job">DoH/DoL job abbreviation (e.g. BSM, CRP, MIN).</param>
+    /// <param name="job">Job abbreviation (e.g. BSM, CRP, MIN, PLD, WHM).</param>
     /// <param name="level">Character level (1-100).</param>
     /// <param name="profile">Stat weight profile name (default: "balanced").</param>
+    /// <param name="craftedOnly">If true, only show craftable equipment.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the recommended gear set.</response>
     /// <response code="400">Invalid job or level.</response>
@@ -42,20 +43,21 @@ public class GearController : ControllerBase
         [FromQuery] string job,
         [FromQuery] int level = 90,
         [FromQuery] string profile = "balanced",
+        [FromQuery] bool craftedOnly = false,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(job))
             return BadRequest(new { error = "Job is required." });
 
         var normalizedJob = job.ToUpperInvariant();
-        if (!JobClassification.IsDoH(normalizedJob) && !JobClassification.IsDoL(normalizedJob))
-            return BadRequest(new { error = $"'{job}' is not a valid DoH/DoL job. Valid jobs: CRP, BSM, ARM, GSM, LTW, WVR, ALC, CUL, MIN, BTN, FSH." });
+        if (!JobClassification.IsKnownJob(normalizedJob))
+            return BadRequest(new { error = $"'{job}' is not a valid job. Valid jobs: {string.Join(", ", JobClassification.AllJobs)}." });
 
         if (level is < 1 or > 100)
             return BadRequest(new { error = "Level must be between 1 and 100." });
 
         var result = await _mediator.Send(
-            new GetGearRecommendationsQuery(normalizedJob, level, profile), ct);
+            new GetGearRecommendationsQuery(normalizedJob, level, profile, craftedOnly), ct);
 
         return Ok(result);
     }
@@ -64,7 +66,7 @@ public class GearController : ControllerBase
     /// Get a recommendation for a single equipment slot.
     /// </summary>
     /// <param name="slot">Equipment slot (e.g. MainHand, Head, Body, Ring).</param>
-    /// <param name="job">DoH/DoL job abbreviation.</param>
+    /// <param name="job">Job abbreviation.</param>
     /// <param name="level">Character level (1-100).</param>
     /// <param name="profile">Stat weight profile name (default: "balanced").</param>
     /// <param name="ct">Cancellation token.</param>
@@ -87,8 +89,8 @@ public class GearController : ControllerBase
             return BadRequest(new { error = "Job is required." });
 
         var normalizedJob = job.ToUpperInvariant();
-        if (!JobClassification.IsDoH(normalizedJob) && !JobClassification.IsDoL(normalizedJob))
-            return BadRequest(new { error = $"'{job}' is not a valid DoH/DoL job." });
+        if (!JobClassification.IsKnownJob(normalizedJob))
+            return BadRequest(new { error = $"'{job}' is not a valid job." });
 
         if (level is < 1 or > 100)
             return BadRequest(new { error = "Level must be between 1 and 100." });
@@ -102,7 +104,7 @@ public class GearController : ControllerBase
     /// <summary>
     /// Get available stat weight profiles, optionally filtered by job.
     /// </summary>
-    /// <param name="job">Optional DoH/DoL job abbreviation to filter profiles.</param>
+    /// <param name="job">Optional job abbreviation to filter profiles.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns available stat weight profiles.</response>
     [HttpGet("profiles")]
@@ -115,8 +117,8 @@ public class GearController : ControllerBase
         if (!string.IsNullOrWhiteSpace(job))
         {
             var normalizedJob = job.ToUpperInvariant();
-            if (!JobClassification.IsDoH(normalizedJob) && !JobClassification.IsDoL(normalizedJob))
-                return BadRequest(new { error = $"'{job}' is not a valid DoH/DoL job." });
+            if (!JobClassification.IsKnownJob(normalizedJob))
+                return BadRequest(new { error = $"'{job}' is not a valid job." });
         }
 
         var result = await _mediator.Send(new GetStatWeightProfilesQuery(job), ct);
@@ -150,7 +152,7 @@ public class GearController : ControllerBase
     /// Get gear recommendations with comparison against the current user's profile gear.
     /// Requires authentication. Returns standard recommendations with per-slot comparison data.
     /// </summary>
-    /// <param name="job">DoH/DoL job abbreviation (e.g. BSM, CRP, MIN).</param>
+    /// <param name="job">Job abbreviation (e.g. BSM, CRP, MIN, PLD, WHM).</param>
     /// <param name="level">Character level (1-100).</param>
     /// <param name="profile">Stat weight profile name (default: "balanced").</param>
     /// <param name="ct">Cancellation token.</param>
@@ -172,8 +174,8 @@ public class GearController : ControllerBase
             return BadRequest(new { error = "Job is required." });
 
         var normalizedJob = job.ToUpperInvariant();
-        if (!JobClassification.IsDoH(normalizedJob) && !JobClassification.IsDoL(normalizedJob))
-            return BadRequest(new { error = $"'{job}' is not a valid DoH/DoL job. Valid jobs: CRP, BSM, ARM, GSM, LTW, WVR, ALC, CUL, MIN, BTN, FSH." });
+        if (!JobClassification.IsKnownJob(normalizedJob))
+            return BadRequest(new { error = $"'{job}' is not a valid job. Valid jobs: {string.Join(", ", JobClassification.AllJobs)}." });
 
         if (level is < 1 or > 100)
             return BadRequest(new { error = "Level must be between 1 and 100." });
@@ -199,21 +201,21 @@ public class GearController : ControllerBase
     [ProducesResponseType(typeof(List<EquipmentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SearchEquipment(
-        [FromQuery] string q,
+        [FromQuery] string? q = null,
         [FromQuery] string? job = null,
         [FromQuery] string? slot = null,
         [FromQuery] int? minLevel = null,
         [FromQuery] int? maxLevel = null,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
-            return BadRequest(new { error = "Search query must be at least 2 characters." });
+        if ((string.IsNullOrWhiteSpace(q) || q.Length < 2) && string.IsNullOrEmpty(job) && string.IsNullOrEmpty(slot))
+            return BadRequest(new { error = "Provide a search query (min 2 characters) or a filter." });
 
         if (!string.IsNullOrEmpty(slot) && !Enum.TryParse<EquipSlot>(slot, ignoreCase: true, out _))
             return BadRequest(new { error = $"'{slot}' is not a valid equipment slot." });
 
         var result = await _mediator.Send(
-            new SearchEquipmentQuery(q, job, slot, minLevel, maxLevel), ct);
+            new SearchEquipmentQuery(q ?? "", job, slot, minLevel, maxLevel), ct);
 
         return Ok(result);
     }

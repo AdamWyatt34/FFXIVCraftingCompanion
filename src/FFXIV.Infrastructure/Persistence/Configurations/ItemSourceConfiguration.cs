@@ -16,12 +16,12 @@ public class ItemSourceConfiguration : IEntityTypeConfiguration<ItemSource>
         builder.HasOne(s => s.Item)
             .WithMany(i => i.Sources)
             .HasForeignKey(s => s.ItemId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(s => s.ItemId);
         builder.HasIndex(s => new { s.ItemId, s.SourceType }).IsUnique();
 
         builder.Property(s => s.SourceType).HasConversion<string>();
-        builder.Property(s => s.SourceDetails).HasColumnType("text");
+        builder.Property(s => s.SourceDetails);
     }
 }

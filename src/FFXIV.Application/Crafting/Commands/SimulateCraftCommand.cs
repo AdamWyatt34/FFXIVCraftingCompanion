@@ -6,6 +6,8 @@ using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.Repositories;
 using MediatR;
 
+// HQIngredientInput used for starting quality calculation
+
 namespace FFXIV.Application.Crafting.Commands;
 
 public sealed record SimulateCraftCommand(SimulateRequest Request, string? UserId)
@@ -51,6 +53,21 @@ public sealed class SimulateCraftCommandHandler
         var recipeParams = await _recipeParamFactory.CreateAsync(req.RecipeId, cancellationToken);
         if (recipeParams is null)
             return (null, $"Recipe {req.RecipeId} not found.");
+
+        // Apply HQ ingredient starting quality
+        if (req.HQIngredients is { Count: > 0 })
+        {
+            var hqInputs = req.HQIngredients
+                .Select(h => new HQIngredientInput(h.ItemId, h.HQQuantity))
+                .ToList();
+
+            var startingQuality = HQCalculator.CalculateStartingQuality(
+                recipeParams.Quality, recipeParams.MaterialQualityFactor,
+                recipeParams.Ingredients, hqInputs);
+
+            if (startingQuality > 0)
+                recipeParams = recipeParams with { StartingQuality = startingQuality };
+        }
 
         // Resolve crafter stats
         CrafterStats stats;

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, XCircle, FileDown, RotateCcw, Undo2, Link2 } from "lucide-react";
+import { CheckCircle, XCircle, FileDown, RotateCcw, Undo2, Link2, BookmarkPlus, Loader2, Check } from "lucide-react";
 import type { CraftingState, StepResult } from "@/types/simulator";
 
 interface CraftStatusOverlayProps {
@@ -10,6 +10,9 @@ interface CraftStatusOverlayProps {
   onReset: () => void;
   onUndo: () => void;
   onShareRotation?: () => void;
+  onSaveToLibrary?: () => void;
+  isSaving?: boolean;
+  saveSuccess?: boolean;
 }
 
 function getHQColor(pct: number): string {
@@ -27,6 +30,9 @@ export function CraftStatusOverlay({
   onReset,
   onUndo,
   onShareRotation,
+  onSaveToLibrary,
+  isSaving,
+  saveSuccess,
 }: CraftStatusOverlayProps) {
   if (state.status === "InProgress") return null;
 
@@ -116,6 +122,22 @@ export function CraftStatusOverlay({
           >
             <FileDown size={16} />
             Export Macro
+          </button>
+        )}
+        {isSuccess && onSaveToLibrary && (
+          <button
+            onClick={onSaveToLibrary}
+            disabled={isSaving || saveSuccess}
+            className="flex items-center gap-1.5 px-4 py-2 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-text-primary border border-border transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : saveSuccess ? (
+              <Check size={16} className="text-emerald-400" />
+            ) : (
+              <BookmarkPlus size={16} />
+            )}
+            {saveSuccess ? "Saved!" : "Save to Library"}
           </button>
         )}
         {onShareRotation && (

@@ -6,7 +6,7 @@ import { User, RefreshCw } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { JOB_INFO, getJobIconUrl, type GearJob } from "@/lib/gear-constants";
-import { refreshLodestone, ApiClientError } from "@/lib/api-client";
+import { refreshLodestone, ApiClientError, trackAnalyticsEvent } from "@/lib/api-client";
 import type { CharacterProfileDto } from "@/types/profile";
 
 interface ProfileHeaderProps {
@@ -25,6 +25,7 @@ export function ProfileHeader({ profile, onRefresh }: ProfileHeaderProps) {
     setRefreshError(null);
     try {
       await refreshLodestone();
+      trackAnalyticsEvent("profile_import", { source: "lodestone_refresh" });
       onRefresh();
     } catch (err) {
       if (err instanceof ApiClientError) {

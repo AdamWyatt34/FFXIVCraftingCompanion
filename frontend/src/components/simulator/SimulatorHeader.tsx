@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Map } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { CONDITION_COLORS } from "@/lib/action-icons";
@@ -55,6 +56,15 @@ export function SimulatorHeader({
             <span>Lv. {recipe.recipeLevel}</span>
           </div>
         </div>
+
+        {/* Journey link */}
+        <Link
+          href={`/recipes/${recipe.recipeId}/journey`}
+          className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-gold/15 text-gold text-xs font-medium hover:bg-gold/25 transition-colors shrink-0"
+        >
+          <Map size={14} />
+          Journey
+        </Link>
 
         {/* Inline step/condition on mobile */}
         <div className="flex items-center gap-1.5 sm:hidden text-xs shrink-0">

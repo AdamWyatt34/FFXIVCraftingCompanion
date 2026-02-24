@@ -40,6 +40,9 @@ public sealed class XivApiRecipeFields
     [JsonPropertyName("CanHq")]
     public bool CanHq { get; init; }
 
+    [JsonPropertyName("MaterialQualityFactor")]
+    public int MaterialQualityFactor { get; init; }
+
     /// <summary>
     /// Array of 8 ingredient references. Empty slots have row_id == 0.
     /// </summary>

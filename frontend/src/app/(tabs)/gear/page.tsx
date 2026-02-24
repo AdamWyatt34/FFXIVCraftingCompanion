@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, User, FlaskConical, SlidersHorizontal } from "lucide-react";
+import { Shield, User, FlaskConical, SlidersHorizontal, ClipboardList, Hammer } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useGearRecommendations } from "@/hooks/useGearRecommendations";
 import { useGearComparison } from "@/hooks/useGearComparison";
 import { useEquipmentSearch } from "@/hooks/useEquipmentSearch";
@@ -28,9 +29,10 @@ import {
 import { GearSlotExpandedContent, BottomSheet } from "@/components/gear";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { ErrorState, LoadingSkeleton } from "@/components/ui/LoadingStates";
-import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
+import { JOB_INFO, isCombatJob, type GearJob } from "@/lib/gear-constants";
 import { gearSetToProfileSlots } from "@/lib/slot-mapping";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import type { EquipmentDto, GearSlotDto } from "@/types/gear";
 
 function GearPageContent() {
@@ -66,6 +68,8 @@ function GearPageContent() {
     setLevel,
     profile,
     setProfile,
+    craftedOnly,
+    setCraftedOnly,
     profiles,
     isLoadingProfiles,
     data,
@@ -95,6 +99,12 @@ function GearPageContent() {
     slotName?: string;
   }>({ open: false, slots: {}, mode: "all" });
 
+  const router = useRouter();
+  const { setBreadcrumbs } = useBreadcrumbs();
+  useEffect(() => {
+    setBreadcrumbs([{ label: "Gear" }]);
+  }, [setBreadcrumbs]);
+
   const equipSearch = useEquipmentSearch(urlSearch ?? "");
   const isDesktop = useMediaQuery("(min-width: 640px)");
 
@@ -102,7 +112,9 @@ function GearPageContent() {
   const [expandedSearchIdx, setExpandedSearchIdx] = useState<number | null>(null);
 
   const jobInfo = job ? JOB_INFO[job as GearJob] : null;
-  const isDoH = jobInfo?.category === "DoH";
+  const jobCategory = jobInfo?.category;
+  const isDoH = jobCategory === "DoH";
+  const isCombat = jobCategory ? isCombatJob(jobCategory) : false;
 
   const handleApplyAll = () => {
     if (!data) return;
@@ -122,6 +134,24 @@ function GearPageContent() {
   const handleApplySuccess = () => {
     invalidateProfile();
     invalidateComparison();
+  };
+
+  const handlePlanFullSet = () => {
+    if (!data) return;
+    const craftableItems = data.slots
+      .filter((s) => s.recommendation?.source?.hasRecipe && s.recommendation?.source?.recipeId)
+      .map((s) => ({
+        recipeId: s.recommendation!.source!.recipeId!,
+        itemName: s.recommendation!.name,
+        iconUrl: s.recommendation!.iconUrl,
+        craftType: "",
+        recipeLevel: 0,
+        quantity: 1,
+      }));
+    if (craftableItems.length === 0) return;
+    // Store in sessionStorage for CraftPlanContext to pick up
+    sessionStorage.setItem("ffxiv_craft_plan", JSON.stringify(craftableItems));
+    router.push("/recipes/plan");
   };
 
   // Create a wrapper slot for the expanded search result
@@ -151,7 +181,7 @@ function GearPageContent() {
           <h1 className="text-xl font-bold">Gear Recommendations</h1>
         </div>
         <p className="text-text-secondary text-sm">
-          Find the best DoH/DoL equipment for your level
+          Find the best equipment for your job and level
         </p>
       </div>
 
@@ -179,8 +209,7 @@ function GearPageContent() {
               {/* Step 1: Job selector */}
               {!job && (
                 <p className="text-text-secondary text-center">
-                  Select your crafting or gathering job to see gear
-                  recommendations
+                  Select a job to see gear recommendations
                 </p>
               )}
               <JobSelector selectedJob={job} onJobSelect={setJob} />
@@ -198,6 +227,18 @@ function GearPageContent() {
                         isLoading={isLoadingProfiles}
                       />
                     </div>
+                    <button
+                      onClick={() => setCraftedOnly(!craftedOnly)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border shrink-0 ${
+                        craftedOnly
+                          ? "bg-gold/20 text-gold border-gold/40"
+                          : "bg-bg-elevated text-text-secondary border-border hover:border-gold/50 hover:text-text-primary"
+                      }`}
+                      title="Show only craftable equipment"
+                    >
+                      <Hammer size={14} />
+                      Crafted Only
+                    </button>
                   </div>
                 </div>
               )}
@@ -212,6 +253,7 @@ function GearPageContent() {
                       <StatsSummary
                         stats={data.totalStats}
                         isDoH={isDoH}
+                        jobCategory={jobCategory}
                         profileName={data.profile.displayName}
                       />
                     </div>
@@ -241,6 +283,13 @@ function GearPageContent() {
                           </Link>
                         </>
                       )}
+                      <button
+                        onClick={handlePlanFullSet}
+                        className="p-2 rounded-lg border border-border text-text-secondary hover:text-gold hover:border-gold transition-colors"
+                        title="Plan full set crafting"
+                      >
+                        <ClipboardList size={16} />
+                      </button>
                     </div>
                   </div>
                   {comparisonData?.upgradeSummary && (
@@ -288,7 +337,7 @@ function GearPageContent() {
                 />
               )}
               {!equipSearch.error &&
-                equipSearch.query.length >= 2 &&
+                (equipSearch.query.length >= 2 || equipSearch.jobFilter !== null || equipSearch.slotFilter !== null) &&
                 !equipSearch.isLoading &&
                 equipSearch.results.length === 0 && (
                   <GearEmptyState type="search-empty" />

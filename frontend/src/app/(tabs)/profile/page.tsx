@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { User, Shield, ChefHat, FlaskConical, Trash2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import {
   AuthGuard,
   ProfileHeader,
   ProfileStats,
   JobLevelsGrid,
-  ProfileSetupWizard,
   SavedListsTabs,
   ProfileLoadingSkeleton,
   ProfileRotationsList,
@@ -19,12 +20,22 @@ import { ErrorState } from "@/components/ui";
 import { deleteProfile, updateProfile } from "@/lib/api-client";
 import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
 
+const ProfileSetupWizard = dynamic(
+  () => import("@/components/profile/ProfileSetupWizard").then(m => ({ default: m.ProfileSetupWizard })),
+  { ssr: false, loading: () => <ProfileLoadingSkeleton /> },
+);
+
 function ProfileDashboardContent() {
   const { logout } = useAuth();
   const { profile, isLoading, error, retry, invalidate } = useProfile();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [switchJobOpen, setSwitchJobOpen] = useState(false);
+  const { setBreadcrumbs } = useBreadcrumbs();
+
+  useEffect(() => {
+    setBreadcrumbs([{ label: "Profile" }]);
+  }, [setBreadcrumbs]);
 
   if (isLoading) return <ProfileLoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={retry} />;

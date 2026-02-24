@@ -17,6 +17,7 @@ public class GatheringInfo
     public bool IsTimed { get; set; }
     public string? SpawnTimes { get; set; }
     public bool IsHidden { get; set; }
+    public NodeType NodeType { get; set; } = NodeType.Standard;
 
     public Item Item { get; set; } = null!;
 }

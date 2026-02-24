@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { Undo2, ChevronDown, ChevronUp } from "lucide-react";
 import { getActionIconUrl, ACTION_CATEGORY_COLORS } from "@/lib/action-icons";
 import { diffBuffs } from "@/lib/buff-utils";
@@ -39,12 +40,13 @@ function StepChip({
       } ${!step.succeeded ? "opacity-50" : ""}`}
       style={{ borderLeftWidth: 3, borderLeftColor: categoryColor }}
     >
-      <img
+      <Image
         src={getActionIconUrl(step.actionName)}
         alt={step.actionName}
         width={20}
         height={20}
         className={!step.succeeded ? "grayscale" : ""}
+        unoptimized
       />
       <span className="text-[10px] text-text-muted font-mono">
         {step.stepNumber}
@@ -70,11 +72,12 @@ function StepPopover({
     <div className="bg-bg-surface border border-border rounded-lg p-3 shadow-xl animate-scale-in">
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
-          <img
+          <Image
             src={getActionIconUrl(step.actionName)}
             alt=""
             width={16}
             height={16}
+            unoptimized
           />
           <span
             className={`text-sm font-semibold ${
@@ -284,11 +287,12 @@ export function StepHistoryMobile({
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    <img
+                    <Image
                       src={getActionIconUrl(step.actionName)}
                       alt=""
                       width={14}
                       height={14}
+                      unoptimized
                     />
                     <span
                       className={`text-xs font-semibold truncate ${

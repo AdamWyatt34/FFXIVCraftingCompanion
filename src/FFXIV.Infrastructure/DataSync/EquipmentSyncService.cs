@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace FFXIV.Infrastructure.DataSync;
 
 /// <summary>
-/// Syncs DoH/DoL equipment data from XIVAPI v2 Item sheet,
+/// Syncs equipment data from XIVAPI v2 Item sheet for all job categories,
 /// filtering by EquipSlotCategory and ClassJobCategory reference sheets.
 /// </summary>
 public sealed class EquipmentSyncService
@@ -24,7 +24,7 @@ public sealed class EquipmentSyncService
     private const int PageSize = 500;
 
     private const string EquipSlotCategoryFields = "MainHand,OffHand,Head,Body,Gloves,Legs,Feet,Ears,Neck,Wrists,FingerL,FingerR";
-    private const string ClassJobCategoryFieldString = "Name,CRP,BSM,ARM,GSM,LTW,WVR,ALC,CUL,MIN,BTN,FSH";
+    private const string ClassJobCategoryFieldString = "Name,CRP,BSM,ARM,GSM,LTW,WVR,ALC,CUL,MIN,BTN,FSH,PLD,WAR,DRK,GNB,WHM,SCH,AST,SGE,MNK,DRG,NIN,SAM,RPR,VPR,BRD,MCH,DNC,BLM,SMN,RDM,PCT";
     private const string EquipmentItemFields = "Name,Icon,CanBeHq,LevelItem@as(raw),Rarity,EquipSlotCategory@as(raw),ClassJobCategory@as(raw),LevelEquip,BaseParam@as(raw),BaseParamValue,MateriaSlotCount";
 
     public EquipmentSyncService(
@@ -47,14 +47,14 @@ public sealed class EquipmentSyncService
         var equipSlotLookup = await LoadEquipSlotCategoriesAsync(ct);
         _logger.LogInformation("Loaded {Count} equip slot categories", equipSlotLookup.Count);
 
-        var (classJobStrings, dohDolCategoryIds) = await LoadClassJobCategoriesAsync(ct);
-        _logger.LogInformation("Loaded {Count} class job categories ({DohDolCount} DoH/DoL)",
-            classJobStrings.Count, dohDolCategoryIds.Count);
+        var (classJobStrings, validCategoryIds) = await LoadClassJobCategoriesAsync(ct);
+        _logger.LogInformation("Loaded {Count} class job categories ({ValidCount} with jobs)",
+            classJobStrings.Count, validCategoryIds.Count);
 
         // Phase 2: Scan Item sheet with filtering
         var equipmentIds = new HashSet<int>();
         var totalSynced = await ScanAndUpsertEquipmentAsync(
-            equipSlotLookup, classJobStrings, dohDolCategoryIds, equipmentIds, ct);
+            equipSlotLookup, classJobStrings, validCategoryIds, equipmentIds, ct);
 
         // Phase 3: Link Recipe and Source data
         await LinkRecipeAndSourceDataAsync(equipmentIds, ct);
@@ -93,10 +93,10 @@ public sealed class EquipmentSyncService
         return result;
     }
 
-    private async Task<(Dictionary<int, string> Strings, HashSet<int> DohDolIds)> LoadClassJobCategoriesAsync(CancellationToken ct)
+    private async Task<(Dictionary<int, string> Strings, HashSet<int> ValidIds)> LoadClassJobCategoriesAsync(CancellationToken ct)
     {
         var strings = new Dictionary<int, string>();
-        var dohDolIds = new HashSet<int>();
+        var validIds = new HashSet<int>();
         int? afterRowId = null;
 
         while (true)
@@ -115,20 +115,20 @@ public sealed class EquipmentSyncService
                 if (!string.IsNullOrEmpty(jobString))
                 {
                     strings[row.RowId] = jobString;
-                    dohDolIds.Add(row.RowId);
+                    validIds.Add(row.RowId);
                 }
             }
 
             afterRowId = lastRowId;
         }
 
-        return (strings, dohDolIds);
+        return (strings, validIds);
     }
 
     private async Task<int> ScanAndUpsertEquipmentAsync(
         Dictionary<int, EquipSlot> equipSlotLookup,
         Dictionary<int, string> classJobStrings,
-        HashSet<int> dohDolCategoryIds,
+        HashSet<int> validCategoryIds,
         HashSet<int> equipmentIds,
         CancellationToken ct)
     {
@@ -154,7 +154,7 @@ public sealed class EquipmentSyncService
                 if (row.Fields.EquipSlotCategoryRowId == 0)
                     continue;
 
-                if (!dohDolCategoryIds.Contains(row.Fields.ClassJobCategoryRowId))
+                if (!validCategoryIds.Contains(row.Fields.ClassJobCategoryRowId))
                     continue;
 
                 if (!equipSlotLookup.TryGetValue(row.Fields.EquipSlotCategoryRowId, out var equipSlot))
@@ -171,12 +171,29 @@ public sealed class EquipmentSyncService
                     ClassJobCategory = classJobString,
                     EquipLevel = row.Fields.LevelEquip,
                     ItemLevel = row.Fields.LevelItem,
+                    // DoH/DoL stats
                     Craftsmanship = stats.Craftsmanship,
                     Control = stats.Control,
                     CP = stats.CP,
                     Gathering = stats.Gathering,
                     Perception = stats.Perception,
                     GP = stats.GP,
+                    // Combat stats
+                    Vitality = stats.Vitality,
+                    Strength = stats.Strength,
+                    Dexterity = stats.Dexterity,
+                    Intelligence = stats.Intelligence,
+                    Mind = stats.Mind,
+                    Piety = stats.Piety,
+                    Tenacity = stats.Tenacity,
+                    DirectHitRate = stats.DirectHitRate,
+                    CriticalHit = stats.CriticalHit,
+                    Determination = stats.Determination,
+                    SkillSpeed = stats.SkillSpeed,
+                    SpellSpeed = stats.SpellSpeed,
+                    PhysicalDamage = stats.PhysicalDamage,
+                    Defense = stats.Defense,
+                    MagicDefense = stats.MagicDefense,
                     MateriaSlots = row.Fields.MateriaSlotCount,
                     IconPath = XivApiDataMapper.BuildIconUrl(row.Fields.Icon),
                     CanBeHQ = row.Fields.CanBeHq,
@@ -276,12 +293,29 @@ public sealed class EquipmentSyncService
                 tracked.ClassJobCategory = equip.ClassJobCategory;
                 tracked.EquipLevel = equip.EquipLevel;
                 tracked.ItemLevel = equip.ItemLevel;
+                // DoH/DoL stats
                 tracked.Craftsmanship = equip.Craftsmanship;
                 tracked.Control = equip.Control;
                 tracked.CP = equip.CP;
                 tracked.Gathering = equip.Gathering;
                 tracked.Perception = equip.Perception;
                 tracked.GP = equip.GP;
+                // Combat stats
+                tracked.Vitality = equip.Vitality;
+                tracked.Strength = equip.Strength;
+                tracked.Dexterity = equip.Dexterity;
+                tracked.Intelligence = equip.Intelligence;
+                tracked.Mind = equip.Mind;
+                tracked.Piety = equip.Piety;
+                tracked.Tenacity = equip.Tenacity;
+                tracked.DirectHitRate = equip.DirectHitRate;
+                tracked.CriticalHit = equip.CriticalHit;
+                tracked.Determination = equip.Determination;
+                tracked.SkillSpeed = equip.SkillSpeed;
+                tracked.SpellSpeed = equip.SpellSpeed;
+                tracked.PhysicalDamage = equip.PhysicalDamage;
+                tracked.Defense = equip.Defense;
+                tracked.MagicDefense = equip.MagicDefense;
                 tracked.MateriaSlots = equip.MateriaSlots;
                 tracked.IconPath = equip.IconPath;
                 tracked.CanBeHQ = equip.CanBeHQ;

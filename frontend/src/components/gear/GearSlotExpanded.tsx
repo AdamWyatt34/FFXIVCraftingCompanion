@@ -10,6 +10,8 @@ import {
   Hammer,
   ArrowLeftRight,
   ArrowLeft,
+  Map,
+  ClipboardList,
 } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { SourceBadge } from "@/components/ui/SourceBadge";
@@ -32,17 +34,31 @@ export function getStatDiffs(
   alt: EquipmentDto,
   isDoH: boolean,
 ): { label: string; diff: number }[] {
-  const diffs = isDoH
-    ? [
-        { label: "Craft", diff: alt.stats.craftsmanship - rec.stats.craftsmanship },
-        { label: "Ctrl", diff: alt.stats.control - rec.stats.control },
-        { label: "CP", diff: alt.stats.cp - rec.stats.cp },
-      ]
-    : [
-        { label: "Gath", diff: alt.stats.gathering - rec.stats.gathering },
-        { label: "Perc", diff: alt.stats.perception - rec.stats.perception },
-        { label: "GP", diff: alt.stats.gp - rec.stats.gp },
-      ];
+  const isCombat = rec.stats.vitality > 0 || alt.stats.vitality > 0;
+  let diffs: { label: string; diff: number }[];
+
+  if (isDoH) {
+    diffs = [
+      { label: "Craft", diff: alt.stats.craftsmanship - rec.stats.craftsmanship },
+      { label: "Ctrl", diff: alt.stats.control - rec.stats.control },
+      { label: "CP", diff: alt.stats.cp - rec.stats.cp },
+    ];
+  } else if (isCombat) {
+    diffs = [
+      { label: "DMG", diff: alt.stats.physicalDamage - rec.stats.physicalDamage },
+      { label: "VIT", diff: alt.stats.vitality - rec.stats.vitality },
+      { label: "Crit", diff: alt.stats.criticalHit - rec.stats.criticalHit },
+      { label: "Det", diff: alt.stats.determination - rec.stats.determination },
+      { label: "DH", diff: alt.stats.directHitRate - rec.stats.directHitRate },
+      { label: "DEF", diff: alt.stats.defense - rec.stats.defense },
+    ];
+  } else {
+    diffs = [
+      { label: "Gath", diff: alt.stats.gathering - rec.stats.gathering },
+      { label: "Perc", diff: alt.stats.perception - rec.stats.perception },
+      { label: "GP", diff: alt.stats.gp - rec.stats.gp },
+    ];
+  }
   return diffs.filter((d) => d.diff !== 0);
 }
 
@@ -63,17 +79,31 @@ export function GearSlotExpandedContent({
   const rarityClass =
     RARITY_COLOR_CLASS[item.rarityName] ?? "text-text-primary";
 
-  const statEntries = isDoH
-    ? [
-        { label: "Craftsmanship", value: item.stats.craftsmanship },
-        { label: "Control", value: item.stats.control },
-        { label: "CP", value: item.stats.cp },
-      ]
-    : [
-        { label: "Gathering", value: item.stats.gathering },
-        { label: "Perception", value: item.stats.perception },
-        { label: "GP", value: item.stats.gp },
-      ];
+  const isCombatItem = item.stats.vitality > 0;
+  let statEntries: { label: string; value: number }[];
+
+  if (isDoH) {
+    statEntries = [
+      { label: "Craftsmanship", value: item.stats.craftsmanship },
+      { label: "Control", value: item.stats.control },
+      { label: "CP", value: item.stats.cp },
+    ];
+  } else if (isCombatItem) {
+    statEntries = [
+      { label: "Weapon DMG", value: item.stats.physicalDamage },
+      { label: "Vitality", value: item.stats.vitality },
+      { label: "Defense", value: item.stats.defense },
+      { label: "Crit", value: item.stats.criticalHit },
+      { label: "Det", value: item.stats.determination },
+      { label: "Direct Hit", value: item.stats.directHitRate },
+    ].filter(e => e.value > 0);
+  } else {
+    statEntries = [
+      { label: "Gathering", value: item.stats.gathering },
+      { label: "Perception", value: item.stats.perception },
+      { label: "GP", value: item.stats.gp },
+    ];
+  }
 
   return (
     <div className="space-y-4">
@@ -158,14 +188,34 @@ export function GearSlotExpandedContent({
             </span>
           </div>
           {item.source.hasRecipe && item.source.recipeId && (
-            <Link
-              href={`/recipes/${item.source.recipeId}?from=gear`}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-gold/15 text-gold font-medium hover:bg-gold/25 transition-colors text-sm"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Hammer size={16} />
-              View Recipe & Materials
-            </Link>
+            <div className="space-y-2">
+              <Link
+                href={`/recipes/${item.source.recipeId}?from=gear`}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-gold/15 text-gold font-medium hover:bg-gold/25 transition-colors text-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Hammer size={16} />
+                View Recipe & Materials
+              </Link>
+              <div className="flex gap-2">
+                <Link
+                  href={`/recipes/${item.source.recipeId}/journey`}
+                  className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg bg-bg-elevated text-text-secondary font-medium hover:text-gold transition-colors text-sm border border-border"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Map size={14} />
+                  Start Journey
+                </Link>
+                <Link
+                  href={`/recipes/plan`}
+                  className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg bg-bg-elevated text-text-secondary font-medium hover:text-gold transition-colors text-sm border border-border"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ClipboardList size={14} />
+                  Add to Plan
+                </Link>
+              </div>
+            </div>
           )}
           {item.source.vendorName && item.source.cost && (
             <p className="text-sm text-text-secondary">

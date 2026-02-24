@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
 import { ChevronRight, ChevronDown, Maximize2, Minimize2 } from "lucide-react";
-import { ItemIcon, SourceBadge } from "@/components/ui";
+import { ItemIcon, ItemLink, SourceBadge } from "@/components/ui";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { MaterialTreeNodeDto, CraftType } from "@/types/api";
 
@@ -161,19 +160,14 @@ function TreeNode({
 
         <ItemIcon iconUrl={node.iconUrl} alt={node.itemName} size="sm" />
 
-        {node.recipe ? (
-          <Link
-            href={`/recipes/${node.recipe.recipeId}`}
-            className="text-sm text-text-primary hover:text-gold transition-colors truncate"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {node.itemName}
-          </Link>
-        ) : (
-          <span className="text-sm text-text-primary truncate">
-            {node.itemName}
-          </span>
-        )}
+        <ItemLink
+          itemId={node.itemId}
+          itemName={node.itemName}
+          iconUrl={node.iconUrl}
+          recipeId={node.recipe?.recipeId}
+          showIcon={false}
+          className="truncate"
+        />
 
         <span className="text-sm text-text-muted font-mono shrink-0">
           x{node.quantity}

@@ -1,5 +1,10 @@
 using FFXIV.Application.CraftingEngine;
+using FFXIV.Application.CraftPlans;
+using FFXIV.Application.Gathering;
 using FFXIV.Application.Gear;
+using FFXIV.Application.Journey;
+using FFXIV.Application.Market;
+using FFXIV.Application.Notifications;
 using FFXIV.Application.Recipes;
 using FFXIV.Domain.CraftingEngine;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +25,12 @@ public static class DependencyInjection
         services.AddScoped<IGearRecommendationService, GearRecommendationService>();
         services.AddScoped<IRecipeParameterFactory, RecipeParameterFactory>();
         services.AddSingleton<ICraftingSimulator, CraftingSimulator>();
+        services.AddScoped<IStatSufficiencyService, StatSufficiencyService>();
+        services.AddScoped<IContextualLinkService, ContextualLinkService>();
+        services.AddScoped<ICraftPlanResolver, CraftPlanResolver>();
+        services.AddScoped<ICostEstimationService, CostEstimationService>();
+        services.AddScoped<IGatheringGuideService, GatheringGuideService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

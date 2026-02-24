@@ -57,17 +57,29 @@ public class RecipeRepository : IRecipeRepository
             .Include(r => r.ResultItem)
             .Include(r => r.Ingredients)
                 .ThenInclude(ri => ri.Item)
-            .Where(r => EF.Functions.ILike(r.ResultItem.Name, pattern));
+            .Where(r => EF.Functions.Like(r.ResultItem.Name, pattern));
 
         var totalCount = await baseQuery.CountAsync(cancellationToken);
 
         var recipes = await baseQuery
-            .OrderBy(r => EF.Functions.ILike(r.ResultItem.Name, startsWithPattern) ? 0 : 1)
+            .OrderBy(r => EF.Functions.Like(r.ResultItem.Name, startsWithPattern) ? 0 : 1)
             .ThenBy(r => r.ResultItem.Name)
             .Skip(offset)
             .Take(limit)
             .ToListAsync(cancellationToken);
 
         return (recipes, totalCount);
+    }
+
+    public async Task<IReadOnlyList<Recipe>> GetRecipesUsingIngredientAsync(
+        int ingredientItemId, int limit = 20, CancellationToken cancellationToken = default)
+    {
+        return await _db.Recipes
+            .AsNoTracking()
+            .Include(r => r.ResultItem)
+            .Where(r => r.Ingredients.Any(i => i.ItemId == ingredientItemId))
+            .OrderBy(r => r.RecipeLevel)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
     }
 }

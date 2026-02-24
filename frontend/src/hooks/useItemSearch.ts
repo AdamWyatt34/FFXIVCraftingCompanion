@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebounce } from "./useDebounce";
-import { searchItems, ApiClientError } from "@/lib/api-client";
+import { searchItems, ApiClientError, trackAnalyticsEvent } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE, MIN_SEARCH_LENGTH } from "@/lib/constants";
 import type { ItemDto } from "@/types/api";
 
@@ -93,6 +93,9 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
     )
       .then((result) => {
         if (controller.signal.aborted) return;
+        if (isFirstPage) {
+          trackAnalyticsEvent("recipe_search", { query: debouncedQuery, craftType, totalCount: result.totalCount });
+        }
         setFetchResult((prev) => ({
           items: isFirstPage
             ? result.items

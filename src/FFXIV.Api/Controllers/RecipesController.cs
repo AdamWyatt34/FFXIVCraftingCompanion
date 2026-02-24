@@ -1,6 +1,15 @@
 using FFXIV.Application.DTOs;
+using FFXIV.Application.Gathering;
+using FFXIV.Application.Gathering.DTOs;
+using FFXIV.Application.Journey.DTOs;
+using FFXIV.Application.Journey.Queries;
+using FFXIV.Application.Market.DTOs;
+using FFXIV.Application.Market.Queries;
 using FFXIV.Application.Recipes.DTOs;
 using FFXIV.Application.Recipes.Queries;
+using FFXIV.Domain.Constants;
+using FFXIV.Domain.Enums;
+using FFXIV.Domain.Interfaces;
 using FFXIV.Domain.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -16,10 +25,14 @@ namespace FFXIV.Api.Controllers;
 public class RecipesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IGatheringGuideService _gatheringGuide;
 
-    public RecipesController(IMediator mediator)
+    public RecipesController(IMediator mediator, ICurrentUserService currentUser, IGatheringGuideService gatheringGuide)
     {
         _mediator = mediator;
+        _currentUser = currentUser;
+        _gatheringGuide = gatheringGuide;
     }
 
     /// <summary>
@@ -46,6 +59,7 @@ public class RecipesController : ControllerBase
     /// </summary>
     /// <param name="id">The recipe ID.</param>
     /// <param name="quantity">How many of the item to craft (1-999, default: 1).</param>
+    /// <param name="includeGathering">When true, includes a gathering guide with zone grouping and timed nodes.</param>
     /// <response code="200">Returns the full material tree and shopping list.</response>
     /// <response code="400">Invalid quantity.</response>
     /// <response code="404">Recipe not found.</response>
@@ -53,7 +67,7 @@ public class RecipesController : ControllerBase
     [ProducesResponseType(typeof(MaterialTreeResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetMaterialTree(int id, [FromQuery] int quantity = 1)
+    public async Task<IActionResult> GetMaterialTree(int id, [FromQuery] int quantity = 1, [FromQuery] bool includeGathering = false)
     {
         if (quantity is < 1 or > 999)
             return BadRequest(new { error = "Quantity must be between 1 and 999." });
@@ -62,7 +76,30 @@ public class RecipesController : ControllerBase
         if (result is null)
             return NotFound(new { error = $"Recipe {id} not found." });
 
-        return Ok(result);
+        if (!includeGathering)
+            return Ok(result);
+
+        var materials = ExtractGatheredMaterials(result.ShoppingList, result.CrystalRequirements);
+        var guide = await _gatheringGuide.GenerateGuideAsync(materials);
+        return Ok(new MaterialTreeWithGatheringDto(result, GatheringGuideMapper.ToDto(guide)));
+    }
+
+    private static List<GatheredMaterialInput> ExtractGatheredMaterials(
+        List<ShoppingListItemDto> shoppingList,
+        List<ShoppingListItemDto> crystals)
+    {
+        var materials = new List<GatheredMaterialInput>();
+
+        foreach (var item in shoppingList)
+        {
+            if (item.PrimarySource == nameof(ItemSourceType.Gathered))
+                materials.Add(new GatheredMaterialInput(item.ItemId, item.TotalQuantity));
+        }
+
+        foreach (var crystal in crystals)
+            materials.Add(new GatheredMaterialInput(crystal.ItemId, crystal.TotalQuantity));
+
+        return materials;
     }
 
     /// <summary>
@@ -106,5 +143,82 @@ public class RecipesController : ControllerBase
 
         var result = await _mediator.Send(new GetRecipeTreeQuery(itemId, quantity));
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Get a cost estimate for crafting a recipe, with market board and vendor prices.
+    /// </summary>
+    /// <param name="id">The recipe ID.</param>
+    /// <param name="world">The world or data center name (e.g., "Adamantoise" or "Aether").</param>
+    /// <param name="quantity">How many of the item to craft (1-999, default: 1).</param>
+    /// <param name="useMinPrice">Use minimum listing price instead of average (default: false).</param>
+    /// <param name="includeCraftVsBuy">Include craft vs. buy analysis (default: true).</param>
+    /// <param name="includeGatheredPrices">Include MB prices for gathered items (default: false).</param>
+    /// <response code="200">Returns the cost estimate.</response>
+    /// <response code="400">Invalid parameters.</response>
+    /// <response code="404">Recipe not found.</response>
+    [HttpGet("{id:int}/cost")]
+    [ProducesResponseType(typeof(CostEstimateDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCostEstimate(
+        int id,
+        [FromQuery] string world,
+        [FromQuery] int quantity = 1,
+        [FromQuery] bool useMinPrice = false,
+        [FromQuery] bool includeCraftVsBuy = true,
+        [FromQuery] bool includeGatheredPrices = true)
+    {
+        if (string.IsNullOrWhiteSpace(world) || !FfxivServers.IsValidWorldOrDc(world))
+            return BadRequest(new { error = "Invalid or missing world/data center name." });
+
+        if (quantity is < 1 or > 999)
+            return BadRequest(new { error = "Quantity must be between 1 and 999." });
+
+        var options = new CostEstimationOptions
+        {
+            UseMinPrice = useMinPrice,
+            IncludeCraftVsBuyAnalysis = includeCraftVsBuy,
+            IncludeGatheredItemPrices = includeGatheredPrices,
+        };
+
+        var result = await _mediator.Send(new GetRecipeCostQuery(id, quantity, world, options));
+        if (result is null)
+            return NotFound(new { error = $"Recipe {id} not found." });
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Analyze stat sufficiency for a recipe given crafter stats or profile.
+    /// </summary>
+    /// <param name="id">The recipe ID.</param>
+    /// <param name="request">Stats to analyze, or set useProfileStats to true.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns sufficiency analysis.</response>
+    /// <response code="400">Invalid input.</response>
+    /// <response code="401">Authentication required for profile stats.</response>
+    /// <response code="404">Recipe or profile not found.</response>
+    [HttpPost("{id:int}/sufficiency")]
+    [ProducesResponseType(typeof(StatSufficiencyResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AnalyzeSufficiency(
+        int id, [FromBody] SufficiencyRequestDto request, CancellationToken ct = default)
+    {
+        var userId = _currentUser.IsAuthenticated ? _currentUser.UserId : null;
+        var (result, error, statusCode) = await _mediator.Send(
+            new AnalyzeSufficiencyQuery(id, request, userId), ct);
+
+        if (result is not null)
+            return Ok(result);
+
+        return statusCode switch
+        {
+            401 => Unauthorized(new { error }),
+            404 => NotFound(new { error }),
+            _ => BadRequest(new { error }),
+        };
     }
 }

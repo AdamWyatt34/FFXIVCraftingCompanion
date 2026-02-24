@@ -15,6 +15,8 @@ interface UseGearRecommendationsReturn {
   setLevel: (level: number) => void;
   profile: string;
   setProfile: (profile: string) => void;
+  craftedOnly: boolean;
+  setCraftedOnly: (v: boolean) => void;
   profiles: StatWeightProfileDto[];
   isLoadingProfiles: boolean;
   data: GearSetDto | null;
@@ -39,6 +41,7 @@ export function useGearRecommendations(
   const [job, setJob] = useState<string | null>(options?.initialJob ?? null);
   const [level, setLevel] = useState(options?.initialLevel ?? 1);
   const [profile, setProfile] = useState(options?.initialProfile ?? "Balanced");
+  const [craftedOnly, setCraftedOnly] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   const debouncedLevel = useDebounce(level, 500);
@@ -91,7 +94,7 @@ export function useGearRecommendations(
     key: string;
   }>({ data: null, error: null, key: "" });
 
-  const recKey = job && debouncedLevel >= 1 ? `${job}:${debouncedLevel}:${profile}` : "";
+  const recKey = job && debouncedLevel >= 1 ? `${job}:${debouncedLevel}:${profile}:${craftedOnly}` : "";
   const cachedRec = recKey ? (recCache.get(recKey) ?? null) : null;
   const isLoading = !cachedRec && recResult.key !== recKey && !!recKey;
   // Stale-while-revalidate: keep previous results visible while loading new ones
@@ -107,7 +110,7 @@ export function useGearRecommendations(
     const controller = new AbortController();
     recAbortRef.current = controller;
 
-    getGearRecommendations(job, debouncedLevel, profile, controller.signal)
+    getGearRecommendations(job, debouncedLevel, profile, controller.signal, craftedOnly)
       .then((result) => {
         if (controller.signal.aborted) return;
         recCache.set(recKey, result);
@@ -124,7 +127,7 @@ export function useGearRecommendations(
       });
 
     return () => controller.abort();
-  }, [recKey, job, debouncedLevel, profile, retryCount]);
+  }, [recKey, job, debouncedLevel, profile, craftedOnly, retryCount]);
 
   const retry = useCallback(() => {
     if (recKey) recCache.delete(recKey);
@@ -136,6 +139,8 @@ export function useGearRecommendations(
   const jobLevels = options?.jobLevels;
   const handleSetJob = useCallback((newJob: string | null) => {
     setJob(newJob);
+    // Clear stale display — show loading spinner instead of old job's gear
+    setRecResult({ data: null, error: null, key: "" });
     if (newJob) {
       const info = JOB_INFO[newJob as GearJob];
       if (info) {
@@ -156,6 +161,8 @@ export function useGearRecommendations(
     setLevel,
     profile,
     setProfile,
+    craftedOnly,
+    setCraftedOnly,
     profiles,
     isLoadingProfiles,
     data,

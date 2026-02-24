@@ -12,12 +12,12 @@ public class SharedRotationConfiguration : IEntityTypeConfiguration<SharedRotati
         builder.ToTable("SharedRotations");
 
         builder.HasKey(r => r.Id);
-        builder.Property(r => r.Id).UseIdentityByDefaultColumn();
+        builder.Property(r => r.Id).ValueGeneratedOnAdd();
 
         builder.Property(r => r.UserId).HasMaxLength(450);
         builder.Property(r => r.Name).HasMaxLength(256);
         builder.Property(r => r.Notes).HasMaxLength(2048);
-        builder.Property(r => r.ActionIds).HasColumnType("jsonb");
+        builder.Property(r => r.ActionIds);
         builder.Property(r => r.Source).HasConversion<string>();
         builder.Property(r => r.Algorithm).HasMaxLength(64);
         builder.Property(r => r.QualityPercent).HasPrecision(5, 2);

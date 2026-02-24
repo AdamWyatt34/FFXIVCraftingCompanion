@@ -4,6 +4,11 @@ import { ItemIcon } from "@/components/ui/ItemIcon";
 import {
   DOH_JOBS,
   DOL_JOBS,
+  TANK_JOBS,
+  HEALER_JOBS,
+  MELEE_DPS_JOBS,
+  RANGED_DPS_JOBS,
+  MAGIC_DPS_JOBS,
   JOB_INFO,
   getJobIconUrl,
   type GearJob,
@@ -19,6 +24,11 @@ export function JobSelector({ selectedJob, onJobSelect }: JobSelectorProps) {
     <div className="space-y-4">
       <JobRow label="Disciples of the Hand" jobs={DOH_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
       <JobRow label="Disciples of the Land" jobs={DOL_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      <JobRow label="Tank" jobs={TANK_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      <JobRow label="Healer" jobs={HEALER_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      <JobRow label="Melee DPS" jobs={MELEE_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      <JobRow label="Ranged DPS" jobs={RANGED_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      <JobRow label="Magic DPS" jobs={MAGIC_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
     </div>
   );
 }

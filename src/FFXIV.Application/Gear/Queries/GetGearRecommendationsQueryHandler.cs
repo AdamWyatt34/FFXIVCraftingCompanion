@@ -23,14 +23,15 @@ public sealed class GetGearRecommendationsQueryHandler
     {
         var job = request.Job.ToUpperInvariant();
         var profile = request.Profile.ToLowerInvariant();
-        var cacheKey = $"gearset:{job}:{request.Level}:{profile}";
+        var craftedSuffix = request.CraftedOnly ? ":crafted" : "";
+        var cacheKey = $"gearset:{job}:{request.Level}:{profile}{craftedSuffix}";
 
         var cached = await _cache.GetAsync<GearSetDto>(cacheKey, cancellationToken);
         if (cached is not null)
             return cached;
 
         var gearSet = await _gearService.GetRecommendationsAsync(
-            job, request.Level, profile, cancellationToken);
+            job, request.Level, profile, request.CraftedOnly, cancellationToken);
 
         var dto = GearMapper.ToDto(gearSet);
 

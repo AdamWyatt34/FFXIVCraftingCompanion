@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { SolveRequest } from "@/types/solver";
-import type { CrafterStatsInput } from "@/types/simulator";
+import type { CrafterStatsInput, HQIngredientInput } from "@/types/simulator";
 import { SOLVER_CONSTANTS, ALGORITHM_LABELS } from "@/lib/constants";
 
 export interface SolverConfig {
@@ -21,7 +21,7 @@ export interface UseSolverConfigReturn {
   setTargetQuality: (pct: number | null) => void;
   setAllowUnsafe: (allow: boolean) => void;
   resetToDefaults: () => void;
-  buildSolveRequest: (recipeId: number, stats: CrafterStatsInput) => SolveRequest;
+  buildSolveRequest: (recipeId: number, stats: CrafterStatsInput, hqIngredients?: HQIngredientInput[]) => SolveRequest;
   summaryText: string;
 }
 
@@ -103,7 +103,7 @@ export function useSolverConfig(): UseSolverConfigReturn {
   }, []);
 
   const buildSolveRequest = useCallback(
-    (recipeId: number, stats: CrafterStatsInput): SolveRequest => {
+    (recipeId: number, stats: CrafterStatsInput, hqIngredients?: HQIngredientInput[]): SolveRequest => {
       return {
         recipeId,
         stats,
@@ -121,6 +121,7 @@ export function useSolverConfig(): UseSolverConfigReturn {
               ? SOLVER_CONSTANTS.QUICK_SOLVE_TIMEOUT_MS
               : config.timeBudgetMs,
         },
+        hqIngredients: hqIngredients?.length ? hqIngredients : undefined,
       };
     },
     [config],

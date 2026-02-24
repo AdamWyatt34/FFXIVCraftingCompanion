@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Map, ShoppingCart } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { RecipeDto, CraftType } from "@/types/api";
@@ -82,6 +84,24 @@ export function RecipeParams({ recipe, stats }: RecipeParamsProps) {
           colorClass={getStatColor(stats?.control, recipe.requiredControl)}
           hint={getStatHint(stats?.control, recipe.requiredControl)}
         />
+      </div>
+
+      {/* Navigation links */}
+      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
+        <Link
+          href={`/recipes/${recipe.recipeId}`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:text-gold transition-colors"
+        >
+          <ShoppingCart size={14} />
+          View Materials
+        </Link>
+        <Link
+          href={`/recipes/${recipe.recipeId}/journey`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gold/15 text-gold hover:bg-gold/25 transition-colors"
+        >
+          <Map size={14} />
+          Start Journey
+        </Link>
       </div>
     </div>
   );

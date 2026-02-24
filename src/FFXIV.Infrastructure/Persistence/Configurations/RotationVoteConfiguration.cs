@@ -12,7 +12,7 @@ public class RotationVoteConfiguration : IEntityTypeConfiguration<RotationVote>
         builder.ToTable("RotationVotes");
 
         builder.HasKey(v => v.Id);
-        builder.Property(v => v.Id).UseIdentityByDefaultColumn();
+        builder.Property(v => v.Id).ValueGeneratedOnAdd();
 
         builder.Property(v => v.UserId).HasMaxLength(450);
 
@@ -21,7 +21,7 @@ public class RotationVoteConfiguration : IEntityTypeConfiguration<RotationVote>
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(v => v.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(v => v.Rotation)
             .WithMany()

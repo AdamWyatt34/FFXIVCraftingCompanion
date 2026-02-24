@@ -58,11 +58,89 @@ public static class StatWeightProfiles
         GpWeight = 1.0
     };
 
+    // === Combat profiles ===
+
+    public static readonly StatWeightProfile TankBalanced = new()
+    {
+        Name = "TankBalanced",
+        Description = "Balanced tank gear: weapon damage and vitality priority, with defensive substats.",
+        PhysicalDamageWeight = 5.0,
+        VitalityWeight = 2.0,
+        DefenseWeight = 1.5,
+        MagicDefenseWeight = 1.0,
+        StrengthWeight = 1.5,
+        CriticalHitWeight = 1.2,
+        DeterminationWeight = 1.0,
+        TenacityWeight = 0.8,
+        DirectHitWeight = 0.6,
+        SkillSpeedWeight = 0.4
+    };
+
+    public static readonly StatWeightProfile HealerBalanced = new()
+    {
+        Name = "HealerBalanced",
+        Description = "Balanced healer gear: Mind and Critical Hit priority for strong heals and DPS.",
+        PhysicalDamageWeight = 5.0,
+        MindWeight = 2.0,
+        VitalityWeight = 1.0,
+        CriticalHitWeight = 1.5,
+        DeterminationWeight = 1.2,
+        PietyWeight = 0.8,
+        SpellSpeedWeight = 0.6,
+        DirectHitWeight = 0.5
+    };
+
+    public static readonly StatWeightProfile MeleeDPSBalanced = new()
+    {
+        Name = "MeleeDPSBalanced",
+        Description = "Balanced melee DPS gear: weapon damage > main stat > crit > direct hit.",
+        PhysicalDamageWeight = 5.0,
+        StrengthWeight = 2.0,
+        DexterityWeight = 2.0,
+        CriticalHitWeight = 1.5,
+        DirectHitWeight = 1.2,
+        DeterminationWeight = 1.0,
+        SkillSpeedWeight = 0.5,
+        VitalityWeight = 0.3
+    };
+
+    public static readonly StatWeightProfile RangedDPSBalanced = new()
+    {
+        Name = "RangedDPSBalanced",
+        Description = "Balanced ranged DPS gear: weapon damage > Dexterity > crit > direct hit.",
+        PhysicalDamageWeight = 5.0,
+        DexterityWeight = 2.0,
+        CriticalHitWeight = 1.5,
+        DirectHitWeight = 1.2,
+        DeterminationWeight = 1.0,
+        SkillSpeedWeight = 0.5,
+        VitalityWeight = 0.3
+    };
+
+    public static readonly StatWeightProfile MagicDPSBalanced = new()
+    {
+        Name = "MagicDPSBalanced",
+        Description = "Balanced magic DPS gear: weapon damage > Intelligence > crit > direct hit.",
+        PhysicalDamageWeight = 5.0,
+        IntelligenceWeight = 2.0,
+        CriticalHitWeight = 1.5,
+        DirectHitWeight = 1.2,
+        DeterminationWeight = 1.0,
+        SpellSpeedWeight = 0.5,
+        VitalityWeight = 0.3
+    };
+
     public static readonly IReadOnlyList<StatWeightProfile> DoHProfiles =
         [Balanced, ProgressFocused, QualityFocused, CpFocused];
 
     public static readonly IReadOnlyList<StatWeightProfile> DoLProfiles =
         [GatheringBalanced, PerceptionFocused];
+
+    public static readonly IReadOnlyList<StatWeightProfile> TankProfiles = [TankBalanced];
+    public static readonly IReadOnlyList<StatWeightProfile> HealerProfiles = [HealerBalanced];
+    public static readonly IReadOnlyList<StatWeightProfile> MeleeDPSProfiles = [MeleeDPSBalanced];
+    public static readonly IReadOnlyList<StatWeightProfile> RangedDPSProfiles = [RangedDPSBalanced];
+    public static readonly IReadOnlyList<StatWeightProfile> MagicDPSProfiles = [MagicDPSBalanced];
 
     private static readonly Dictionary<string, StatWeightProfile> AllProfiles =
         new(StringComparer.OrdinalIgnoreCase)
@@ -72,9 +150,24 @@ public static class StatWeightProfiles
             ["QualityFocused"] = QualityFocused,
             ["CpFocused"] = CpFocused,
             ["GatheringBalanced"] = GatheringBalanced,
-            ["PerceptionFocused"] = PerceptionFocused
+            ["PerceptionFocused"] = PerceptionFocused,
+            ["TankBalanced"] = TankBalanced,
+            ["HealerBalanced"] = HealerBalanced,
+            ["MeleeDPSBalanced"] = MeleeDPSBalanced,
+            ["RangedDPSBalanced"] = RangedDPSBalanced,
+            ["MagicDPSBalanced"] = MagicDPSBalanced
         };
 
     public static StatWeightProfile GetProfile(string name) =>
         AllProfiles.GetValueOrDefault(name, Balanced);
+
+    public static IReadOnlyList<StatWeightProfile> GetProfilesForRole(CombatRole role) => role switch
+    {
+        CombatRole.Tank => TankProfiles,
+        CombatRole.Healer => HealerProfiles,
+        CombatRole.MeleeDPS => MeleeDPSProfiles,
+        CombatRole.RangedDPS => RangedDPSProfiles,
+        CombatRole.MagicDPS => MagicDPSProfiles,
+        _ => [TankBalanced]
+    };
 }

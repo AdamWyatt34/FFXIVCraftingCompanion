@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pin, Trash2, ShoppingCart, Shield, ClipboardList, Heart, ExternalLink } from "lucide-react";
+import { Pin, Trash2, ShoppingCart, Shield, ClipboardList, Heart, ExternalLink, Map } from "lucide-react";
 import { useSavedLists } from "@/hooks/useSavedLists";
 import { useFavorites } from "@/hooks/useFavorites";
 import { ItemIcon } from "@/components/ui/ItemIcon";
@@ -119,17 +119,13 @@ function SavedListItem({
     day: "numeric",
   });
 
-  const browseLink = list.type === "ShoppingList"
-    ? "/recipes"
-    : list.type === "GearSet"
-      ? "/gear"
-      : "/recipes";
+  const browseLink = `/profile/lists/${list.id}`;
 
   const browseLinkLabel = list.type === "ShoppingList"
-    ? "Browse recipes"
+    ? "View List"
     : list.type === "GearSet"
-      ? "Gear browser"
-      : "Browse recipes";
+      ? "View Gear Set"
+      : "View Plan";
 
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-surface rounded-lg border border-border">
@@ -228,6 +224,14 @@ function FavoritesTabContent() {
               <span>Lv. {fav.recipeLevel}</span>
             </div>
           </div>
+          <Link
+            href={`/recipes/${fav.recipeId}/journey`}
+            onClick={(e) => e.stopPropagation()}
+            className="p-1.5 rounded text-text-muted hover:text-gold transition-colors shrink-0"
+            aria-label="Start journey"
+          >
+            <Map size={14} />
+          </Link>
           <button
             onClick={(e) => {
               e.preventDefault();

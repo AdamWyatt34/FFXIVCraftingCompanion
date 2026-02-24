@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChefHat, X } from "lucide-react";
+import { ChefHat, X, ClipboardList } from "lucide-react";
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import {
   SearchBar,
   ItemCard,
@@ -11,8 +12,10 @@ import {
   EmptyState,
   LoadingSpinner,
 } from "@/components/ui";
+import Link from "next/link";
 import { useItemSearch } from "@/hooks/useItemSearch";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useCraftPlanContext } from "@/contexts/CraftPlanContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { MIN_SEARCH_LENGTH, CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { CraftType } from "@/types/api";
@@ -21,7 +24,13 @@ function RecipesPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
 
+  const { setBreadcrumbs } = useBreadcrumbs();
+  useEffect(() => {
+    setBreadcrumbs([{ label: "Recipes" }]);
+  }, [setBreadcrumbs]);
+
   const { isFavorited } = useFavorites();
+  const { planItemCount } = useCraftPlanContext();
 
   const {
     query,
@@ -61,12 +70,28 @@ function RecipesPageContent() {
     <div className="flex flex-col h-full">
       {/* Sticky search bar */}
       <div className="sticky top-14 z-30 bg-bg-primary p-4 border-b border-border">
-        <SearchBar
-          value={query}
-          onChange={setQuery}
-          isLoading={isLoading}
-          autoFocus
-        />
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              isLoading={isLoading}
+              autoFocus
+            />
+          </div>
+          <Link
+            href="/recipes/plan"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-text-secondary hover:text-gold transition-colors whitespace-nowrap"
+          >
+            <ClipboardList size={16} />
+            Craft Plan
+            {planItemCount > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.5 text-xs font-bold bg-gold/20 text-gold rounded-full">
+                {planItemCount}
+              </span>
+            )}
+          </Link>
+        </div>
         {/* Active craft type filter chip */}
         {activeCraftInfo && (
           <div className="flex items-center gap-2 mt-2">

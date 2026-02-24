@@ -23,4 +23,10 @@ public record RecipeParameters
 
     // Starting quality from HQ materials (if any)
     public int StartingQuality { get; init; } = 0;
+
+    // HQ ingredient data
+    public int MaterialQualityFactor { get; init; } = 0;
+    public List<RecipeIngredientInfo> Ingredients { get; init; } = [];
 }
+
+public sealed record RecipeIngredientInfo(int ItemId, int Quantity, bool CanBeHQ);

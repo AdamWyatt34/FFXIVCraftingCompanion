@@ -44,4 +44,15 @@ export interface StatDifferenceTotalDto {
   gathering: number;
   perception: number;
   gp: number;
+  vitality: number;
+  strength: number;
+  dexterity: number;
+  intelligence: number;
+  mind: number;
+  physicalDamage: number;
+  criticalHit: number;
+  determination: number;
+  directHitRate: number;
+  defense: number;
+  magicDefense: number;
 }

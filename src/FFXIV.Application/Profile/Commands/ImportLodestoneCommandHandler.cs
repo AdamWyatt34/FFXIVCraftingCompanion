@@ -123,14 +123,14 @@ public sealed class ImportLodestoneCommandHandler
             profile.ActiveJobLevel = data.ActiveJobLevel;
         }
 
-        // Merge job levels (keep existing, update with Lodestone data)
+        // Merge job levels — create new dict to trigger EF ValueComparer change detection
+        var mergedLevels = new Dictionary<string, int>(profile.JobLevels);
         foreach (var (job, level) in data.JobLevels)
-        {
-            profile.JobLevels[job] = level;
-        }
+            mergedLevels[job] = level;
+        profile.JobLevels = mergedLevels;
 
         if (gearDict.Count > 0)
-            profile.CurrentGear = gearDict;
+            profile.CurrentGear = new Dictionary<string, int>(gearDict);
 
         ApplyStats(profile, data, gearSlots);
 

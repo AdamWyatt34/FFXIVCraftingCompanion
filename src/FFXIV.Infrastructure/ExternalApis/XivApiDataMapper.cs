@@ -39,7 +39,8 @@ public static class XivApiDataMapper
             Durability = CalculateFactoredValue(rlt?.Durability ?? 0, fields.DurabilityFactor),
             RequiredCraftsmanship = rlt?.SuggestedCraftsmanship ?? 0,
             RequiredControl = 0,
-            Yield = fields.AmountResult > 0 ? fields.AmountResult : 1
+            Yield = fields.AmountResult > 0 ? fields.AmountResult : 1,
+            MaterialQualityFactor = fields.MaterialQualityFactor
         };
     }
 
@@ -186,12 +187,13 @@ public static class XivApiDataMapper
     }
 
     /// <summary>
-    /// Builds a comma-separated string of DoH/DoL job abbreviations from ClassJobCategory fields.
-    /// Returns empty string if no DoH/DoL jobs are set.
+    /// Builds a comma-separated string of job abbreviations from ClassJobCategory fields.
+    /// Returns empty string if no jobs are set.
     /// </summary>
     public static string BuildClassJobString(XivApiClassJobCategoryFields fields)
     {
-        var jobs = new List<string>(11);
+        var jobs = new List<string>(32);
+        // DoH
         if (fields.CRP) jobs.Add("CRP");
         if (fields.BSM) jobs.Add("BSM");
         if (fields.ARM) jobs.Add("ARM");
@@ -200,38 +202,110 @@ public static class XivApiDataMapper
         if (fields.WVR) jobs.Add("WVR");
         if (fields.ALC) jobs.Add("ALC");
         if (fields.CUL) jobs.Add("CUL");
+        // DoL
         if (fields.MIN) jobs.Add("MIN");
         if (fields.BTN) jobs.Add("BTN");
         if (fields.FSH) jobs.Add("FSH");
+        // Tank
+        if (fields.PLD) jobs.Add("PLD");
+        if (fields.WAR) jobs.Add("WAR");
+        if (fields.DRK) jobs.Add("DRK");
+        if (fields.GNB) jobs.Add("GNB");
+        // Healer
+        if (fields.WHM) jobs.Add("WHM");
+        if (fields.SCH) jobs.Add("SCH");
+        if (fields.AST) jobs.Add("AST");
+        if (fields.SGE) jobs.Add("SGE");
+        // Melee DPS
+        if (fields.MNK) jobs.Add("MNK");
+        if (fields.DRG) jobs.Add("DRG");
+        if (fields.NIN) jobs.Add("NIN");
+        if (fields.SAM) jobs.Add("SAM");
+        if (fields.RPR) jobs.Add("RPR");
+        if (fields.VPR) jobs.Add("VPR");
+        // Ranged DPS
+        if (fields.BRD) jobs.Add("BRD");
+        if (fields.MCH) jobs.Add("MCH");
+        if (fields.DNC) jobs.Add("DNC");
+        // Magic DPS
+        if (fields.BLM) jobs.Add("BLM");
+        if (fields.SMN) jobs.Add("SMN");
+        if (fields.RDM) jobs.Add("RDM");
+        if (fields.PCT) jobs.Add("PCT");
         return string.Join(",", jobs);
     }
 
     /// <summary>
-    /// Extracts crafting/gathering stats from parallel BaseParam/BaseParamValue arrays.
-    /// BaseParam row_ids: 70=Craftsmanship, 71=Control, 11=CP, 72=Gathering, 73=Perception, 10=GP.
+    /// Extracts all equipment stats from parallel BaseParam/BaseParamValue arrays.
     /// </summary>
-    public static (int Craftsmanship, int Control, int CP, int Gathering, int Perception, int GP)
-        ExtractEquipmentStats(List<int>? baseParams, List<int>? baseParamValues)
+    public static EquipmentStatBlock ExtractEquipmentStats(List<int>? baseParams, List<int>? baseParamValues)
     {
-        int craftsmanship = 0, control = 0, cp = 0, gathering = 0, perception = 0, gp = 0;
+        var stats = new EquipmentStatBlock();
 
         if (baseParams is null || baseParamValues is null)
-            return (craftsmanship, control, cp, gathering, perception, gp);
+            return stats;
 
         var count = Math.Min(baseParams.Count, baseParamValues.Count);
         for (var i = 0; i < count; i++)
         {
+            var value = baseParamValues[i];
             switch (baseParams[i])
             {
-                case 70: craftsmanship = baseParamValues[i]; break;
-                case 71: control = baseParamValues[i]; break;
-                case 11: cp = baseParamValues[i]; break;
-                case 72: gathering = baseParamValues[i]; break;
-                case 73: perception = baseParamValues[i]; break;
-                case 10: gp = baseParamValues[i]; break;
+                // DoH/DoL
+                case 70: stats.Craftsmanship = value; break;
+                case 71: stats.Control = value; break;
+                case 11: stats.CP = value; break;
+                case 72: stats.Gathering = value; break;
+                case 73: stats.Perception = value; break;
+                case 10: stats.GP = value; break;
+                // Combat primary
+                case 1: stats.Strength = value; break;
+                case 2: stats.Dexterity = value; break;
+                case 3: stats.Vitality = value; break;
+                case 4: stats.Intelligence = value; break;
+                case 5: stats.Mind = value; break;
+                // Combat secondary
+                case 6: stats.Piety = value; break;
+                case 19: stats.Tenacity = value; break;
+                case 22: stats.DirectHitRate = value; break;
+                case 27: stats.CriticalHit = value; break;
+                case 44: stats.Determination = value; break;
+                case 45: stats.SkillSpeed = value; break;
+                case 46: stats.SpellSpeed = value; break;
+                // Combat weapon/defense
+                case 12: stats.PhysicalDamage = value; break;
+                case 21: stats.Defense = value; break;
+                case 24: stats.MagicDefense = value; break;
             }
         }
 
-        return (craftsmanship, control, cp, gathering, perception, gp);
+        return stats;
+    }
+
+    public sealed class EquipmentStatBlock
+    {
+        // DoH/DoL
+        public int Craftsmanship { get; set; }
+        public int Control { get; set; }
+        public int CP { get; set; }
+        public int Gathering { get; set; }
+        public int Perception { get; set; }
+        public int GP { get; set; }
+        // Combat
+        public int Vitality { get; set; }
+        public int Strength { get; set; }
+        public int Dexterity { get; set; }
+        public int Intelligence { get; set; }
+        public int Mind { get; set; }
+        public int Piety { get; set; }
+        public int Tenacity { get; set; }
+        public int DirectHitRate { get; set; }
+        public int CriticalHit { get; set; }
+        public int Determination { get; set; }
+        public int SkillSpeed { get; set; }
+        public int SpellSpeed { get; set; }
+        public int PhysicalDamage { get; set; }
+        public int Defense { get; set; }
+        public int MagicDefense { get; set; }
     }
 }

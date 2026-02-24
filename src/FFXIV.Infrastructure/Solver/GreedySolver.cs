@@ -123,7 +123,8 @@ public sealed class GreedySolver : IRotationSolver
         var finishing = EstimateFinishingResources(state, stats, recipe);
 
         bool cpTight = state.CP <= finishing.CPNeeded + _config.FinishingCPBuffer;
-        bool durabilityTight = state.Durability <= finishing.DurabilityNeeded + _config.FinishingDurabilityBuffer;
+        int effectiveDurBuffer = _config.GetEffectiveDurabilityBuffer(recipe.Durability);
+        bool durabilityTight = state.Durability <= finishing.DurabilityNeeded + effectiveDurBuffer;
 
         if (cpTight || durabilityTight)
             return CraftPhase.Finishing;
@@ -198,7 +199,7 @@ public sealed class GreedySolver : IRotationSolver
         score += phase switch
         {
             CraftPhase.Opening => ScoreOpeningAction(action, stats, recipe),
-            CraftPhase.Quality => ScoreQualityAction(action, availability, state),
+            CraftPhase.Quality => ScoreQualityAction(action, availability, state, recipe),
             CraftPhase.Finishing => ScoreFinishingAction(action, availability, state, stats, recipe),
             _ => 0,
         };
@@ -221,13 +222,23 @@ public sealed class GreedySolver : IRotationSolver
 
     private double ScoreQualityAction(
         ICraftingAction action, ActionAvailability availability,
-        CraftingState state)
+        CraftingState state, RecipeParameters recipe)
     {
         bool innovationActive = state.InnovationTurns > 0;
         bool greatStridesActive = state.GreatStridesTurns > 0;
         bool wasteNotActive = state.WasteNotTurns > 0 || state.WasteNotIITurns > 0;
         bool manipulationActive = state.ManipulationTurns > 0;
         int iq = state.InnerQuietStacks;
+
+        // Durability-aware penalty: penalize touch actions when durability is critically low
+        double durabilityPenalty = 0;
+        if (_config.EnableDurabilityAwareScoring
+            && recipe.Durability > 0
+            && state.Durability < recipe.Durability * 0.3
+            && availability.Category == ActionCategory.Quality)
+        {
+            durabilityPenalty = _config.DurabilityAwarePenalty;
+        }
 
         return action.Name switch
         {
@@ -277,7 +288,7 @@ public sealed class GreedySolver : IRotationSolver
 
             // Everything else (InnerQuiet no-op, Observe, etc.)
             _ => _config.QualityFallbackScore,
-        };
+        } - durabilityPenalty;
     }
 
     private double ScoreFinishingAction(

@@ -18,10 +18,11 @@ public class EquipmentConfiguration : IEntityTypeConfiguration<Equipment>
         builder.HasIndex(e => new { e.ClassJobCategory, e.ItemLevel });
         builder.HasIndex(e => e.EquipSlot);
         builder.HasIndex(e => new { e.EquipSlot, e.ClassJobCategory, e.ItemLevel });
+        builder.HasIndex(e => e.Name);
 
         builder.Property(e => e.EquipSlot).HasConversion<string>();
         builder.Property(e => e.SourceType).HasConversion<string>();
-        builder.Property(e => e.SourceDetails).HasColumnType("text");
+        builder.Property(e => e.SourceDetails);
 
         builder.HasOne(e => e.Recipe)
             .WithMany()

@@ -25,6 +25,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<RecipeLevelEntry> RecipeLevelEntries => Set<RecipeLevelEntry>();
     public DbSet<SharedRotation> SharedRotations => Set<SharedRotation>();
     public DbSet<RotationVote> RotationVotes => Set<RotationVote>();
+    public DbSet<CraftPlan> CraftPlans => Set<CraftPlan>();
+    public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
+    public DbSet<Feedback> Feedbacks => Set<Feedback>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -6,4 +6,5 @@ namespace FFXIV.Application.Gear.Queries;
 public sealed record GetGearRecommendationsQuery(
     string Job,
     int Level,
-    string Profile = "balanced") : IRequest<GearSetDto>;
+    string Profile = "balanced",
+    bool CraftedOnly = false) : IRequest<GearSetDto>;

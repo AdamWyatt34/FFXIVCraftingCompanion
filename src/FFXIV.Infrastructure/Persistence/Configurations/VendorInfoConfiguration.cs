@@ -16,7 +16,7 @@ public class VendorInfoConfiguration : IEntityTypeConfiguration<VendorInfo>
         builder.HasOne(v => v.Item)
             .WithMany(i => i.VendorInfos)
             .HasForeignKey(v => v.ItemId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(v => v.ItemId);
 
@@ -27,7 +27,7 @@ public class VendorInfoConfiguration : IEntityTypeConfiguration<VendorInfo>
         builder.HasOne(v => v.CurrencyItem)
             .WithMany()
             .HasForeignKey(v => v.CurrencyItemId)
-            .OnDelete(DeleteBehavior.SetNull)
+            .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
     }
 }

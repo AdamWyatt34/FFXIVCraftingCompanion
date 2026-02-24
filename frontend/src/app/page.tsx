@@ -1,5 +1,162 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import {
+  ChefHat,
+  FlaskConical,
+  Sparkles,
+  ShoppingCart,
+  Shield,
+  BarChart3,
+  Search,
+  Hammer,
+  ListChecks,
+  ArrowRight,
+  Package,
+} from "lucide-react";
 
-export default function Home() {
-  redirect("/recipes");
+const FEATURES = [
+  {
+    Icon: ChefHat,
+    title: "Recipe Explorer",
+    href: "/recipes",
+    description:
+      "Browse thousands of crafting recipes. View ingredient trees, shopping lists, and step-by-step crafting order.",
+  },
+  {
+    Icon: FlaskConical,
+    title: "Crafting Simulator",
+    href: "/simulator",
+    description:
+      "Test rotations without wasting materials. Full simulation of every Dawntrail crafting action.",
+  },
+  {
+    Icon: Sparkles,
+    title: "Rotation Solver",
+    href: "/simulator",
+    description:
+      "AI-powered solver finds optimal rotations for your stats. Supports greedy and MCTS strategies.",
+  },
+  {
+    Icon: ShoppingCart,
+    title: "Craft Planner",
+    href: "/recipes/plan",
+    description:
+      "Plan multi-item crafting sessions. Aggregate shopping lists and track your progress.",
+  },
+  {
+    Icon: Shield,
+    title: "Gear Browser",
+    href: "/gear",
+    description:
+      "Find best-in-slot gear for any crafter or gatherer class with stat-weight recommendations.",
+  },
+  {
+    Icon: BarChart3,
+    title: "Market Prices",
+    href: "/recipes",
+    description:
+      "Check Universalis market board prices. See cost breakdowns and profit margins for crafts.",
+  },
+] as const;
+
+const STEPS = [
+  { Icon: Search, text: "Search for a recipe or item" },
+  { Icon: Package, text: "View the full material tree" },
+  { Icon: Shield, text: "Check gear recommendations" },
+  { Icon: Hammer, text: "Simulate or auto-solve a rotation" },
+  { Icon: ListChecks, text: "Export your macro and craft" },
+] as const;
+
+export default function HomePage() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-12 space-y-20">
+      {/* Hero */}
+      <section className="text-center space-y-6">
+        <h1 className="text-4xl sm:text-5xl font-bold text-text-primary">
+          FFXIV Crafting{" "}
+          <span className="text-gold">Companion</span>
+        </h1>
+        <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+          One-stop crafting, gear &amp; materials platform for Final Fantasy XIV.
+          Explore recipes, simulate rotations, and plan your crafting sessions.
+        </p>
+        <div className="flex justify-center gap-4 flex-wrap">
+          <Link
+            href="/recipes"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gold text-bg-primary font-semibold hover:bg-gold-light transition-colors"
+          >
+            Start Crafting
+            <ArrowRight size={18} />
+          </Link>
+          <Link
+            href="/simulator"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-border text-text-primary font-medium hover:border-gold hover:text-gold transition-colors"
+          >
+            Open Simulator
+          </Link>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="space-y-8">
+        <h2 className="text-2xl font-bold text-text-primary text-center">
+          Everything You Need
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {FEATURES.map(({ Icon, title, href, description }) => (
+            <Link
+              key={title}
+              href={href}
+              className="bg-bg-surface border border-border rounded-lg p-5 space-y-3 hover:border-gold/40 transition-colors group"
+            >
+              <Icon size={28} className="text-gold" />
+              <h3 className="text-lg font-semibold text-text-primary group-hover:text-gold transition-colors">
+                {title}
+              </h3>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {description}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="space-y-8">
+        <h2 className="text-2xl font-bold text-text-primary text-center">
+          How It Works
+        </h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-center gap-4 sm:gap-2">
+          {STEPS.map(({ Icon, text }, i) => (
+            <div key={text} className="flex items-center gap-2">
+              <div className="flex items-center gap-3 bg-bg-surface border border-border rounded-lg px-4 py-3">
+                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gold/20 text-gold text-sm font-bold shrink-0">
+                  {i + 1}
+                </span>
+                <Icon size={18} className="text-text-muted shrink-0" />
+                <span className="text-sm text-text-primary">{text}</span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <ArrowRight
+                  size={16}
+                  className="text-text-muted hidden sm:block shrink-0"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Open Source */}
+      <section className="text-center space-y-3 bg-bg-surface border border-border rounded-lg p-8">
+        <h2 className="text-xl font-bold text-text-primary">
+          Built by the Community
+        </h2>
+        <p className="text-sm text-text-secondary max-w-lg mx-auto">
+          FFXIV Crafting Companion is open source and free to use.
+          Contributions, feedback, and bug reports are always welcome.
+        </p>
+      </section>
+
+    </div>
+  );
 }

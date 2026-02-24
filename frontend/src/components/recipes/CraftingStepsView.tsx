@@ -8,7 +8,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from "lucide-react";
-import { ItemIcon, SourceBadge } from "@/components/ui";
+import { ItemIcon, ItemLink, SourceBadge } from "@/components/ui";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { buildIngredientMap } from "@/lib/tree-utils";
 import type {
@@ -234,14 +234,13 @@ export function CraftingStepsView({
                         key={`${ing.itemId}-${i}`}
                         className="flex items-center gap-2"
                       >
-                        <ItemIcon
+                        <ItemLink
+                          itemId={ing.itemId}
+                          itemName={ing.itemName}
                           iconUrl={ing.iconUrl}
-                          alt={ing.itemName}
-                          size="sm"
+                          compact
+                          className="flex-1 min-w-0"
                         />
-                        <span className="text-sm text-text-primary flex-1 truncate">
-                          {ing.itemName}
-                        </span>
                         <SourceBadge
                           sourceType={ing.primarySource}
                           className="shrink-0"

@@ -25,9 +25,15 @@ export function GearGrid({ slots, isDoH, slotComparisons, onApplySingle }: GearG
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const isDesktop = useMediaQuery("(min-width: 640px)");
 
-  const maxScore = useMemo(
-    () => Math.max(0, ...slots.map((s) => s.recommendation?.weightedScore ?? 0)),
+  // Filter out empty OffHand slots (no gear available = confusing for DoL/etc)
+  const visibleSlots = useMemo(
+    () => slots.filter((slot) => !(slot.isEmpty && slot.slotKey === "OffHand")),
     [slots],
+  );
+
+  const maxScore = useMemo(
+    () => Math.max(0, ...visibleSlots.map((s) => s.recommendation?.weightedScore ?? 0)),
+    [visibleSlots],
   );
 
   const grouped = useMemo(() => {
@@ -36,19 +42,19 @@ export function GearGrid({ slots, isDoH, slotComparisons, onApplySingle }: GearG
       Armor: [],
       Accessories: [],
     };
-    slots.forEach((slot, idx) => {
+    visibleSlots.forEach((slot, idx) => {
       const group = getSlotGroup(slot.slotKey);
       groups[group].push({ slot, idx });
     });
     return groups;
-  }, [slots]);
+  }, [visibleSlots]);
 
   const craftedPieces = useMemo(
     () =>
-      slots.filter(
+      visibleSlots.filter(
         (s) => s.recommendation?.source?.hasRecipe && s.recommendation.source.recipeId,
       ),
-    [slots],
+    [visibleSlots],
   );
 
   const handleToggle = (idx: number) => {
@@ -130,13 +136,13 @@ export function GearGrid({ slots, isDoH, slotComparisons, onApplySingle }: GearG
       )}
 
       {/* Mobile bottom sheet */}
-      {!isDesktop && expandedIndex !== null && slots[expandedIndex] && (
+      {!isDesktop && expandedIndex !== null && visibleSlots[expandedIndex] && (
         <BottomSheet onClose={() => setExpandedIndex(null)}>
           <GearSlotExpandedContent
-            slot={slots[expandedIndex]}
+            slot={visibleSlots[expandedIndex]}
             isDoH={isDoH}
             onClose={() => setExpandedIndex(null)}
-            comparison={slotComparisons?.find(c => c.slotName === slots[expandedIndex].slotName)}
+            comparison={slotComparisons?.find(c => c.slotName === visibleSlots[expandedIndex].slotName)}
             onApplySingle={onApplySingle}
           />
         </BottomSheet>

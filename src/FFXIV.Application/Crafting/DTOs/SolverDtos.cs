@@ -9,6 +9,7 @@ public sealed record SolveRequestDto
     public bool UseProfileStats { get; init; }
     public SolverConstraintsDto? Constraints { get; init; }
     public SolverSettingsDto? Settings { get; init; }
+    public List<HQIngredientInputDto>? HQIngredients { get; init; }
 }
 
 public sealed record SolverConstraintsDto

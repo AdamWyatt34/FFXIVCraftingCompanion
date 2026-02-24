@@ -4,15 +4,15 @@ namespace FFXIV.Infrastructure.ExternalApis.Models;
 
 /// <summary>
 /// Fields from the XIVAPI "ClassJobCategory" sheet.
-/// DoH/DoL job booleans indicating which jobs can use items in this category.
+/// Job booleans indicating which jobs can use items in this category.
 /// XIVAPI v2 returns these as true/false booleans.
-/// Request with: fields=Name,CRP,BSM,ARM,GSM,LTW,WVR,ALC,CUL,MIN,BTN,FSH
 /// </summary>
 public sealed class XivApiClassJobCategoryFields
 {
     [JsonPropertyName("Name")]
     public string Name { get; init; } = string.Empty;
 
+    // DoH
     [JsonPropertyName("CRP")]
     public bool CRP { get; init; }
 
@@ -37,6 +37,7 @@ public sealed class XivApiClassJobCategoryFields
     [JsonPropertyName("CUL")]
     public bool CUL { get; init; }
 
+    // DoL
     [JsonPropertyName("MIN")]
     public bool MIN { get; init; }
 
@@ -45,4 +46,72 @@ public sealed class XivApiClassJobCategoryFields
 
     [JsonPropertyName("FSH")]
     public bool FSH { get; init; }
+
+    // Tank
+    [JsonPropertyName("PLD")]
+    public bool PLD { get; init; }
+
+    [JsonPropertyName("WAR")]
+    public bool WAR { get; init; }
+
+    [JsonPropertyName("DRK")]
+    public bool DRK { get; init; }
+
+    [JsonPropertyName("GNB")]
+    public bool GNB { get; init; }
+
+    // Healer
+    [JsonPropertyName("WHM")]
+    public bool WHM { get; init; }
+
+    [JsonPropertyName("SCH")]
+    public bool SCH { get; init; }
+
+    [JsonPropertyName("AST")]
+    public bool AST { get; init; }
+
+    [JsonPropertyName("SGE")]
+    public bool SGE { get; init; }
+
+    // Melee DPS
+    [JsonPropertyName("MNK")]
+    public bool MNK { get; init; }
+
+    [JsonPropertyName("DRG")]
+    public bool DRG { get; init; }
+
+    [JsonPropertyName("NIN")]
+    public bool NIN { get; init; }
+
+    [JsonPropertyName("SAM")]
+    public bool SAM { get; init; }
+
+    [JsonPropertyName("RPR")]
+    public bool RPR { get; init; }
+
+    [JsonPropertyName("VPR")]
+    public bool VPR { get; init; }
+
+    // Ranged DPS
+    [JsonPropertyName("BRD")]
+    public bool BRD { get; init; }
+
+    [JsonPropertyName("MCH")]
+    public bool MCH { get; init; }
+
+    [JsonPropertyName("DNC")]
+    public bool DNC { get; init; }
+
+    // Magic DPS
+    [JsonPropertyName("BLM")]
+    public bool BLM { get; init; }
+
+    [JsonPropertyName("SMN")]
+    public bool SMN { get; init; }
+
+    [JsonPropertyName("RDM")]
+    public bool RDM { get; init; }
+
+    [JsonPropertyName("PCT")]
+    public bool PCT { get; init; }
 }

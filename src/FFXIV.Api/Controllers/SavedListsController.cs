@@ -178,6 +178,56 @@ public class SavedListsController : ControllerBase
     }
 
     /// <summary>
+    /// Add an item to a saved list's materials. If the item already exists, its quantity is incremented.
+    /// </summary>
+    [HttpPost("{id:int}/items")]
+    [ProducesResponseType(typeof(SavedListDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddItem(
+        int id, [FromBody] AddItemToSavedListRequest request, CancellationToken ct)
+    {
+        if (request.ItemId <= 0)
+            return BadRequest(new { error = "ItemId must be a positive integer." });
+
+        if (string.IsNullOrWhiteSpace(request.ItemName))
+            return BadRequest(new { error = "ItemName is required." });
+
+        if (request.Quantity < 1)
+            return BadRequest(new { error = "Quantity must be at least 1." });
+
+        var result = await _mediator.Send(
+            new AddItemToSavedListCommand(
+                _currentUser.UserId!,
+                id,
+                request.ItemId,
+                request.ItemName.Trim(),
+                request.Quantity,
+                request.Category?.Trim()), ct);
+
+        return result is not null
+            ? Ok(result)
+            : NotFound(new { error = "Saved list not found." });
+    }
+
+    /// <summary>
+    /// Remove an item from a saved list's materials by item ID.
+    /// </summary>
+    [HttpDelete("{id:int}/items/{itemId:int}")]
+    [ProducesResponseType(typeof(SavedListDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveItem(int id, int itemId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new RemoveItemFromSavedListCommand(
+                _currentUser.UserId!, id, itemId), ct);
+
+        return result is not null
+            ? Ok(result)
+            : NotFound(new { error = "Saved list not found." });
+    }
+
+    /// <summary>
     /// Update a saved list's name or pinned status.
     /// </summary>
     [HttpPut("{id:int}")]

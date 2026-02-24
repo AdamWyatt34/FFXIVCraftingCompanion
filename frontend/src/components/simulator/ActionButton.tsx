@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, memo } from "react";
+import Image from "next/image";
 import { LoadingSpinner } from "@/components/ui";
 import { getActionIconUrl, ACTION_CATEGORY_COLORS } from "@/lib/action-icons";
 import type { ActionInfo, ActionAvailability, ActionCategory } from "@/types/simulator";
@@ -101,7 +102,7 @@ function ActionButtonInner({
                 style={{ backgroundColor: `${categoryColor}30` }}
               />
             ) : (
-              <img
+              <Image
                 src={getActionIconUrl(action.name)}
                 alt=""
                 width={28}
@@ -109,6 +110,7 @@ function ActionButtonInner({
                 className={`w-7 h-7 rounded ${!isAvailable ? "grayscale" : ""}`}
                 onError={() => setIconError(true)}
                 draggable={false}
+                unoptimized
               />
             )}
           </div>
@@ -163,7 +165,7 @@ function ActionButtonInner({
               style={{ backgroundColor: `${categoryColor}30` }}
             />
           ) : (
-            <img
+            <Image
               src={getActionIconUrl(action.name)}
               alt=""
               width={36}
@@ -171,6 +173,7 @@ function ActionButtonInner({
               className={`w-9 h-9 rounded ${!isAvailable ? "grayscale" : ""}`}
               onError={() => setIconError(true)}
               draggable={false}
+              unoptimized
             />
           )}
         </div>
