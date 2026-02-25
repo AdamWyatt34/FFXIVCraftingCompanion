@@ -21,7 +21,7 @@ param sqlAdminPassword string
 param jwtSecretKey string
 
 @description('Container image to deploy.')
-param containerImage string = 'ghcr.io/YOUR_GITHUB_USERNAME/ffxiv-crafting-api:latest'
+param containerImage string = 'ghcr.io/adamwyatt34/ffxivcraftingcompanion/ffxiv-crafting-api:latest'
 
 @description('Allowed CORS origins for the API.')
 param corsOrigins string = ''
