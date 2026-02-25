@@ -41,6 +41,7 @@ jobs:
             --parameters location=${{ inputs.location }} environment=${{ inputs.environment }}
         env:
           SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          SQL_CONNECTION_STRING: ${{ secrets.SQL_CONNECTION_STRING }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           CONTAINER_IMAGE: ghcr.io/${{ github.repository }}/ffxiv-crafting-api:latest

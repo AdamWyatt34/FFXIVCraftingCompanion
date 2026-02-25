@@ -6,6 +6,9 @@ param location string = resourceGroup().location
 @description('Deployment environment name (e.g. prod, staging).')
 param environment string = 'prod'
 
+@description('Set to false to skip SQL Server deployment (create it manually in the portal instead).')
+param deploySql bool = false
+
 @description('Administrator login for the SQL Server.')
 param sqlAdminLogin string = 'sqladmin'
 
@@ -33,6 +36,10 @@ param discordClientSecret string = ''
 @description('Discord OAuth redirect URI.')
 param discordRedirectUri string = ''
 
+@secure()
+@description('Pre-built SQL connection string. Required when deploySql is false.')
+param sqlConnectionString string = ''
+
 var prefix = 'ffxiv-${environment}'
 
 module logAnalytics 'modules/log-analytics.bicep' = {
@@ -43,7 +50,7 @@ module logAnalytics 'modules/log-analytics.bicep' = {
   }
 }
 
-module sqlServer 'modules/sql-server.bicep' = {
+module sqlServer 'modules/sql-server.bicep' = if (deploySql) {
   name: 'sqlServer'
   params: {
     location: location
@@ -53,6 +60,8 @@ module sqlServer 'modules/sql-server.bicep' = {
     adminPassword: sqlAdminPassword
   }
 }
+
+var effectiveConnectionString = deploySql ? sqlServer.outputs.connectionString : sqlConnectionString
 
 module containerApps 'modules/container-apps.bicep' = {
   name: 'containerApps'
@@ -65,7 +74,7 @@ module containerApps 'modules/container-apps.bicep' = {
     envVars: [
       {
         name: 'ConnectionStrings__DefaultConnection'
-        value: sqlServer.outputs.connectionString
+        value: effectiveConnectionString
       }
       {
         name: 'Jwt__SecretKey'
@@ -98,5 +107,5 @@ module containerApps 'modules/container-apps.bicep' = {
 @description('Full HTTPS URL of the deployed API.')
 output apiUrl string = containerApps.outputs.appUrl
 
-@description('Fully qualified domain name of the SQL Server.')
-output sqlServerFqdn string = sqlServer.outputs.serverFqdn
+@description('Fully qualified domain name of the SQL Server (only when deploySql is true).')
+output sqlServerFqdn string = deploySql ? sqlServer.outputs.serverFqdn : 'manually-provisioned'

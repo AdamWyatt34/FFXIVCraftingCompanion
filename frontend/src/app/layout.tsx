@@ -44,6 +44,14 @@ export const metadata: Metadata = {
     description:
       "Browse recipes, simulate rotations, auto-solve macros, and find best-in-slot gear for FFXIV.",
   },
+  icons: {
+    icon: [
+      { url: "/icons/favicon-196.png", sizes: "196x196", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-icon-180.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   robots: { index: true, follow: true },
   manifest: "/manifest.json",
   appleWebApp: {

@@ -1,8 +1,10 @@
 using './main.bicep'
 
 param environment = 'prod'
+param deploySql = false
 param sqlAdminLogin = 'sqladmin'
 param sqlAdminPassword = readEnvironmentVariable('SQL_ADMIN_PASSWORD', '')
+param sqlConnectionString = readEnvironmentVariable('SQL_CONNECTION_STRING', '')
 param jwtSecretKey = readEnvironmentVariable('JWT_SECRET_KEY', '')
 param containerImage = readEnvironmentVariable('CONTAINER_IMAGE', 'ghcr.io/YOUR_GITHUB_USERNAME/ffxiv-crafting-api:latest')
 param corsOrigins = readEnvironmentVariable('CORS_ORIGINS', '')
