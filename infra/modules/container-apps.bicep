@@ -16,6 +16,16 @@ param logAnalyticsWorkspaceId string
 @description('Environment variables for the container.')
 param envVars array = []
 
+@description('Container registry server (e.g. ghcr.io).')
+param registryServer string = 'ghcr.io'
+
+@description('Container registry username.')
+param registryUsername string = ''
+
+@secure()
+@description('Container registry password or PAT.')
+param registryPassword string = ''
+
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: last(split(logAnalyticsWorkspaceId, '/'))
 }
@@ -45,6 +55,19 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 8080
         transport: 'auto'
       }
+      registries: empty(registryPassword) ? [] : [
+        {
+          server: registryServer
+          username: registryUsername
+          passwordSecretRef: 'registry-password'
+        }
+      ]
+      secrets: empty(registryPassword) ? [] : [
+        {
+          name: 'registry-password'
+          value: registryPassword
+        }
+      ]
     }
     template: {
       containers: [

@@ -40,6 +40,13 @@ param discordRedirectUri string = ''
 @description('Pre-built SQL connection string. Required when deploySql is false.')
 param sqlConnectionString string = ''
 
+@description('GitHub username for ghcr.io registry authentication.')
+param registryUsername string = ''
+
+@secure()
+@description('GitHub PAT with read:packages scope for ghcr.io registry authentication.')
+param registryPassword string = ''
+
 var prefix = 'ffxiv-${environment}'
 
 module logAnalytics 'modules/log-analytics.bicep' = {
@@ -71,6 +78,9 @@ module containerApps 'modules/container-apps.bicep' = {
     appName: '${prefix}-api'
     containerImage: containerImage
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+    registryServer: 'ghcr.io'
+    registryUsername: registryUsername
+    registryPassword: registryPassword
     envVars: [
       {
         name: 'ConnectionStrings__DefaultConnection'
