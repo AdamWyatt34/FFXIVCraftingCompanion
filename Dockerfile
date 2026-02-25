@@ -2,15 +2,14 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
 
-# Copy solution file and project files for restore
-COPY FFXIVCraftingCompanion.slnx ./
+# Copy project files for restore (not the solution — tests/ is dockerignored)
 COPY src/FFXIV.Domain/FFXIV.Domain.csproj src/FFXIV.Domain/
 COPY src/FFXIV.Application/FFXIV.Application.csproj src/FFXIV.Application/
 COPY src/FFXIV.Infrastructure/FFXIV.Infrastructure.csproj src/FFXIV.Infrastructure/
 COPY src/FFXIV.Api/FFXIV.Api.csproj src/FFXIV.Api/
 
-# Restore dependencies
-RUN dotnet restore FFXIVCraftingCompanion.slnx
+# Restore dependencies for the API project (resolves entire dependency graph)
+RUN dotnet restore src/FFXIV.Api/FFXIV.Api.csproj
 
 # Copy remaining source code
 COPY src/ src/

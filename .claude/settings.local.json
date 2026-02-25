@@ -34,7 +34,8 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(cat:*)",
-      "Bash(npx pwa-asset-generator:*)"
+      "Bash(npx pwa-asset-generator:*)",
+      "Bash(docker build:*)"
     ]
   }
 }
