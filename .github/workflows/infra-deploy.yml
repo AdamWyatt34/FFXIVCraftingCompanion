@@ -44,7 +44,7 @@ jobs:
           SQL_CONNECTION_STRING: ${{ secrets.SQL_CONNECTION_STRING }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
-          CONTAINER_IMAGE: ghcr.io/${{ github.repository }}/ffxiv-crafting-api:latest
+          CONTAINER_IMAGE: ghcr.io/${{ github.repository_owner }}/ffxiv-crafting-api:latest
           DEPLOY_SQL: 'false'
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
