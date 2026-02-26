@@ -248,8 +248,8 @@ function GearPageContent() {
               {error && <ErrorState message={error} onRetry={retry} />}
               {data && (
                 <div className="space-y-4 animate-slide-up">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="w-full sm:flex-1 min-w-0">
                       <StatsSummary
                         stats={data.totalStats}
                         isDoH={isDoH}
@@ -257,7 +257,7 @@ function GearPageContent() {
                         profileName={data.profile.displayName}
                       />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <SaveGearSetButton gearSet={data} />
                       <GearShareButton
                         job={data.job}
