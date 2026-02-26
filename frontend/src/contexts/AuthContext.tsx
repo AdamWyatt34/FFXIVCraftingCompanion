@@ -114,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleTokens = useCallback(
     async (tokens: { accessToken: string; refreshToken: string; expiresAt: string }) => {
       accessToken = tokens.accessToken;
-      tokenExpiresAt = new Date(tokens.expiresAt).getTime();
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
       const userInfo = await authGetMe();
       setUser(userInfo);
