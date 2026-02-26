@@ -63,7 +63,10 @@ export function ItemLink({
     if (rect.bottom > window.innerHeight) y = window.innerHeight - rect.height - 8;
     if (x < 0) x = 8;
     if (y < 0) y = 8;
-    if (x !== menuPos.x || y !== menuPos.y) setMenuPos({ x, y });
+    if (x !== menuPos.x || y !== menuPos.y) {
+      const id = requestAnimationFrame(() => setMenuPos({ x, y }));
+      return () => cancelAnimationFrame(id);
+    }
   }, [menuPos]);
 
   const handleMouseEnter = useCallback(() => {

@@ -413,39 +413,6 @@ function ManualEntryFlow({
     }
   }
 
-  function StatInput({
-    id,
-    label,
-    value,
-    onChange,
-  }: {
-    id: string;
-    label: string;
-    value: number;
-    onChange: (v: number) => void;
-  }) {
-    return (
-      <div>
-        <label htmlFor={id} className="block text-xs text-text-muted mb-1">
-          {label}
-        </label>
-        <input
-          id={id}
-          type="number"
-          min={0}
-          max={99999}
-          value={value || ""}
-          onChange={(e) => {
-            const v = parseInt(e.target.value, 10);
-            onChange(isNaN(v) ? 0 : Math.max(0, v));
-          }}
-          className="w-full h-10 px-3 bg-bg-secondary border border-border rounded-lg text-text-primary text-center focus:outline-none focus:border-border-focus transition-colors"
-          placeholder="0"
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5 animate-[fade-in_0.3s_ease-out]">
       <button
@@ -596,6 +563,39 @@ function ManualEntryFlow({
           "Create Profile"
         )}
       </button>
+    </div>
+  );
+}
+
+function StatInput({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-xs text-text-muted mb-1">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="number"
+        min={0}
+        max={99999}
+        value={value || ""}
+        onChange={(e) => {
+          const v = parseInt(e.target.value, 10);
+          onChange(isNaN(v) ? 0 : Math.max(0, v));
+        }}
+        className="w-full h-10 px-3 bg-bg-secondary border border-border rounded-lg text-text-primary text-center focus:outline-none focus:border-border-focus transition-colors"
+        placeholder="0"
+      />
     </div>
   );
 }

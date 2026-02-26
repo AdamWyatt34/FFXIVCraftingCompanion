@@ -37,9 +37,9 @@ export function RotationFilters({
   const craftableItems = items.filter((item) => item.recipeId !== null);
 
   useEffect(() => {
-    if (query.length >= 2) {
-      setIsDropdownOpen(true);
-    }
+    if (query.length < 2) return;
+    const id = requestAnimationFrame(() => setIsDropdownOpen(true));
+    return () => cancelAnimationFrame(id);
   }, [query]);
 
   useEffect(() => {

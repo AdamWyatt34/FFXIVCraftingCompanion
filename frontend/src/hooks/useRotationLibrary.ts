@@ -85,20 +85,6 @@ export function useRotationLibrary(
     }));
   }, []);
 
-  const loadMore = useCallback(() => {
-    if (isLoadingMoreRef.current || isLoading) return;
-    const nextPage = (filters.page ?? 1) + 1;
-    const loaded = rotations.length;
-    if (loaded >= totalCount) return;
-
-    isLoadingMoreRef.current = true;
-    const nextFilters = { ...filters, page: nextPage };
-    setFiltersState(nextFilters);
-    // The useEffect will pick up the new page and fetch
-    // But we want to append, so let's handle it differently
-  }, [filters, rotations.length, totalCount, isLoading]);
-
-  // Actually, let's use a simpler approach: track whether we're loading more
   const loadMoreFn = useCallback(() => {
     if (isLoading) return;
     const loaded = rotations.length;

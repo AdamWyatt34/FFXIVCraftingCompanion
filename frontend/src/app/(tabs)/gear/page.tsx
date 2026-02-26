@@ -29,11 +29,11 @@ import {
 import { GearSlotExpandedContent, BottomSheet } from "@/components/gear";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { ErrorState, LoadingSkeleton } from "@/components/ui/LoadingStates";
-import { JOB_INFO, isCombatJob, type GearJob } from "@/lib/gear-constants";
+import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
 import { gearSetToProfileSlots } from "@/lib/slot-mapping";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
-import type { EquipmentDto, GearSlotDto } from "@/types/gear";
+import type { GearSlotDto } from "@/types/gear";
 
 function GearPageContent() {
   const searchParams = useSearchParams();
@@ -114,7 +114,6 @@ function GearPageContent() {
   const jobInfo = job ? JOB_INFO[job as GearJob] : null;
   const jobCategory = jobInfo?.category;
   const isDoH = jobCategory === "DoH";
-  const isCombat = jobCategory ? isCombatJob(jobCategory) : false;
 
   const handleApplyAll = () => {
     if (!data) return;

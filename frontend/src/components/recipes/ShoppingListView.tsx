@@ -11,7 +11,7 @@ import {
   Gem,
   ArrowUpDown,
 } from "lucide-react";
-import { ItemIcon, ItemLink, SourceBadge } from "@/components/ui";
+import { ItemLink, SourceBadge } from "@/components/ui";
 import { CopyShoppingList } from "./CopyShoppingList";
 import { SaveShoppingListButton } from "./SaveShoppingListButton";
 import {
@@ -413,7 +413,6 @@ function ScrollContainer({
 // --- Collapsible Section ---
 
 function CollapsibleSection({
-  sectionKey: _key,
   title,
   count,
   icon,

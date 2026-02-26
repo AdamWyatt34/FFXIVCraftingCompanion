@@ -39,16 +39,24 @@ export default function ItemDetailPage() {
   useEffect(() => {
     if (isNaN(itemId)) return;
 
-    setIsLoading(true);
-    Promise.all([getItem(itemId), getItemContext(itemId)])
-      .then(([itemData, contextData]) => {
-        setItem(itemData);
-        setContext(contextData);
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load item");
-      })
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      try {
+        const [itemData, contextData] = await Promise.all([getItem(itemId), getItemContext(itemId)]);
+        if (!cancelled) {
+          setItem(itemData);
+          setContext(contextData);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load item");
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [itemId]);
 
   useEffect(() => {

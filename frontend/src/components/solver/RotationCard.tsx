@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Eye, Copy, Wrench, ThumbsUp, Map } from "lucide-react";
@@ -41,23 +41,6 @@ export function RotationCard({
 
   const craftInfo = CRAFT_TYPE_INFO[rotation.craftType as CraftType];
   const sourceInfo = ROTATION_SOURCE_INFO[rotation.source] ?? ROTATION_SOURCE_INFO.User;
-
-  // Build a collapsed action strip from actionIds
-  // We simulate step results from action IDs for collapseActions
-  const collapsedGroups = useMemo(() => {
-    const groups: { name: string; count: number; actionId: number }[] = [];
-    for (const id of rotation.actionIds) {
-      const last = groups[groups.length - 1];
-      if (last && last.actionId === id) {
-        last.count++;
-      } else {
-        // We don't have names in list items, so we'll use the action icon map key
-        // The action icons map uses the action name as key
-        groups.push({ name: "", actionId: id, count: 1 });
-      }
-    }
-    return groups;
-  }, [rotation.actionIds]);
 
   const handleCopyMacro = useCallback(async () => {
     try {

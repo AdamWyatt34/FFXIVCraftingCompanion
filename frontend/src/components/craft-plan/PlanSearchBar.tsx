@@ -3,8 +3,6 @@
 import { Plus } from "lucide-react";
 import { SearchBar, ItemIcon } from "@/components/ui";
 import { useItemSearch } from "@/hooks/useItemSearch";
-import { CRAFT_TYPE_INFO } from "@/lib/constants";
-import type { CraftType } from "@/types/api";
 
 interface PlanSearchBarProps {
   onAdd: (item: {

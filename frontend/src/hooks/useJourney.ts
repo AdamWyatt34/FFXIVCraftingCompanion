@@ -23,16 +23,16 @@ export function useJourney(recipeId: number): UseJourneyReturn {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setIsLoading(true);
-    setError(null);
-
-    getCraftingJourney(recipeId, controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setJourney(result);
-        setIsLoading(false);
-      })
-      .catch((err: unknown) => {
+    (async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await getCraftingJourney(recipeId, controller.signal);
+        if (!controller.signal.aborted) {
+          setJourney(result);
+          setIsLoading(false);
+        }
+      } catch (err: unknown) {
         if (controller.signal.aborted) return;
         if (err instanceof DOMException && err.name === "AbortError") return;
         const msg =
@@ -41,7 +41,8 @@ export function useJourney(recipeId: number): UseJourneyReturn {
             : "Failed to load crafting journey.";
         setError(msg);
         setIsLoading(false);
-      });
+      }
+    })();
 
     return () => controller.abort();
   }, [recipeId, retryCount]);

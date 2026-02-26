@@ -40,23 +40,31 @@ export function GatheringGuide({ shoppingList, crystals }: GatheringGuideProps) 
 
     if (allItems.length === 0) return;
 
-    setIsLoading(true);
-    Promise.all([
-      getGatheringGuide(allItems),
-      getEorzeanTime().catch(() => null),
-    ])
-      .then(([guideData, timeData]) => {
-        setGuide(guideData);
-        if (timeData) setEorzeanHour(timeData.currentEorzeanHour);
-      })
-      .catch((err: unknown) => {
-        const msg =
-          err instanceof ApiClientError
-            ? err.message
-            : "Failed to load gathering guide.";
-        setError(msg);
-      })
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      try {
+        const [guideData, timeData] = await Promise.all([
+          getGatheringGuide(allItems),
+          getEorzeanTime().catch(() => null),
+        ]);
+        if (!cancelled) {
+          setGuide(guideData);
+          if (timeData) setEorzeanHour(timeData.currentEorzeanHour);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg =
+            err instanceof ApiClientError
+              ? err.message
+              : "Failed to load gathering guide.";
+          setError(msg);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [isExpanded, guide, shoppingList, crystals]);
 
   return (
