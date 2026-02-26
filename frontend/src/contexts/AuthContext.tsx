@@ -45,7 +45,6 @@ const REFRESH_TOKEN_KEY = "ffxiv_refresh_token";
 
 // Module-level token storage — NOT in React state for security
 let accessToken: string | null = null;
-let tokenExpiresAt = 0;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserInfoDto | null>(null);
@@ -62,12 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const tokens = await authRefresh(storedRefresh);
         accessToken = tokens.accessToken;
-        tokenExpiresAt = new Date(tokens.expiresAt).getTime();
+
         localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
         return true;
       } catch {
         accessToken = null;
-        tokenExpiresAt = 0;
+    
         localStorage.removeItem(REFRESH_TOKEN_KEY);
         return false;
       } finally {
@@ -85,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const onUnauthorized = useCallback(() => {
     accessToken = null;
-    tokenExpiresAt = 0;
+
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     setUser(null);
   }, []);
@@ -115,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleTokens = useCallback(
     async (tokens: { accessToken: string; refreshToken: string; expiresAt: string }) => {
       accessToken = tokens.accessToken;
-      tokenExpiresAt = new Date(tokens.expiresAt).getTime();
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
       const userInfo = await authGetMe();
       setUser(userInfo);
@@ -162,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     accessToken = null;
-    tokenExpiresAt = 0;
+
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     setUser(null);
   }, []);

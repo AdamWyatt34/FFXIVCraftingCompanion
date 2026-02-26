@@ -29,11 +29,11 @@ import {
 import { GearSlotExpandedContent, BottomSheet } from "@/components/gear";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { ErrorState, LoadingSkeleton } from "@/components/ui/LoadingStates";
-import { JOB_INFO, isCombatJob, type GearJob } from "@/lib/gear-constants";
+import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
 import { gearSetToProfileSlots } from "@/lib/slot-mapping";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
-import type { EquipmentDto, GearSlotDto } from "@/types/gear";
+import type { GearSlotDto } from "@/types/gear";
 
 function GearPageContent() {
   const searchParams = useSearchParams();
@@ -114,7 +114,6 @@ function GearPageContent() {
   const jobInfo = job ? JOB_INFO[job as GearJob] : null;
   const jobCategory = jobInfo?.category;
   const isDoH = jobCategory === "DoH";
-  const isCombat = jobCategory ? isCombatJob(jobCategory) : false;
 
   const handleApplyAll = () => {
     if (!data) return;
@@ -248,8 +247,8 @@ function GearPageContent() {
               {error && <ErrorState message={error} onRetry={retry} />}
               {data && (
                 <div className="space-y-4 animate-slide-up">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="w-full sm:flex-1 min-w-0">
                       <StatsSummary
                         stats={data.totalStats}
                         isDoH={isDoH}
@@ -257,7 +256,7 @@ function GearPageContent() {
                         profileName={data.profile.displayName}
                       />
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <SaveGearSetButton gearSet={data} />
                       <GearShareButton
                         job={data.job}

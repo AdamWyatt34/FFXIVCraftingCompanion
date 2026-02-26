@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { quickSolve, getBisStats, ApiClientError } from "@/lib/api-client";
-import { WHAT_IF_CONSTANTS, WHAT_IF_PRESETS, STAT_SLIDER_RANGE } from "@/lib/constants";
+import { WHAT_IF_CONSTANTS, WHAT_IF_PRESETS } from "@/lib/constants";
 import type { WhatIfStatSet, WhatIfResult, SolverResult } from "@/types/solver";
 
 type VariedStat = "craftsmanship" | "control" | "cp";

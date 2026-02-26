@@ -54,14 +54,17 @@ export function useEquipmentSearch(initialQuery = ""): UseEquipmentSearchReturn 
     const cacheKey = `${debouncedQuery}:${jobFilter ?? ""}:${slotFilter ?? ""}`;
     const cached = searchCache.get(cacheKey);
     if (cached) {
-      setFetchResult({
-        results: cached,
-        error: null,
-        forQuery: debouncedQuery,
-        forJob: jobFilter,
-        forSlot: slotFilter,
+      // Defer cached result to avoid synchronous setState in effect
+      const id = requestAnimationFrame(() => {
+        setFetchResult({
+          results: cached,
+          error: null,
+          forQuery: debouncedQuery,
+          forJob: jobFilter,
+          forSlot: slotFilter,
+        });
       });
-      return;
+      return () => cancelAnimationFrame(id);
     }
 
     abortControllerRef.current?.abort();

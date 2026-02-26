@@ -126,10 +126,10 @@ export function useRotationReplay(
 
   // Stop playing when we reach the end
   useEffect(() => {
-    if (currentStepIndex >= totalSteps && isPlaying) {
-      stopInterval();
-      setIsPlaying(false);
-    }
+    if (!(currentStepIndex >= totalSteps && isPlaying)) return;
+    stopInterval();
+    const id = requestAnimationFrame(() => setIsPlaying(false));
+    return () => cancelAnimationFrame(id);
   }, [currentStepIndex, totalSteps, isPlaying, stopInterval]);
 
   // ── Navigation ──

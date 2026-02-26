@@ -136,7 +136,6 @@ export default function SavedListDetailPage({
       {list.type === "ShoppingList" && (
         <ShoppingListContent
           data={list.data as ShoppingListData}
-          listId={list.id}
           onRemoveItem={removeItem}
           onAddItem={addItem}
           showAddForm={showAddForm}
@@ -151,14 +150,12 @@ export default function SavedListDetailPage({
 
 function ShoppingListContent({
   data,
-  listId,
   onRemoveItem,
   onAddItem,
   showAddForm,
   setShowAddForm,
 }: {
   data: ShoppingListData;
-  listId: number;
   onRemoveItem: (itemId: number) => Promise<void>;
   onAddItem: (itemId: number, itemName: string, quantity: number, category?: string) => Promise<void>;
   showAddForm: boolean;

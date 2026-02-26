@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingSpinner } from "@/components/ui";
@@ -11,19 +11,19 @@ function DiscordCallbackContent() {
   const { handleDiscordCallback } = useAuth();
 
   const [error, setError] = useState<string | null>(null);
-  const [hasAttempted, setHasAttempted] = useState(false);
+  const hasAttemptedRef = useRef(false);
 
   useEffect(() => {
-    if (hasAttempted) return;
-    setHasAttempted(true);
-
-    const code = searchParams.get("code");
-    if (!code) {
-      setError("No authorization code received from Discord.");
-      return;
-    }
+    if (hasAttemptedRef.current) return;
+    hasAttemptedRef.current = true;
 
     (async () => {
+      const code = searchParams.get("code");
+      if (!code) {
+        setError("No authorization code received from Discord.");
+        return;
+      }
+
       try {
         await handleDiscordCallback(code);
         router.push("/profile");
@@ -31,7 +31,7 @@ function DiscordCallbackContent() {
         setError("Failed to sign in with Discord. Please try again.");
       }
     })();
-  }, [searchParams, handleDiscordCallback, router, hasAttempted]);
+  }, [searchParams, handleDiscordCallback, router]);
 
   if (error) {
     return (

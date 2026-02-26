@@ -38,17 +38,20 @@ function OverlayContent({
 
   useEffect(() => {
     if (!isSolving) {
-      setDisplayElapsed(elapsedMs);
-      return;
+      const id = requestAnimationFrame(() => setDisplayElapsed(elapsedMs));
+      return () => cancelAnimationFrame(id);
     }
 
-    setDisplayElapsed(elapsedMs);
+    const frameId = requestAnimationFrame(() => setDisplayElapsed(elapsedMs));
     const start = Date.now() - elapsedMs;
     const interval = setInterval(() => {
       setDisplayElapsed(Date.now() - start);
     }, 500);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelAnimationFrame(frameId);
+      clearInterval(interval);
+    };
   }, [isSolving, elapsedMs]);
 
   // Auto-focus cancel button on mount

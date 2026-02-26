@@ -187,7 +187,7 @@ function SimulatorPageContent() {
       });
       whatIf.setRecipeId(simulator.selectedRecipe.recipeId);
     }
-  }, [simulator.crafterStats, simulator.selectedRecipe]);
+  }, [simulator.crafterStats, simulator.selectedRecipe, whatIf]);
 
   // Navigation warning during active simulation
   useEffect(() => {

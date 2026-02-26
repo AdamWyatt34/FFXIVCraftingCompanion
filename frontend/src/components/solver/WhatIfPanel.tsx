@@ -24,12 +24,6 @@ function getHqColor(pct: number): string {
   return "text-red-400";
 }
 
-function getHqBgColor(pct: number): string {
-  if (pct >= 90) return "bg-emerald-500/10 border-emerald-500/30";
-  if (pct >= 60) return "bg-amber-500/10 border-amber-500/30";
-  return "bg-red-500/10 border-red-500/30";
-}
-
 const STAT_LABELS: Record<VariedStat, string> = {
   craftsmanship: "Craftsmanship",
   control: "Control",
@@ -43,7 +37,6 @@ function StatSliderRow({
   value,
   onChange,
   onVariedStatChange,
-  isVaried,
 }: {
   label: string;
   statKey: VariedStat;
@@ -51,7 +44,7 @@ function StatSliderRow({
   value: number;
   onChange: (stat: VariedStat, value: number) => void;
   onVariedStatChange: (stat: VariedStat) => void;
-  isVaried: boolean;
+  isVaried?: boolean;
 }) {
   const min = Math.max(1, baseValue - STAT_SLIDER_RANGE);
   const max = baseValue + STAT_SLIDER_RANGE;
@@ -247,9 +240,9 @@ export function WhatIfPanel({
 
   // Initialize adjusted stats from base stats
   useEffect(() => {
-    if (whatIf.baseStats && !adjustedStats) {
-      setAdjustedStats({ ...whatIf.baseStats });
-    }
+    if (!(whatIf.baseStats && !adjustedStats)) return;
+    const id = requestAnimationFrame(() => setAdjustedStats({ ...whatIf.baseStats! }));
+    return () => cancelAnimationFrame(id);
   }, [whatIf.baseStats, adjustedStats]);
 
   // Focus first input when panel opens

@@ -27,9 +27,12 @@ export function ActiveBuffsDisplay({
       if (!currentNames.has(name)) removed.add(name);
     }
     if (removed.size > 0) {
-      setExitingBuffs(removed);
+      const frameId = requestAnimationFrame(() => setExitingBuffs(removed));
       const timer = setTimeout(() => setExitingBuffs(new Set()), 150);
-      return () => clearTimeout(timer);
+      return () => {
+        cancelAnimationFrame(frameId);
+        clearTimeout(timer);
+      };
     }
     prevBuffsRef.current = buffs;
   }, [buffs]);

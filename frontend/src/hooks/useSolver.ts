@@ -279,7 +279,6 @@ export function useSolver(): UseSolverReturn {
 
   // Computed values
   const isSolving = solverStatus === "Queued" || solverStatus === "Running";
-  const isLoading = isSolving || solverStatus === "Idle" && abortRef.current !== null && !abortRef.current.signal.aborted;
   const hasResult = solverResult !== null || quickResult !== null;
 
   let progressPercent = 0;
