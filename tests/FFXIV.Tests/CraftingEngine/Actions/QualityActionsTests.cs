@@ -411,4 +411,15 @@ public class QualityActionsTests
 
         action.CanExecute(state, _stats, recipe).Should().BeTrue();
     }
+
+    [Fact]
+    public void TrainedEye_BlockedWhenClassJobLevelIsZero()
+    {
+        var action = new TrainedEye();
+        var state = CraftingTestHelpers.CreateDefaultState();
+        var recipe = _recipe with { ClassJobLevel = 0 };
+
+        action.CanExecute(state, _stats, recipe).Should().BeFalse();
+        action.GetFailReason(state, _stats, recipe).Should().Contain("unavailable");
+    }
 }
