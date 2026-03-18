@@ -33,7 +33,7 @@ public static class XivApiDataMapper
             RecipeId = rowId,
             ResultItemId = fields.ItemResult?.RowId ?? 0,
             CraftType = MapCraftType(fields.CraftType?.RowId ?? 0),
-            RecipeLevel = rlt?.ClassJobLevel ?? 0,
+            RecipeLevel = fields.RecipeLevelTable?.RowId ?? 0,
             Difficulty = CalculateFactoredValue(rlt?.Difficulty ?? 0, fields.DifficultyFactor),
             Quality = CalculateFactoredValue(rlt?.Quality ?? 0, fields.QualityFactor),
             Durability = CalculateFactoredValue(rlt?.Durability ?? 0, fields.DurabilityFactor),
