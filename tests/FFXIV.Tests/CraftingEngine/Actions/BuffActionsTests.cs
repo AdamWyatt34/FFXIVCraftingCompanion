@@ -259,6 +259,27 @@ public class BuffActionsTests
         action.GetCPCost(state).Should().Be(0);
     }
 
+    [Fact]
+    public void QuickInnovation_BlockedWhileInnovationActive()
+    {
+        var action = new QuickInnovation();
+        var state = CraftingTestHelpers.CreateDefaultState() with { InnovationTurns = 3 };
+        var stats = _stats with { Level = 96 };
+
+        action.CanExecute(state, stats, _recipe).Should().BeFalse();
+        action.GetFailReason(state, stats, _recipe).Should().Contain("Innovation");
+    }
+
+    [Fact]
+    public void QuickInnovation_AllowedWhenInnovationNotActive()
+    {
+        var action = new QuickInnovation();
+        var state = CraftingTestHelpers.CreateDefaultState() with { InnovationTurns = 0 };
+        var stats = _stats with { Level = 96 };
+
+        action.CanExecute(state, stats, _recipe).Should().BeTrue();
+    }
+
     // --- Primed Condition ---
 
     [Fact]

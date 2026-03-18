@@ -17,6 +17,8 @@ public class TrainedEye : QualityAction
     {
         if (!state.IsFirstStep)
             return "Can only be used as the first action";
+        if (recipe.IsExpert)
+            return "Cannot be used on expert recipes";
         if (stats.Level < recipe.ClassJobLevel + 10)
             return $"Requires crafter level {recipe.ClassJobLevel + 10} or higher";
         return base.GetFailReason(state, stats, recipe);

@@ -390,4 +390,25 @@ public class QualityActionsTests
 
         action.GetDurabilityCost(state).Should().Be(0);
     }
+
+    [Fact]
+    public void TrainedEye_BlockedByExpertRecipe()
+    {
+        var action = new TrainedEye();
+        var state = CraftingTestHelpers.CreateDefaultState();
+        var recipe = _recipe with { ClassJobLevel = 50, IsExpert = true };
+
+        action.CanExecute(state, _stats, recipe).Should().BeFalse();
+        action.GetFailReason(state, _stats, recipe).Should().Contain("expert");
+    }
+
+    [Fact]
+    public void TrainedEye_AllowedOnNonExpertRecipe()
+    {
+        var action = new TrainedEye();
+        var state = CraftingTestHelpers.CreateDefaultState();
+        var recipe = _recipe with { ClassJobLevel = 50, IsExpert = false };
+
+        action.CanExecute(state, _stats, recipe).Should().BeTrue();
+    }
 }
