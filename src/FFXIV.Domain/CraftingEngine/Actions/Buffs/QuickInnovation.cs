@@ -16,6 +16,8 @@ public class QuickInnovation : BuffAction
     {
         if (state.QuickInnovationUsed)
             return "Quick Innovation can only be used once per craft";
+        if (state.InnovationTurns > 0)
+            return "Cannot be used while Innovation is active";
         return base.GetFailReason(state, stats, recipe);
     }
 
