@@ -10,10 +10,17 @@ pub struct ConditionResolver {
 
 impl ConditionResolver {
     pub fn new(seed: i32) -> ConditionResolver {
-        ConditionResolver { rng: DotNetRandom::new(seed) }
+        ConditionResolver {
+            rng: DotNetRandom::new(seed),
+        }
     }
 
-    pub fn next_condition(&mut self, current: Condition, is_expert: bool, conditions_flag: i32) -> Condition {
+    pub fn next_condition(
+        &mut self,
+        current: Condition,
+        is_expert: bool,
+        conditions_flag: i32,
+    ) -> Condition {
         match current {
             Condition::Excellent => return Condition::Poor,
             Condition::Good | Condition::Poor => return Condition::Normal,
@@ -84,17 +91,32 @@ mod tests {
     #[test]
     fn deterministic_transitions_ignore_rng() {
         let mut resolver = ConditionResolver::new(1);
-        assert_eq!(resolver.next_condition(Condition::Excellent, false, 0), Condition::Poor);
-        assert_eq!(resolver.next_condition(Condition::Good, true, 0x7F), Condition::Normal);
-        assert_eq!(resolver.next_condition(Condition::Poor, false, 0), Condition::Normal);
-        assert_eq!(resolver.next_condition(Condition::GoodOmen, true, 0x7F), Condition::Good);
+        assert_eq!(
+            resolver.next_condition(Condition::Excellent, false, 0),
+            Condition::Poor
+        );
+        assert_eq!(
+            resolver.next_condition(Condition::Good, true, 0x7F),
+            Condition::Normal
+        );
+        assert_eq!(
+            resolver.next_condition(Condition::Poor, false, 0),
+            Condition::Normal
+        );
+        assert_eq!(
+            resolver.next_condition(Condition::GoodOmen, true, 0x7F),
+            Condition::Good
+        );
     }
 
     #[test]
     fn expert_with_no_flags_is_always_normal() {
         let mut resolver = ConditionResolver::new(9);
         for _ in 0..50 {
-            assert_eq!(resolver.next_condition(Condition::Normal, true, 0), Condition::Normal);
+            assert_eq!(
+                resolver.next_condition(Condition::Normal, true, 0),
+                Condition::Normal
+            );
         }
     }
 }

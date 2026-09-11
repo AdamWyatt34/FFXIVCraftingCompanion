@@ -68,14 +68,26 @@ fn starting_quality_matches_hq_calculator() {
         let ingredients: Vec<Ingredient> = case
             .ingredients
             .iter()
-            .map(|i| Ingredient { item_id: i.item_id, quantity: i.quantity, can_be_hq: i.can_be_hq })
+            .map(|i| Ingredient {
+                item_id: i.item_id,
+                quantity: i.quantity,
+                can_be_hq: i.can_be_hq,
+            })
             .collect();
         let inputs: Vec<HqInput> = case
             .hq_ingredients
             .iter()
-            .map(|i| HqInput { item_id: i.item_id, hq_quantity: i.hq_quantity })
+            .map(|i| HqInput {
+                item_id: i.item_id,
+                hq_quantity: i.hq_quantity,
+            })
             .collect();
-        let actual = calculate_starting_quality(case.max_quality, case.material_quality_factor, &ingredients, &inputs);
+        let actual = calculate_starting_quality(
+            case.max_quality,
+            case.material_quality_factor,
+            &ingredients,
+            &inputs,
+        );
         assert_eq!(actual, case.expected, "hq case {}", case.case);
     }
 }
@@ -91,6 +103,11 @@ fn macro_export_matches_macro_exporter() {
             complete_sound_effect: case.options.complete_sound_effect,
             include_echo: case.options.include_echo,
         };
-        assert_eq!(export_to_macro(&case.action_ids, &options), case.expected, "macro case {}", case.case);
+        assert_eq!(
+            export_to_macro(&case.action_ids, &options),
+            case.expected,
+            "macro case {}",
+            case.case
+        );
     }
 }

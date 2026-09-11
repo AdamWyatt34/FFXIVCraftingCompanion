@@ -12,7 +12,12 @@ pub(super) fn condition_multiplier(quality_increase: i32, condition: Condition) 
     }
 }
 
-pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &CrafterStats, recipe: &Recipe) -> CraftingState {
+pub(super) fn apply_effect(
+    action: Action,
+    state: CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> CraftingState {
     match action {
         // Trained Eye replaces the whole effect: quality jumps to max and nothing else changes.
         Action::TrainedEye => {
@@ -23,7 +28,8 @@ pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &Crafter
         Action::ByregotsBlessing => {
             let potency = 100 + state.inner_quiet_stacks * 20;
             let mut next = state;
-            next.quality = (state.quality + calculate_quality(&state, stats, recipe, potency)).min(state.max_quality);
+            next.quality = (state.quality + calculate_quality(&state, stats, recipe, potency))
+                .min(state.max_quality);
             next.great_strides_turns = 0;
             next.inner_quiet_stacks = 0;
             next
@@ -42,7 +48,8 @@ pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &Crafter
                 _ => unreachable!("{action:?} is not a quality action"),
             };
             let mut next = state;
-            next.quality = (state.quality + calculate_quality(&state, stats, recipe, potency)).min(state.max_quality);
+            next.quality = (state.quality + calculate_quality(&state, stats, recipe, potency))
+                .min(state.max_quality);
             next.great_strides_turns = 0;
             next.inner_quiet_stacks = (state.inner_quiet_stacks + inner_quiet_gain).min(10);
             next
@@ -50,7 +57,12 @@ pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &Crafter
     }
 }
 
-fn calculate_quality(state: &CraftingState, stats: &CrafterStats, recipe: &Recipe, potency: i32) -> i32 {
+fn calculate_quality(
+    state: &CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+    potency: i32,
+) -> i32 {
     let effective_control = stats.effective_control(state.inner_quiet_stacks);
     let base = formula::base_quality(
         effective_control,
@@ -74,7 +86,13 @@ mod tests {
     use super::*;
 
     fn fixture() -> (CraftingState, CrafterStats, Recipe) {
-        let stats = CrafterStats { level: 90, craftsmanship: 3800, control: 3600, cp: 600, is_specialist: false };
+        let stats = CrafterStats {
+            level: 90,
+            craftsmanship: 3800,
+            control: 3600,
+            cp: 600,
+            is_specialist: false,
+        };
         let recipe = Recipe {
             recipe_level: 580,
             difficulty: 3500,
@@ -86,7 +104,11 @@ mod tests {
             quality_modifier: 70,
             ..Default::default()
         };
-        (CraftingState::create_initial(&recipe, &stats), stats, recipe)
+        (
+            CraftingState::create_initial(&recipe, &stats),
+            stats,
+            recipe,
+        )
     }
 
     #[test]

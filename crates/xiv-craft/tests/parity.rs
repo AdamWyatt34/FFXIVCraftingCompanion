@@ -4,8 +4,8 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 use xiv_craft::{
-    action_availability, create_initial, execute_action, export_to_macro, simulate_with, Condition, CrafterStats,
-    CraftingState, CraftStatus, MacroOptions, Recipe, SimulationOptions,
+    action_availability, create_initial, execute_action, export_to_macro, simulate_with, Condition,
+    CraftStatus, CrafterStats, CraftingState, MacroOptions, Recipe, SimulationOptions,
 };
 
 const MIN_GOLDEN_FILES: usize = 10;
@@ -203,12 +203,15 @@ fn options_of(json: &OptionsJson) -> SimulationOptions {
         assume_all_success: json.assume_all_success,
         assume_normal_condition: json.assume_normal_condition,
         random_seed: json.random_seed,
-        force_condition: json.force_condition.map(|c| Condition::from_i32(c).expect("known condition")),
+        force_condition: json
+            .force_condition
+            .map(|c| Condition::from_i32(c).expect("known condition")),
     }
 }
 
 fn golden_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/FFXIV.Tests/CraftingEngine/TestData/parity")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/FFXIV.Tests/CraftingEngine/TestData/parity")
 }
 
 fn golden_files() -> Vec<PathBuf> {
@@ -229,26 +232,71 @@ fn golden_files() -> Vec<PathBuf> {
 
 fn assert_state(context: &str, expected: &StateJson, actual: &CraftingState) {
     assert_eq!(*actual, expected.to_state(), "{context}: state differs");
-    assert_eq!(actual.is_complete(), expected.is_complete, "{context}: isComplete");
-    assert_eq!(actual.is_failed(), expected.is_failed, "{context}: isFailed");
-    assert_eq!(actual.quality_percent().to_bits(), expected.quality_percent.to_bits(), "{context}: qualityPercent {} vs {}", actual.quality_percent(), expected.quality_percent);
-    assert_eq!(actual.progress_percent().to_bits(), expected.progress_percent.to_bits(), "{context}: progressPercent {} vs {}", actual.progress_percent(), expected.progress_percent);
-    assert_eq!(actual.hq_percent(), expected.hq_percent, "{context}: hqPercent");
+    assert_eq!(
+        actual.is_complete(),
+        expected.is_complete,
+        "{context}: isComplete"
+    );
+    assert_eq!(
+        actual.is_failed(),
+        expected.is_failed,
+        "{context}: isFailed"
+    );
+    assert_eq!(
+        actual.quality_percent().to_bits(),
+        expected.quality_percent.to_bits(),
+        "{context}: qualityPercent {} vs {}",
+        actual.quality_percent(),
+        expected.quality_percent
+    );
+    assert_eq!(
+        actual.progress_percent().to_bits(),
+        expected.progress_percent.to_bits(),
+        "{context}: progressPercent {} vs {}",
+        actual.progress_percent(),
+        expected.progress_percent
+    );
+    assert_eq!(
+        actual.hq_percent(),
+        expected.hq_percent,
+        "{context}: hqPercent"
+    );
 }
 
-fn assert_availability(context: &str, expected: &[AvailabilityJson], before: &CraftingState, stats: &CrafterStats, recipe: &Recipe) {
+fn assert_availability(
+    context: &str,
+    expected: &[AvailabilityJson],
+    before: &CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) {
     let mut actual = action_availability(before, stats, recipe);
     actual.sort_by_key(|a| a.action.id());
-    assert_eq!(actual.len(), expected.len(), "{context}: availability row count");
+    assert_eq!(
+        actual.len(),
+        expected.len(),
+        "{context}: availability row count"
+    );
     for (row, want) in actual.iter().zip(expected) {
         let ctx = format!("{context}: availability of {}", row.action.name());
         assert_eq!(row.action.id(), want.action_id, "{ctx}: id");
         assert_eq!(row.is_available(), want.is_available, "{ctx}: isAvailable");
-        assert_eq!(row.fail_reason.map(|r| r.to_string()), want.unavailable_reason, "{ctx}: reason");
+        assert_eq!(
+            row.fail_reason.map(|r| r.to_string()),
+            want.unavailable_reason,
+            "{ctx}: reason"
+        );
         assert_eq!(row.cp_cost, want.cp_cost, "{ctx}: cpCost");
-        assert_eq!(row.durability_cost, want.durability_cost, "{ctx}: durabilityCost");
+        assert_eq!(
+            row.durability_cost, want.durability_cost,
+            "{ctx}: durabilityCost"
+        );
         assert_eq!(row.success_rate, want.success_rate, "{ctx}: successRate");
-        assert_eq!(row.action.category() as i32, want.category, "{ctx}: category");
+        assert_eq!(
+            row.action.category() as i32,
+            want.category,
+            "{ctx}: category"
+        );
     }
 }
 
@@ -258,7 +306,11 @@ fn replay(file: &str, case: &Case) {
     let options = options_of(&case.options);
     let name = format!("{file}/{}", case.case);
 
-    assert_state(&format!("{name} initial"), &case.initial, &create_initial(&recipe, &stats));
+    assert_state(
+        &format!("{name} initial"),
+        &case.initial,
+        &create_initial(&recipe, &stats),
+    );
 
     let result = simulate_with(&recipe, &stats, &case.actions, &options);
     assert_eq!(result.steps.len(), case.steps.len(), "{name}: step count");
@@ -270,7 +322,11 @@ fn replay(file: &str, case: &Case) {
         assert_eq!(step.action_id, want.action_id, "{ctx}: actionId");
         assert_eq!(step.action_name(), want.action_name, "{ctx}: actionName");
         assert_eq!(step.succeeded, want.succeeded, "{ctx}: succeeded");
-        assert_eq!(step.fail_reason.map(|r| r.to_string()), want.fail_reason, "{ctx}: failReason");
+        assert_eq!(
+            step.fail_reason.map(|r| r.to_string()),
+            want.fail_reason,
+            "{ctx}: failReason"
+        );
         assert_eq!(step.state_before, before, "{ctx}: stateBefore");
 
         let mut legal = xiv_craft::legal_actions(&before, &stats, &recipe);
@@ -285,12 +341,22 @@ fn replay(file: &str, case: &Case) {
         before = step.state_after;
     }
 
-    assert_state(&format!("{name} final"), &case.final_state, &result.final_state);
-    assert_eq!(export_to_macro(&case.actions, &MacroOptions::default()), case.macros, "{name}: macros");
+    assert_state(
+        &format!("{name} final"),
+        &case.final_state,
+        &result.final_state,
+    );
+    assert_eq!(
+        export_to_macro(&case.actions, &MacroOptions::default()),
+        case.macros,
+        "{name}: macros"
+    );
 
     // The public single-step call must agree with the full run whenever no success roll is
     // involved; a forced condition is applied after the step, so it is patched in here.
-    if options.assume_all_success && (options.assume_normal_condition || options.force_condition.is_some()) {
+    if options.assume_all_success
+        && (options.assume_normal_condition || options.force_condition.is_some())
+    {
         let mut state = create_initial(&recipe, &stats);
         for want in &case.steps {
             let ctx = format!("{name} step {} via execute_action", want.step);
@@ -301,7 +367,11 @@ fn replay(file: &str, case: &Case) {
             }
             assert_eq!(step.step_number, want.step, "{ctx}: stepNumber");
             assert_eq!(step.succeeded, want.succeeded, "{ctx}: succeeded");
-            assert_eq!(step.fail_reason.map(|r| r.to_string()), want.fail_reason, "{ctx}: failReason");
+            assert_eq!(
+                step.fail_reason.map(|r| r.to_string()),
+                want.fail_reason,
+                "{ctx}: failReason"
+            );
             assert_state(&ctx, &want.after, &after);
             state = after;
         }

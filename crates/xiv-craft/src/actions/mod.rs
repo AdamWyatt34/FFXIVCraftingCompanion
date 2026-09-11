@@ -9,7 +9,7 @@ mod quality;
 mod repair;
 
 use crate::fail_reason::FailReason;
-use crate::state::{Condition, CrafterStats, CraftingState, CraftStatus, Recipe};
+use crate::state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};
 
 /// Persisted in saved rotations and macros; equal to the C# `ICraftingAction.Id`.
 pub type ActionId = i32;
@@ -96,8 +96,27 @@ struct Meta {
     success: i32,
 }
 
-const fn meta(id: ActionId, name: &'static str, in_game_name: &'static str, level: i32, category: ActionCategory, cp: i32, durability: i32, success: i32) -> Meta {
-    Meta { id, name, in_game_name, level, category, cp, durability, success }
+#[allow(clippy::too_many_arguments)]
+const fn meta(
+    id: ActionId,
+    name: &'static str,
+    in_game_name: &'static str,
+    level: i32,
+    category: ActionCategory,
+    cp: i32,
+    durability: i32,
+    success: i32,
+) -> Meta {
+    Meta {
+        id,
+        name,
+        in_game_name,
+        level,
+        category,
+        cp,
+        durability,
+        success,
+    }
 }
 
 impl Action {
@@ -141,6 +160,8 @@ impl Action {
         Action::CarefulObservation,
     ];
 
+    // One row per action: id, Name, InGameName, level, category, base CP, base durability, base success.
+    #[rustfmt::skip]
     const fn meta(self) -> Meta {
         use ActionCategory::*;
         match self {
@@ -193,7 +214,10 @@ impl Action {
 
     /// Case-insensitive lookup by the C# `Name` (the identifier form, e.g. `ByregotsBlessing`).
     pub fn from_name(name: &str) -> Option<Action> {
-        Action::ALL.iter().copied().find(|a| a.name().eq_ignore_ascii_case(name))
+        Action::ALL
+            .iter()
+            .copied()
+            .find(|a| a.name().eq_ignore_ascii_case(name))
     }
 
     pub const fn id(self) -> ActionId {
@@ -268,7 +292,12 @@ impl Action {
     }
 
     /// The action-specific gate first, then the shared checks, in the C# override order.
-    pub fn fail_reason(self, state: &CraftingState, stats: &CrafterStats, recipe: &Recipe) -> Option<FailReason> {
+    pub fn fail_reason(
+        self,
+        state: &CraftingState,
+        stats: &CrafterStats,
+        recipe: &Recipe,
+    ) -> Option<FailReason> {
         let good_or_excellent = matches!(state.condition, Condition::Good | Condition::Excellent);
         let waste_not_active = state.waste_not_turns > 0 || state.waste_not_ii_turns > 0;
 
@@ -278,10 +307,18 @@ impl Action {
             {
                 Some(FailReason::RequiresGoodOrExcellent)
             }
-            Action::MuscleMemory | Action::Reflect if !state.is_first_step => Some(FailReason::FirstActionOnly),
-            Action::PrudentSynthesis | Action::PrudentTouch if waste_not_active => Some(FailReason::WasteNotActive),
-            Action::ByregotsBlessing if state.inner_quiet_stacks <= 0 => Some(FailReason::RequiresInnerQuiet),
-            Action::TrainedFinesse if state.inner_quiet_stacks < 10 => Some(FailReason::RequiresTenInnerQuiet),
+            Action::MuscleMemory | Action::Reflect if !state.is_first_step => {
+                Some(FailReason::FirstActionOnly)
+            }
+            Action::PrudentSynthesis | Action::PrudentTouch if waste_not_active => {
+                Some(FailReason::WasteNotActive)
+            }
+            Action::ByregotsBlessing if state.inner_quiet_stacks <= 0 => {
+                Some(FailReason::RequiresInnerQuiet)
+            }
+            Action::TrainedFinesse if state.inner_quiet_stacks < 10 => {
+                Some(FailReason::RequiresTenInnerQuiet)
+            }
             Action::TrainedEye => {
                 if !state.is_first_step {
                     Some(FailReason::FirstActionOnly)
@@ -290,7 +327,9 @@ impl Action {
                 } else if recipe.class_job_level <= 0 {
                     Some(FailReason::RecipeLevelUnavailable)
                 } else if stats.level < recipe.class_job_level + 10 {
-                    Some(FailReason::RequiresCrafterLevel(recipe.class_job_level + 10))
+                    Some(FailReason::RequiresCrafterLevel(
+                        recipe.class_job_level + 10,
+                    ))
                 } else {
                     None
                 }
@@ -313,7 +352,9 @@ impl Action {
                     None
                 }
             }
-            Action::TrainedPerfection if state.trained_perfection_used => Some(FailReason::TrainedPerfectionOnce),
+            Action::TrainedPerfection if state.trained_perfection_used => {
+                Some(FailReason::TrainedPerfectionOnce)
+            }
             Action::CarefulObservation => {
                 if state.careful_observation_count >= 3 {
                     Some(FailReason::CarefulObservationLimit)
@@ -341,7 +382,12 @@ impl Action {
         None
     }
 
-    pub fn availability(self, state: &CraftingState, stats: &CrafterStats, recipe: &Recipe) -> ActionAvailability {
+    pub fn availability(
+        self,
+        state: &CraftingState,
+        stats: &CrafterStats,
+        recipe: &Recipe,
+    ) -> ActionAvailability {
         ActionAvailability {
             action: self,
             fail_reason: self.fail_reason(state, stats, recipe),
@@ -352,7 +398,13 @@ impl Action {
     }
 
     /// `CraftingActionBase.Execute`. Gating is the caller's job; this only applies the action.
-    pub fn execute(self, mut state: CraftingState, stats: &CrafterStats, recipe: &Recipe, succeeded: bool) -> CraftingState {
+    pub fn execute(
+        self,
+        mut state: CraftingState,
+        stats: &CrafterStats,
+        recipe: &Recipe,
+        succeeded: bool,
+    ) -> CraftingState {
         state.cp -= self.cp_cost(&state);
 
         if succeeded {
@@ -375,7 +427,11 @@ impl Action {
 
         state.step += 1;
         state.is_first_step = false;
-        state.combo_action = if succeeded { self.combo_action_after() } else { 0 };
+        state.combo_action = if succeeded {
+            self.combo_action_after()
+        } else {
+            0
+        };
         state.observe_active = succeeded && self == Action::Observe;
 
         if state.progress >= state.max_progress {
@@ -394,7 +450,12 @@ impl Action {
         }
     }
 
-    fn apply_effect(self, state: CraftingState, stats: &CrafterStats, recipe: &Recipe) -> CraftingState {
+    fn apply_effect(
+        self,
+        state: CraftingState,
+        stats: &CrafterStats,
+        recipe: &Recipe,
+    ) -> CraftingState {
         match self.category() {
             ActionCategory::Progress => progress::apply_effect(self, state, stats, recipe),
             ActionCategory::Quality => quality::apply_effect(self, state, stats, recipe),
@@ -414,21 +475,30 @@ mod tests {
         for action in Action::ALL {
             assert_eq!(Action::from_id(action.id()), Some(action));
             assert_eq!(Action::from_name(action.name()), Some(action));
-            assert_eq!(Action::from_name(&action.name().to_ascii_lowercase()), Some(action));
+            assert_eq!(
+                Action::from_name(&action.name().to_ascii_lowercase()),
+                Some(action)
+            );
         }
         assert_eq!(Action::from_id(999999), None);
     }
 
     #[test]
     fn pliant_halves_cp_rounding_up() {
-        let state = CraftingState { condition: Condition::Pliant, ..Default::default() };
+        let state = CraftingState {
+            condition: Condition::Pliant,
+            ..Default::default()
+        };
         assert_eq!(Action::CarefulSynthesis.cp_cost(&state), 4);
         assert_eq!(Action::BasicSynthesis.cp_cost(&state), 0);
     }
 
     #[test]
     fn combo_discounts_apply_before_pliant() {
-        let mut state = CraftingState { combo_action: Action::BasicTouch.id(), ..Default::default() };
+        let mut state = CraftingState {
+            combo_action: Action::BasicTouch.id(),
+            ..Default::default()
+        };
         assert_eq!(Action::StandardTouch.cp_cost(&state), 18);
         state.condition = Condition::Pliant;
         assert_eq!(Action::StandardTouch.cp_cost(&state), 9);
@@ -438,7 +508,10 @@ mod tests {
 
     #[test]
     fn durability_halves_stack_and_round_up() {
-        let mut state = CraftingState { waste_not_turns: 1, ..Default::default() };
+        let mut state = CraftingState {
+            waste_not_turns: 1,
+            ..Default::default()
+        };
         assert_eq!(Action::PrudentTouch.durability_cost(&state), 3);
         state.condition = Condition::Sturdy;
         assert_eq!(Action::PrudentTouch.durability_cost(&state), 2);
@@ -448,7 +521,10 @@ mod tests {
 
     #[test]
     fn centered_caps_success_at_100_and_observe_guarantees_focused() {
-        let mut state = CraftingState { condition: Condition::Centered, ..Default::default() };
+        let mut state = CraftingState {
+            condition: Condition::Centered,
+            ..Default::default()
+        };
         assert_eq!(Action::RapidSynthesis.success_rate(&state), 75);
         assert_eq!(Action::BasicTouch.success_rate(&state), 100);
         state.condition = Condition::Normal;
@@ -458,12 +534,32 @@ mod tests {
 
     #[test]
     fn specific_gate_precedes_level_and_cp() {
-        let state = CraftingState { status: CraftStatus::InProgress, cp: 0, is_first_step: false, ..Default::default() };
-        let stats = CrafterStats { level: 10, ..Default::default() };
+        let state = CraftingState {
+            status: CraftStatus::InProgress,
+            cp: 0,
+            is_first_step: false,
+            ..Default::default()
+        };
+        let stats = CrafterStats {
+            level: 10,
+            ..Default::default()
+        };
         let recipe = Recipe::default();
-        assert_eq!(Action::MuscleMemory.fail_reason(&state, &stats, &recipe), Some(FailReason::FirstActionOnly));
-        assert_eq!(Action::CarefulSynthesis.fail_reason(&state, &stats, &recipe), Some(FailReason::RequiresLevel(62)));
-        assert_eq!(Action::BasicTouch.fail_reason(&state, &stats, &recipe), Some(FailReason::NotEnoughCp));
-        assert_eq!(Action::BasicSynthesis.fail_reason(&state, &stats, &recipe), None);
+        assert_eq!(
+            Action::MuscleMemory.fail_reason(&state, &stats, &recipe),
+            Some(FailReason::FirstActionOnly)
+        );
+        assert_eq!(
+            Action::CarefulSynthesis.fail_reason(&state, &stats, &recipe),
+            Some(FailReason::RequiresLevel(62))
+        );
+        assert_eq!(
+            Action::BasicTouch.fail_reason(&state, &stats, &recipe),
+            Some(FailReason::NotEnoughCp)
+        );
+        assert_eq!(
+            Action::BasicSynthesis.fail_reason(&state, &stats, &recipe),
+            None
+        );
     }
 }

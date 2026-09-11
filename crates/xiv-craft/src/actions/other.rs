@@ -1,17 +1,26 @@
 use crate::actions::Action;
 use crate::state::{Condition, CrafterStats, CraftingState, Recipe};
 
-pub(super) fn apply_effect(action: Action, state: CraftingState, _stats: &CrafterStats, _recipe: &Recipe) -> CraftingState {
+pub(super) fn apply_effect(
+    action: Action,
+    state: CraftingState,
+    _stats: &CrafterStats,
+    _recipe: &Recipe,
+) -> CraftingState {
     let mut next = state;
     match action {
         Action::TricksOfTheTrade => {
             next.cp = (state.cp + 20).min(state.max_cp);
             // Heart and Soul is spent only when it substituted for the missing Good condition.
-            if state.heart_and_soul_active && !matches!(state.condition, Condition::Good | Condition::Excellent) {
+            if state.heart_and_soul_active
+                && !matches!(state.condition, Condition::Good | Condition::Excellent)
+            {
                 next.heart_and_soul_active = false;
             }
         }
-        Action::CarefulObservation => next.careful_observation_count = state.careful_observation_count + 1,
+        Action::CarefulObservation => {
+            next.careful_observation_count = state.careful_observation_count + 1
+        }
         _ => unreachable!("{action:?} is not a special action"),
     }
     next
@@ -22,7 +31,13 @@ mod tests {
     use super::*;
 
     fn fixture() -> (CraftingState, CrafterStats, Recipe) {
-        let stats = CrafterStats { level: 100, craftsmanship: 4500, control: 4400, cp: 700, is_specialist: false };
+        let stats = CrafterStats {
+            level: 100,
+            craftsmanship: 4500,
+            control: 4400,
+            cp: 700,
+            is_specialist: false,
+        };
         let recipe = Recipe {
             recipe_level: 690,
             difficulty: 3800,
@@ -35,7 +50,11 @@ mod tests {
             is_expert: true,
             ..Default::default()
         };
-        (CraftingState::create_initial(&recipe, &stats), stats, recipe)
+        (
+            CraftingState::create_initial(&recipe, &stats),
+            stats,
+            recipe,
+        )
     }
 
     #[test]

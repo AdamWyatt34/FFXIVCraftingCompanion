@@ -225,7 +225,11 @@ mod tests {
 
     #[test]
     fn buff_tick_floors_at_zero() {
-        let state = CraftingState { innovation_turns: 1, veneration_turns: 0, ..Default::default() };
+        let state = CraftingState {
+            innovation_turns: 1,
+            veneration_turns: 0,
+            ..Default::default()
+        };
         let ticked = state.with_buff_tick();
         assert_eq!(ticked.innovation_turns, 0);
         assert_eq!(ticked.veneration_turns, 0);
@@ -233,7 +237,10 @@ mod tests {
 
     #[test]
     fn effective_control_truncates() {
-        let stats = CrafterStats { control: 3600, ..Default::default() };
+        let stats = CrafterStats {
+            control: 3600,
+            ..Default::default()
+        };
         assert_eq!(stats.effective_control(0), 3600);
         assert_eq!(stats.effective_control(3), 4680);
         assert_eq!(stats.effective_control(10), 7200);

@@ -15,7 +15,11 @@ pub struct DotNetRandom {
 impl DotNetRandom {
     pub fn new(seed: i32) -> DotNetRandom {
         let mut seed_array = [0i32; 56];
-        let subtraction = if seed == i32::MIN { i32::MAX } else { seed.wrapping_abs() };
+        let subtraction = if seed == i32::MIN {
+            i32::MAX
+        } else {
+            seed.wrapping_abs()
+        };
         let mut mj = MSEED.wrapping_sub(subtraction);
         seed_array[55] = mj;
         let mut mk = 1i32;
@@ -44,7 +48,11 @@ impl DotNetRandom {
                 }
             }
         }
-        DotNetRandom { seed_array, inext: 0, inextp: 21 }
+        DotNetRandom {
+            seed_array,
+            inext: 0,
+            inextp: 21,
+        }
     }
 
     fn internal_sample(&mut self) -> i32 {

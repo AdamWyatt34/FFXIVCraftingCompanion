@@ -21,4 +21,4 @@ pub use simulator::{
     action_availability, create_initial, execute_action, legal_actions, simulate, simulate_with,
     SimulationOptions, SimulationResult, StepResult,
 };
-pub use state::{Condition, CrafterStats, CraftingState, CraftStatus, Recipe};
+pub use state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};

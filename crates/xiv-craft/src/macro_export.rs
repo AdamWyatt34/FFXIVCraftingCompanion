@@ -10,7 +10,12 @@ pub struct MacroOptions {
 
 impl Default for MacroOptions {
     fn default() -> MacroOptions {
-        MacroOptions { lines_per_macro: 14, sound_effect: 1, complete_sound_effect: 2, include_echo: true }
+        MacroOptions {
+            lines_per_macro: 14,
+            sound_effect: 1,
+            complete_sound_effect: 2,
+            include_echo: true,
+        }
     }
 }
 
@@ -21,7 +26,11 @@ pub fn export_to_macro(action_ids: &[ActionId], options: &MacroOptions) -> Vec<S
         .iter()
         .filter_map(|id| Action::from_id(*id))
         .map(|action| {
-            let wait = if action.category() == ActionCategory::Buff { 2 } else { 3 };
+            let wait = if action.category() == ActionCategory::Buff {
+                2
+            } else {
+                3
+            };
             format!("/ac \"{}\" <wait.{wait}>", action.in_game_name())
         })
         .collect();
@@ -36,9 +45,16 @@ pub fn export_to_macro(action_ids: &[ActionId], options: &MacroOptions) -> Vec<S
         let mut chunk: Vec<String> = chunk.to_vec();
         if options.include_echo {
             if start + options.lines_per_macro < lines.len() {
-                chunk.push(format!("/echo Macro #{} complete <se.{}>", index + 1, options.sound_effect));
+                chunk.push(format!(
+                    "/echo Macro #{} complete <se.{}>",
+                    index + 1,
+                    options.sound_effect
+                ));
             } else {
-                chunk.push(format!("/echo Craft complete <se.{}>", options.complete_sound_effect));
+                chunk.push(format!(
+                    "/echo Craft complete <se.{}>",
+                    options.complete_sound_effect
+                ));
             }
         }
         macros.push(chunk.join("\n"));

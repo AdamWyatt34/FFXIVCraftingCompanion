@@ -3,7 +3,12 @@ use crate::actions::Action;
 use crate::formula;
 use crate::state::{Condition, CrafterStats, CraftingState, Recipe};
 
-pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &CrafterStats, recipe: &Recipe) -> CraftingState {
+pub(super) fn apply_effect(
+    action: Action,
+    state: CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> CraftingState {
     if action == Action::DelicateSynthesis {
         return delicate_synthesis(state, stats, recipe);
     }
@@ -31,10 +36,12 @@ pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &Crafter
 
     match action {
         Action::MuscleMemory => next.muscle_memory_turns = 5,
-        Action::IntensiveSynthesis => {
-            if state.heart_and_soul_active && !matches!(state.condition, Condition::Good | Condition::Excellent) {
-                next.heart_and_soul_active = false;
-            }
+        // Heart and Soul is spent only when it substituted for the missing Good condition.
+        Action::IntensiveSynthesis
+            if state.heart_and_soul_active
+                && !matches!(state.condition, Condition::Good | Condition::Excellent) =>
+        {
+            next.heart_and_soul_active = false;
         }
         _ => {}
     }
@@ -43,7 +50,12 @@ pub(super) fn apply_effect(action: Action, state: CraftingState, stats: &Crafter
 
 /// `ProgressAction.ApplyEffect`: Final Appraisal holds progress one short of completion and is
 /// consumed; Muscle Memory is consumed by any progress action.
-fn progress_effect(state: CraftingState, stats: &CrafterStats, recipe: &Recipe, potency: i32) -> CraftingState {
+fn progress_effect(
+    state: CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+    potency: i32,
+) -> CraftingState {
     let new_progress = state.progress + calculate_progress(&state, stats, recipe, potency);
     let mut next = state;
 
@@ -59,7 +71,12 @@ fn progress_effect(state: CraftingState, stats: &CrafterStats, recipe: &Recipe, 
     next
 }
 
-pub(super) fn calculate_progress(state: &CraftingState, stats: &CrafterStats, recipe: &Recipe, potency: i32) -> i32 {
+pub(super) fn calculate_progress(
+    state: &CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+    potency: i32,
+) -> i32 {
     let base = formula::base_progress(
         stats.craftsmanship,
         recipe.progress_divider,
@@ -77,7 +94,11 @@ pub(super) fn calculate_progress(state: &CraftingState, stats: &CrafterStats, re
     ((base * efficiency) as f64 / 100.0) as i32
 }
 
-fn delicate_synthesis(state: CraftingState, stats: &CrafterStats, recipe: &Recipe) -> CraftingState {
+fn delicate_synthesis(
+    state: CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> CraftingState {
     let progress_increase = calculate_progress(&state, stats, recipe, 100);
 
     let effective_control = stats.effective_control(state.inner_quiet_stacks);
@@ -95,7 +116,10 @@ fn delicate_synthesis(state: CraftingState, stats: &CrafterStats, recipe: &Recip
     if state.great_strides_turns > 0 {
         quality_efficiency += 100;
     }
-    let quality_increase = condition_multiplier(((base_quality * quality_efficiency) as f64 / 100.0) as i32, state.condition);
+    let quality_increase = condition_multiplier(
+        ((base_quality * quality_efficiency) as f64 / 100.0) as i32,
+        state.condition,
+    );
 
     let mut new_progress = state.progress + progress_increase;
     let mut final_appraisal_turns = state.final_appraisal_turns;
@@ -121,7 +145,13 @@ mod tests {
     use super::*;
 
     fn fixture() -> (CraftingState, CrafterStats, Recipe) {
-        let stats = CrafterStats { level: 90, craftsmanship: 3800, control: 3600, cp: 600, is_specialist: false };
+        let stats = CrafterStats {
+            level: 90,
+            craftsmanship: 3800,
+            control: 3600,
+            cp: 600,
+            is_specialist: false,
+        };
         let recipe = Recipe {
             recipe_level: 580,
             difficulty: 3500,
@@ -133,7 +163,11 @@ mod tests {
             quality_modifier: 70,
             ..Default::default()
         };
-        (CraftingState::create_initial(&recipe, &stats), stats, recipe)
+        (
+            CraftingState::create_initial(&recipe, &stats),
+            stats,
+            recipe,
+        )
     }
 
     #[test]

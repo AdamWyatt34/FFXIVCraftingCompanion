@@ -5,7 +5,7 @@ use crate::actions::{Action, ActionAvailability, ActionId};
 use crate::condition::ConditionResolver;
 use crate::fail_reason::FailReason;
 use crate::rng::DotNetRandom;
-use crate::state::{Condition, CrafterStats, CraftingState, CraftStatus, Recipe};
+use crate::state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};
 
 /// Seed used when a run needs randomness but none was supplied. C# seeds from the clock there,
 /// which is neither reproducible nor available on wasm, so the engine pins a constant instead.
@@ -67,7 +67,12 @@ impl StepResult {
         self.state_after.cp - self.state_before.cp
     }
 
-    fn unchanged(state: CraftingState, action_id: ActionId, action: Option<Action>, reason: FailReason) -> StepResult {
+    fn unchanged(
+        state: CraftingState,
+        action_id: ActionId,
+        action: Option<Action>,
+        reason: FailReason,
+    ) -> StepResult {
         StepResult {
             step_number: state.step + 1,
             action_id,
@@ -108,7 +113,12 @@ pub fn create_initial(recipe: &Recipe, stats: &CrafterStats) -> CraftingState {
     CraftingState::create_initial(recipe, stats)
 }
 
-pub fn execute_action(state: CraftingState, action_id: ActionId, stats: &CrafterStats, recipe: &Recipe) -> StepResult {
+pub fn execute_action(
+    state: CraftingState,
+    action_id: ActionId,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> StepResult {
     let Some(action) = Action::from_id(action_id) else {
         return StepResult::unchanged(state, action_id, None, FailReason::UnknownAction);
     };
@@ -127,11 +137,20 @@ pub fn execute_action(state: CraftingState, action_id: ActionId, stats: &Crafter
     }
 }
 
-pub fn simulate(recipe: &Recipe, stats: &CrafterStats, action_ids: &[ActionId]) -> SimulationResult {
+pub fn simulate(
+    recipe: &Recipe,
+    stats: &CrafterStats,
+    action_ids: &[ActionId],
+) -> SimulationResult {
     simulate_with(recipe, stats, action_ids, &SimulationOptions::default())
 }
 
-pub fn simulate_with(recipe: &Recipe, stats: &CrafterStats, action_ids: &[ActionId], options: &SimulationOptions) -> SimulationResult {
+pub fn simulate_with(
+    recipe: &Recipe,
+    stats: &CrafterStats,
+    action_ids: &[ActionId],
+    options: &SimulationOptions,
+) -> SimulationResult {
     let mut state = create_initial(recipe, stats);
     let mut steps = Vec::with_capacity(action_ids.len());
     // Two streams, as in C#: conditions from the seed, success rolls from seed + 1.
@@ -145,19 +164,39 @@ pub fn simulate_with(recipe: &Recipe, stats: &CrafterStats, action_ids: &[Action
         }
 
         let Some(action) = Action::from_id(action_id) else {
-            steps.push(StepResult::unchanged(state, action_id, None, FailReason::UnknownAction));
+            steps.push(StepResult::unchanged(
+                state,
+                action_id,
+                None,
+                FailReason::UnknownAction,
+            ));
             continue;
         };
 
-        let step = execute_internal(state, action, stats, recipe, options, &mut conditions, &mut success_rolls);
+        let step = execute_internal(
+            state,
+            action,
+            stats,
+            recipe,
+            options,
+            &mut conditions,
+            &mut success_rolls,
+        );
         state = step.state_after;
         steps.push(step);
     }
 
-    SimulationResult { steps, final_state: state }
+    SimulationResult {
+        steps,
+        final_state: state,
+    }
 }
 
-pub fn legal_actions(state: &CraftingState, stats: &CrafterStats, recipe: &Recipe) -> Vec<ActionId> {
+pub fn legal_actions(
+    state: &CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> Vec<ActionId> {
     Action::ALL
         .iter()
         .filter(|a| a.fail_reason(state, stats, recipe).is_none())
@@ -166,7 +205,11 @@ pub fn legal_actions(state: &CraftingState, stats: &CrafterStats, recipe: &Recip
 }
 
 /// `GetAvailableActions` for every action, in registry order.
-pub fn action_availability(state: &CraftingState, stats: &CrafterStats, recipe: &Recipe) -> [ActionAvailability; 36] {
+pub fn action_availability(
+    state: &CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> [ActionAvailability; 36] {
     let mut table = [Action::BasicSynthesis.availability(state, stats, recipe); 36];
     for (slot, action) in table.iter_mut().zip(Action::ALL) {
         *slot = action.availability(state, stats, recipe);
@@ -198,7 +241,8 @@ fn execute_internal(
     if let Some(forced) = options.force_condition {
         after.condition = forced;
     } else if !options.assume_normal_condition {
-        after.condition = conditions.next_condition(after.condition, recipe.is_expert, recipe.conditions_flag);
+        after.condition =
+            conditions.next_condition(after.condition, recipe.is_expert, recipe.conditions_flag);
     }
 
     StepResult {
@@ -208,7 +252,11 @@ fn execute_internal(
         state_before: state,
         state_after: after,
         succeeded,
-        fail_reason: if succeeded { None } else { Some(FailReason::SuccessRoll) },
+        fail_reason: if succeeded {
+            None
+        } else {
+            Some(FailReason::SuccessRoll)
+        },
     }
 }
 
@@ -218,8 +266,17 @@ mod tests {
 
     #[test]
     fn unknown_action_records_a_failed_step_and_continues() {
-        let recipe = Recipe { difficulty: 100, quality: 100, durability: 40, ..Default::default() };
-        let stats = CrafterStats { level: 1, cp: 10, ..Default::default() };
+        let recipe = Recipe {
+            difficulty: 100,
+            quality: 100,
+            durability: 40,
+            ..Default::default()
+        };
+        let stats = CrafterStats {
+            level: 1,
+            cp: 10,
+            ..Default::default()
+        };
         let result = simulate(&recipe, &stats, &[999999, 999999]);
         assert_eq!(result.steps.len(), 2);
         assert_eq!(result.steps[0].fail_reason, Some(FailReason::UnknownAction));
@@ -229,8 +286,17 @@ mod tests {
 
     #[test]
     fn legal_actions_follow_registry_order() {
-        let recipe = Recipe { difficulty: 100, quality: 100, durability: 40, ..Default::default() };
-        let stats = CrafterStats { level: 100, cp: 500, ..Default::default() };
+        let recipe = Recipe {
+            difficulty: 100,
+            quality: 100,
+            durability: 40,
+            ..Default::default()
+        };
+        let stats = CrafterStats {
+            level: 100,
+            cp: 500,
+            ..Default::default()
+        };
         let state = create_initial(&recipe, &stats);
         let legal = legal_actions(&state, &stats, &recipe);
         assert_eq!(legal.first(), Some(&Action::BasicSynthesis.id()));

@@ -31,7 +31,9 @@ impl fmt::Display for FailReason {
             FailReason::NotInProgress => f.write_str("Craft is not in progress"),
             FailReason::RequiresLevel(level) => write!(f, "Requires level {level}"),
             FailReason::NotEnoughCp => f.write_str("Not enough CP"),
-            FailReason::RequiresGoodOrExcellent => f.write_str("Requires Good or Excellent condition"),
+            FailReason::RequiresGoodOrExcellent => {
+                f.write_str("Requires Good or Excellent condition")
+            }
             FailReason::FirstActionOnly => f.write_str("Can only be used as the first action"),
             FailReason::WasteNotActive => f.write_str("Cannot be used while Waste Not is active"),
             FailReason::RequiresInnerQuiet => f.write_str("Requires Inner Quiet stacks"),
@@ -48,7 +50,9 @@ impl fmt::Display for FailReason {
             FailReason::QuickInnovationOnce => {
                 f.write_str("Quick Innovation can only be used once per craft")
             }
-            FailReason::InnovationActive => f.write_str("Cannot be used while Innovation is active"),
+            FailReason::InnovationActive => {
+                f.write_str("Cannot be used while Innovation is active")
+            }
             FailReason::TrainedPerfectionOnce => {
                 f.write_str("Trained Perfection can only be used once per craft")
             }

@@ -1,7 +1,12 @@
 use crate::actions::Action;
 use crate::state::{Condition, CrafterStats, CraftingState, Recipe};
 
-pub(super) fn apply_effect(action: Action, state: CraftingState, _stats: &CrafterStats, _recipe: &Recipe) -> CraftingState {
+pub(super) fn apply_effect(
+    action: Action,
+    state: CraftingState,
+    _stats: &CrafterStats,
+    _recipe: &Recipe,
+) -> CraftingState {
     let mut next = state;
     match action {
         // Inner Quiet is automatic in the current game; the action is kept as a no-op.
@@ -44,7 +49,13 @@ mod tests {
     use super::*;
 
     fn fixture() -> (CraftingState, CrafterStats, Recipe) {
-        let stats = CrafterStats { level: 100, craftsmanship: 4500, control: 4400, cp: 700, is_specialist: false };
+        let stats = CrafterStats {
+            level: 100,
+            craftsmanship: 4500,
+            control: 4400,
+            cp: 700,
+            is_specialist: false,
+        };
         let recipe = Recipe {
             recipe_level: 690,
             difficulty: 3800,
@@ -56,7 +67,11 @@ mod tests {
             quality_modifier: 70,
             ..Default::default()
         };
-        (CraftingState::create_initial(&recipe, &stats), stats, recipe)
+        (
+            CraftingState::create_initial(&recipe, &stats),
+            stats,
+            recipe,
+        )
     }
 
     #[test]
