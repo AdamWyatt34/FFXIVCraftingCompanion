@@ -14,12 +14,9 @@ public sealed record ParityScenario(
     List<int> Actions,
     bool IncludeAvailability);
 
-/// <summary>
-/// Builds the case list for one benchmark recipe and turns each case into its golden record.
-/// Every sequence is derived from the C# engine itself (random picks are made among the
-/// actions the engine reports legal), so the goldens describe what the engine does, not
-/// what a rotation author intended.
-/// </summary>
+// Every sequence is derived from the C# engine itself (random picks are made among the actions
+// the engine reports legal), so the goldens describe what the engine does, not what a rotation
+// author intended.
 internal static class ParityRotationSources
 {
     private const int RandomCaseCount = 200;
@@ -28,6 +25,9 @@ internal static class ParityRotationSources
     private const int MaxSequenceLength = 40;
     private const int UnknownActionId = 999999;
     private const int AllExpertConditions = 0x7F;
+    private static readonly int[] PartialExpertConditions = [0x05, 0x22, 0x41];
+    private const int ForcedSeededCasesPerCondition = 2;
+    private const int PartialMaskCases = 5;
 
     private static readonly SimulationOptions Defaults = new();
 
@@ -56,6 +56,19 @@ internal static class ParityRotationSources
                     RandomLegalSequence(recipe, stats, 2000 + (int)condition * 10 + i, force: condition),
                     IncludeAvailability: i == 0);
             }
+
+            // A gated action under a forced condition leaves the state (and condition) untouched,
+            // and Good-gated actions become legal once the forced condition applies.
+            yield return new ParityScenario($"forced-gated-{condition}", recipe, stats, options,
+                new[] { "IntensiveSynthesis", "BasicSynthesis", "TricksOfTheTrade", "IntensiveSynthesis", "BasicTouch" }.Select(Id).ToList(),
+                IncludeAvailability: true);
+
+            for (var i = 0; i < ForcedSeededCasesPerCondition; i++)
+            {
+                var rolled = new SimulationOptions { ForceCondition = condition, AssumeAllSuccess = false, RandomSeed = 7000 + (int)condition * 10 + i };
+                yield return new ParityScenario($"forced-seeded-{condition}-{i}", recipe, stats, rolled,
+                    SeededLegalSequence(recipe, stats, rolled, 8000 + (int)condition * 10 + i), IncludeAvailability: false);
+            }
         }
 
         for (var i = 0; i < SeededCaseCount; i++)
@@ -65,14 +78,32 @@ internal static class ParityRotationSources
                 SeededLegalSequence(recipe, stats, options, 4000 + i), IncludeAvailability: false);
         }
 
+        // The success stream is seeded from RandomSeed + 1, which wraps here.
+        var wrapping = new SimulationOptions { AssumeAllSuccess = false, AssumeNormalCondition = false, RandomSeed = int.MaxValue };
+        yield return new ParityScenario("seeded-max", recipe, stats, wrapping,
+            SeededLegalSequence(recipe, stats, wrapping, 4100), IncludeAvailability: false);
+
         if (benchmark.Recipe.ClassJobLevel >= 100)
         {
+            // Specialist stats so the specialist-only abilities are legal on the expert variant.
+            var specialist = stats with { IsSpecialist = true };
             var expert = recipe with { IsExpert = true, ConditionsFlag = AllExpertConditions };
             for (var i = 0; i < SeededCaseCount; i++)
             {
                 var options = new SimulationOptions { AssumeAllSuccess = false, AssumeNormalCondition = false, RandomSeed = 5000 + i };
-                yield return new ParityScenario($"expert-seeded-{i:00}", expert, stats, options,
-                    SeededLegalSequence(expert, stats, options, 6000 + i), IncludeAvailability: i == 0);
+                yield return new ParityScenario($"expert-seeded-{i:00}", expert, specialist, options,
+                    SeededLegalSequence(expert, specialist, options, 6000 + i), IncludeAvailability: i == 0);
+            }
+
+            foreach (var mask in PartialExpertConditions)
+            {
+                var partial = recipe with { IsExpert = true, ConditionsFlag = mask };
+                for (var i = 0; i < PartialMaskCases; i++)
+                {
+                    var options = new SimulationOptions { AssumeAllSuccess = false, AssumeNormalCondition = false, RandomSeed = 9000 + mask * 10 + i };
+                    yield return new ParityScenario($"expert-mask{mask:x2}-seeded-{i}", partial, specialist, options,
+                        SeededLegalSequence(partial, specialist, options, 9500 + mask * 10 + i), IncludeAvailability: false);
+                }
             }
         }
 
@@ -85,6 +116,10 @@ internal static class ParityRotationSources
         var simulator = new CraftingSimulator();
         var initial = simulator.CreateInitialState(scenario.Recipe, scenario.Stats);
         var result = simulator.Simulate(scenario.Recipe, scenario.Stats, scenario.Actions, scenario.Options);
+
+        var finalAvailability = scenario.IncludeAvailability
+            ? Availability(simulator, result.FinalState, scenario)
+            : null;
 
         var steps = result.Steps.Select(s => new ParityStep(
             s.StepNumber,
@@ -109,6 +144,7 @@ internal static class ParityRotationSources
             ToState(initial),
             steps,
             ToState(result.FinalState),
+            finalAvailability,
             MacroExporter.ExportToMacro(scenario.Actions));
     }
 
@@ -172,6 +208,7 @@ internal static class ParityRotationSources
     {
         var lowLevel = stats with { Level = 10 };
         var starved = stats with { CP = 10 };
+        var specialist = stats with { IsSpecialist = true };
         var underLevelForTrainedEye = stats with { Level = recipe.ClassJobLevel + 5 };
         var overLevelForTrainedEye = stats with { Level = recipe.ClassJobLevel + 10 };
         var expert = recipe with { IsExpert = true, ConditionsFlag = AllExpertConditions };
@@ -185,15 +222,21 @@ internal static class ParityRotationSources
         yield return Edge("finesse-under-ten-iq", recipe, stats, "BasicTouch", "TrainedFinesse");
         yield return Edge("good-only-on-normal", recipe, stats, "IntensiveSynthesis", "TricksOfTheTrade", "BasicSynthesis");
         yield return Edge("prudent-under-waste-not", recipe, stats, "WasteNot", "PrudentTouch", "PrudentSynthesis", "BasicTouch");
-        yield return Edge("expert-only-on-standard", recipe, stats, "HeartAndSoul", "CarefulObservation", "BasicSynthesis");
-        yield return Edge("quick-innovation-limits", recipe, stats, "QuickInnovation", "BasicTouch", "QuickInnovation", "Innovation", "QuickInnovation");
+        yield return Edge("specialist-only", recipe, stats, "HeartAndSoul", "CarefulObservation", "QuickInnovation", "BasicSynthesis");
+        yield return Edge("specialist-abilities-keep-first-step", recipe, specialist, "HeartAndSoul", "CarefulObservation", "MuscleMemory",
+            "CarefulObservation", "CarefulObservation", "CarefulObservation", "Veneration", "Groundwork");
+        yield return Edge("quick-innovation-limits", recipe, specialist, "QuickInnovation", "BasicTouch", "QuickInnovation", "Innovation", "QuickInnovation");
+        yield return Edge("quick-innovation-blocked-by-innovation", recipe, specialist, "Innovation", "QuickInnovation", "BasicTouch", "BasicTouch", "BasicTouch", "BasicTouch", "QuickInnovation", "BasicTouch");
+        yield return Edge("final-appraisal-is-step-free", recipe, stats, "Veneration", "FinalAppraisal", "FinalAppraisal", "BasicSynthesis", "MuscleMemory");
+        yield return Edge("buffs-last-full-duration", recipe, stats, "Innovation", "BasicTouch", "BasicTouch", "BasicTouch", "BasicTouch", "BasicTouch",
+            "Manipulation", "Manipulation", "Groundwork", "Groundwork");
         yield return Edge("trained-perfection-once", recipe, stats, "TrainedPerfection", "BasicTouch", "TrainedPerfection", "PreparatoryTouch");
         yield return Edge("level-gated", recipe, lowLevel, "BasicSynthesis", "CarefulSynthesis", "BasicTouch", "StandardTouch", "Veneration", "Groundwork");
         yield return Edge("cp-starved", recipe, starved, "Manipulation", "BasicSynthesis", "Veneration", "BasicTouch", "BasicSynthesis");
         yield return Edge("trained-eye-under-level", recipe, underLevelForTrainedEye, "TrainedEye", "BasicSynthesis");
         yield return Edge("trained-eye-over-level", recipe, overLevelForTrainedEye, "TrainedEye", "BasicSynthesis", "BasicSynthesis");
         yield return Edge("trained-eye-no-job-level", noJobLevel, overLevelForTrainedEye, "TrainedEye", "BasicSynthesis");
-        yield return Edge("trained-eye-on-expert", expert, overLevelForTrainedEye, "TrainedEye", "HeartAndSoul", "HeartAndSoul",
+        yield return Edge("trained-eye-on-expert", expert, overLevelForTrainedEye with { IsSpecialist = true }, "TrainedEye", "HeartAndSoul", "HeartAndSoul",
             "CarefulObservation", "CarefulObservation", "CarefulObservation", "CarefulObservation", "IntensiveSynthesis", "TricksOfTheTrade");
         yield return Edge("manipulation-to-zero", recipe, stats, "Manipulation", "Groundwork", "Groundwork", "Groundwork", "Groundwork", "Groundwork", "Groundwork");
         yield return Edge("final-appraisal-cap", recipe, stats, "MuscleMemory", "FinalAppraisal", "Veneration", "Groundwork", "Groundwork", "Groundwork", "Groundwork", "Groundwork");

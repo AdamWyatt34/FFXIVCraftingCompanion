@@ -7,17 +7,15 @@ using FFXIV.Tests.CraftingEngine.Solver;
 
 namespace FFXIV.Tests.CraftingEngine.Parity;
 
-/// <summary>
-/// Pins the C# engine's behaviour as golden files the Rust crate replays (crates/xiv-craft/tests).
-/// Run with FFXIV_PARITY_GENERATE=1 to rewrite the goldens in the source tree after an intended
-/// engine change; otherwise each test regenerates in memory and fails on the first byte that
-/// differs, so an engine change without regeneration cannot land silently.
-/// </summary>
+// Pins the C# engine's behaviour as golden files the Rust crate replays (crates/xiv-craft/tests).
+// Run with FFXIV_PARITY_GENERATE=1 to rewrite the goldens in the source tree after an intended
+// engine change; otherwise each test regenerates in memory and fails on the first byte that
+// differs, so an engine change without regeneration cannot land silently.
 public class ParityGoldenTests
 {
     private const string GenerateVariable = "FFXIV_PARITY_GENERATE";
     private const int RandomSampleCount = 64;
-    private static readonly int[] RandomSeeds = [0, 1, 42, 12345, -7, int.MaxValue];
+    private static readonly int[] RandomSeeds = [0, 1, 42, 12345, -7, int.MaxValue, int.MinValue];
 
     private static readonly JsonSerializerOptions Json = new()
     {

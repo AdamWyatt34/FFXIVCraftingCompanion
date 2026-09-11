@@ -11,6 +11,7 @@ public sealed record ParityCase(
     ParityState Initial,
     List<ParityStep> Steps,
     ParityState Final,
+    List<ParityAvailability>? FinalAvailability,
     List<string> Macros);
 
 public sealed record ParityRecipe(
