@@ -8,12 +8,10 @@ public class FinalAppraisal : BuffAction
     public override string Name => "FinalAppraisal";
     public override string InGameName => "Final Appraisal";
     public override int LevelRequirement => 42;
+    public override bool ConsumesStep => false;
     protected override int BaseCPCost => 1;
     protected override int BuffDuration => 5;
 
-    protected override CraftingState ApplyEffect(
-        CraftingState state, CrafterStats stats, RecipeParameters recipe)
-    {
-        return state with { FinalAppraisalTurns = GetEffectiveDuration(state) };
-    }
+    protected override CraftingState WithBuffTurns(CraftingState state, int turns)
+        => state with { FinalAppraisalTurns = turns };
 }

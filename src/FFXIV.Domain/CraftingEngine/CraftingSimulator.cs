@@ -199,7 +199,7 @@ public class CraftingSimulator : ICraftingSimulator
         {
             stateAfter = stateAfter with { Condition = options.ForceCondition.Value };
         }
-        else if (!options.AssumeNormalCondition)
+        else if (!options.AssumeNormalCondition && action.AdvancesCondition)
         {
             var nextCondition = conditionResolver.GetNextCondition(
                 stateAfter.Condition, recipe.IsExpert, recipe.ConditionsFlag);

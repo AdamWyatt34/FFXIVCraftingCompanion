@@ -11,9 +11,6 @@ public class Manipulation : BuffAction
     protected override int BaseCPCost => 96;
     protected override int BuffDuration => 8;
 
-    protected override CraftingState ApplyEffect(
-        CraftingState state, CrafterStats stats, RecipeParameters recipe)
-    {
-        return state with { ManipulationTurns = GetEffectiveDuration(state) };
-    }
+    protected override CraftingState WithBuffTurns(CraftingState state, int turns)
+        => state with { ManipulationTurns = turns };
 }

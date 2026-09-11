@@ -11,9 +11,6 @@ public class WasteNotII : BuffAction
     protected override int BaseCPCost => 98;
     protected override int BuffDuration => 8;
 
-    protected override CraftingState ApplyEffect(
-        CraftingState state, CrafterStats stats, RecipeParameters recipe)
-    {
-        return state with { WasteNotIITurns = GetEffectiveDuration(state) };
-    }
+    protected override CraftingState WithBuffTurns(CraftingState state, int turns)
+        => state with { WasteNotIITurns = turns };
 }

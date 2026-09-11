@@ -213,8 +213,7 @@ public class ProgressActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // MuscleMemoryTurns is set to 5 in ApplyEffect, then ticked by WithBuffTick to 4
-        result.MuscleMemoryTurns.Should().Be(4);
+        result.MuscleMemoryTurns.Should().Be(5);
     }
 
     [Fact]

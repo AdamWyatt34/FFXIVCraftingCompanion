@@ -96,6 +96,10 @@ public sealed class GreedySolver : IRotationSolver
             var action = CraftingActionRegistry.GetById(a.ActionId);
             if (action == null) continue;
 
+            // Step-free abilities never move the craft out of its phase, so a greedy pick would
+            // re-select them until the step budget runs out.
+            if (!action.ConsumesStep) continue;
+
             var score = ScoreAction(a, action, state, stats, recipe, phase, constraints);
             if (score > bestScore)
             {

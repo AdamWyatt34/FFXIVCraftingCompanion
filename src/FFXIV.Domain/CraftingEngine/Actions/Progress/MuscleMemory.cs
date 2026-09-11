@@ -9,7 +9,7 @@ public class MuscleMemory : ProgressAction
     public override string InGameName => "Muscle Memory";
     public override int LevelRequirement => 54;
     protected override int BaseCPCost => 6;
-    protected override int Potency => 300;
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => 300;
 
     public override string? GetFailReason(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
@@ -19,10 +19,6 @@ public class MuscleMemory : ProgressAction
         return base.GetFailReason(state, stats, recipe);
     }
 
-    protected override CraftingState ApplyEffect(
-        CraftingState state, CrafterStats stats, RecipeParameters recipe)
-    {
-        var result = base.ApplyEffect(state, stats, recipe);
-        return result with { MuscleMemoryTurns = 5 };
-    }
+    protected override CraftingState ApplyGrantedBuffs(CraftingState state)
+        => state with { MuscleMemoryTurns = state.Condition == CraftCondition.Primed ? 7 : 5 };
 }

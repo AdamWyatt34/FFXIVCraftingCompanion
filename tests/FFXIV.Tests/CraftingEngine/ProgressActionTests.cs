@@ -133,11 +133,12 @@ public class ProgressActionTests
         public override string InGameName => "Test Progress";
         public override int LevelRequirement => 1;
         protected override int BaseCPCost => 0;
-        protected override int Potency { get; }
+        private readonly int _potency;
+        protected override int GetPotency(CraftingState state, CrafterStats stats) => _potency;
 
         public TestProgressAction(int potency = 120)
         {
-            Potency = potency;
+            _potency = potency;
         }
     }
 }

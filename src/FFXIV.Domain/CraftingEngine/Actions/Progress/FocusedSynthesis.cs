@@ -10,7 +10,7 @@ public class FocusedSynthesis : ProgressAction
     public override int LevelRequirement => 67;
     protected override int BaseCPCost => 5;
     protected override int BaseSuccessRate => 50;
-    protected override int Potency => 200;
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => 200;
 
     public override int GetSuccessRate(CraftingState state)
     {

@@ -1,3 +1,5 @@
+using FFXIV.Domain.CraftingEngine.Models;
+
 namespace FFXIV.Domain.CraftingEngine.Actions.Progress;
 
 public class RapidSynthesis : ProgressAction
@@ -8,5 +10,5 @@ public class RapidSynthesis : ProgressAction
     public override int LevelRequirement => 9;
     protected override int BaseCPCost => 0;
     protected override int BaseSuccessRate => 50;
-    protected override int Potency => 500;
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => 500;
 }
