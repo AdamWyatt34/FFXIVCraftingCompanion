@@ -80,8 +80,8 @@
       "reason": "Production configuration"
     },
     {
-      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/",
-      "reason": "Solver benchmark fixtures and parity golden files pin engine behaviour; regenerate only through the designated generator test with a human's approval"
+      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json",
+      "reason": "Hand-maintained solver benchmark fixtures pin solver behaviour. The sibling TestData/parity/ folder is generator-only output of ParityGoldenTests (FFXIV_PARITY_GENERATE=1); never hand-edit it, and regenerate only when a C# engine change is intended"
     }
   ],
   "prGates": [
