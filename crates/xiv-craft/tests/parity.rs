@@ -347,6 +347,15 @@ fn replay(file: &str, case: &Case) {
         &case.final_state,
         &result.final_state,
     );
+    if let Some(table) = &case.final_availability {
+        assert_availability(
+            &format!("{name} final"),
+            table,
+            &result.final_state,
+            &stats,
+            &recipe,
+        );
+    }
     assert_eq!(
         export_to_macro(&case.actions, &MacroOptions::default()),
         case.macros,
