@@ -4,48 +4,9 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 use xiv_craft::{
-    action_availability, create_initial, execute_action, export_to_macro, simulate_with, Action, Condition,
-    CrafterStats, CraftingState, CraftStatus, MacroOptions, Recipe, SimulationOptions,
+    action_availability, create_initial, execute_action, export_to_macro, simulate_with, Condition, CrafterStats,
+    CraftingState, CraftStatus, MacroOptions, Recipe, SimulationOptions,
 };
-
-/// Actions whose effects are implemented; cases using anything else are skipped until the
-/// last checkpoint deletes this filter.
-const PORTED: &[Action] = &[
-    Action::BasicSynthesis,
-    Action::CarefulSynthesis,
-    Action::RapidSynthesis,
-    Action::FocusedSynthesis,
-    Action::Groundwork,
-    Action::IntensiveSynthesis,
-    Action::PrudentSynthesis,
-    Action::MuscleMemory,
-    Action::DelicateSynthesis,
-    Action::BasicTouch,
-    Action::StandardTouch,
-    Action::AdvancedTouch,
-    Action::HastyTouch,
-    Action::FocusedTouch,
-    Action::PreparatoryTouch,
-    Action::PrudentTouch,
-    Action::Reflect,
-    Action::ByregotsBlessing,
-    Action::TrainedFinesse,
-    Action::TrainedEye,
-    Action::InnerQuiet,
-    Action::WasteNot,
-    Action::WasteNotII,
-    Action::Veneration,
-    Action::Innovation,
-    Action::GreatStrides,
-    Action::Manipulation,
-    Action::FinalAppraisal,
-    Action::Observe,
-    Action::HeartAndSoul,
-    Action::TrainedPerfection,
-    Action::QuickInnovation,
-    Action::MastersMend,
-    Action::ImmaculateMend,
-];
 
 const MIN_GOLDEN_FILES: usize = 10;
 
@@ -266,12 +227,6 @@ fn golden_files() -> Vec<PathBuf> {
     files
 }
 
-fn is_ported(case: &Case) -> bool {
-    case.actions
-        .iter()
-        .all(|id| Action::from_id(*id).is_none_or(|action| PORTED.contains(&action)))
-}
-
 fn assert_state(context: &str, expected: &StateJson, actual: &CraftingState) {
     assert_eq!(*actual, expected.to_state(), "{context}: state differs");
     assert_eq!(actual.is_complete(), expected.is_complete, "{context}: isComplete");
@@ -356,7 +311,6 @@ fn replay(file: &str, case: &Case) {
 #[test]
 fn every_golden_case_replays_identically() {
     let mut asserted = 0usize;
-    let mut skipped = 0usize;
 
     for path in golden_files() {
         let file = path.file_name().unwrap().to_string_lossy().into_owned();
@@ -367,15 +321,11 @@ fn every_golden_case_replays_identically() {
             }
             let case: Case = serde_json::from_str(line)
                 .unwrap_or_else(|e| panic!("{file} line {}: {e}", index + 1));
-            if !is_ported(&case) {
-                skipped += 1;
-                continue;
-            }
             replay(&file, &case);
             asserted += 1;
         }
     }
 
-    println!("parity: {asserted} cases asserted, {skipped} skipped (unported actions)");
-    assert!(asserted + skipped > 0, "no golden cases found");
+    println!("parity: {asserted} cases asserted");
+    assert!(asserted > 0, "no golden cases found");
 }
