@@ -20,10 +20,8 @@ public abstract class CraftingActionBase : ICraftingAction
     protected abstract CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe);
 
-    /// <summary>
-    /// Buffs this action grants. Applied after the buff tick so a granted buff lasts its full
-    /// duration instead of losing a turn on the step that cast it.
-    /// </summary>
+    // Applied after the buff tick so a granted buff lasts its full duration instead of losing a
+    // turn on the step that cast it.
     protected virtual CraftingState ApplyGrantedBuffs(CraftingState state) => state;
 
     public virtual int GetCPCost(CraftingState state)

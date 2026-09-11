@@ -33,7 +33,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 4, set in ApplyEffect, then ticked by WithBuffTick → 3
         result.WasteNotTurns.Should().Be(4);
     }
 
@@ -47,7 +46,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 8, ticked → 7
         result.WasteNotIITurns.Should().Be(8);
     }
 
@@ -61,7 +59,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 4, ticked → 3
         result.VenerationTurns.Should().Be(4);
     }
 
@@ -75,7 +72,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 4, ticked → 3
         result.InnovationTurns.Should().Be(4);
     }
 
@@ -89,7 +85,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 3, ticked → 2
         result.GreatStridesTurns.Should().Be(3);
     }
 
@@ -103,7 +98,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 8, ticked → 7
         result.ManipulationTurns.Should().Be(8);
     }
 
@@ -117,7 +111,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 5, ticked → 4
         result.FinalAppraisalTurns.Should().Be(5);
     }
 

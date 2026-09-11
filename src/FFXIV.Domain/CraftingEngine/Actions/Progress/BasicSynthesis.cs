@@ -9,6 +9,6 @@ public class BasicSynthesis : ProgressAction
     public override string InGameName => "Basic Synthesis";
     public override int LevelRequirement => 1;
     protected override int BaseCPCost => 0;
-    // Basic Synthesis Mastery (level 31) raises the potency from 100 to 120.
+    // Basic Synthesis Mastery, unlocked at level 31.
     protected override int GetPotency(CraftingState state, CrafterStats stats) => stats.Level >= 31 ? 120 : 100;
 }

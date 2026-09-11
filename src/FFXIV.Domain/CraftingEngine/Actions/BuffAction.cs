@@ -10,7 +10,7 @@ public abstract class BuffAction : CraftingActionBase
 
     protected abstract int BuffDuration { get; }
 
-    /// <summary>Writes this buff's remaining turns; no-op for buffs that are flags rather than timers.</summary>
+    // No-op for buffs that are flags rather than timers.
     protected virtual CraftingState WithBuffTurns(CraftingState state, int turns) => state;
 
     // A recast replaces the running buff, so the old one must neither tick nor heal this step.

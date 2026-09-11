@@ -16,7 +16,7 @@ public class DelicateSynthesis : CraftingActionBase
     protected override CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
-        // Delicate Synthesis Mastery (level 94) raises the progress potency from 100 to 150.
+        // Delicate Synthesis Mastery (level 94) raises only the progress half, not quality.
         var baseProgress = FormulaCalculator.CalculateBaseProgress(
             stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,
             stats.Level, recipe.RecipeLevel);

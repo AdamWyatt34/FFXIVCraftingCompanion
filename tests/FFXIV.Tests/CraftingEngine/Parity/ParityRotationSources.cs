@@ -85,7 +85,6 @@ internal static class ParityRotationSources
 
         if (benchmark.Recipe.ClassJobLevel >= 100)
         {
-            // Specialist stats so the specialist-only abilities are legal on the expert variant.
             var specialist = stats with { IsSpecialist = true };
             var expert = recipe with { IsExpert = true, ConditionsFlag = AllExpertConditions };
             for (var i = 0; i < SeededCaseCount; i++)

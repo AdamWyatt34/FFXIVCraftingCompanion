@@ -8,7 +8,7 @@ public abstract class ProgressAction : CraftingActionBase
     protected override int BaseDurabilityCost => 10;
     protected override int BaseSuccessRate => 100;
 
-    /// <summary>Potency at the crafter's level; mastery traits raise it for some actions.</summary>
+    // Mastery traits raise the potency at the crafter's level for some actions.
     protected abstract int GetPotency(CraftingState state, CrafterStats stats);
 
     protected override CraftingState ApplyEffect(

@@ -10,7 +10,7 @@ public class Groundwork : ProgressAction
     public override int LevelRequirement => 72;
     protected override int BaseCPCost => 18;
     protected override int BaseDurabilityCost => 20;
-    // Groundwork Mastery (level 86) raises the potency from 300 to 360.
+    // Groundwork Mastery, unlocked at level 86.
     protected override int GetPotency(CraftingState state, CrafterStats stats) => stats.Level >= 86 ? 360 : 300;
 
     protected override CraftingState ApplyEffect(
