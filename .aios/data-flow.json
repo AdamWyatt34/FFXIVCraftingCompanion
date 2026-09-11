@@ -1,0 +1,386 @@
+{
+  "repo": {
+    "name": "FFXIVCraftingCompanion"
+  },
+  "adapters": [
+    "dotnet-aspnet"
+  ],
+  "excluded": [
+    {
+      "path": "src/FFXIV.Infrastructure/Migrations/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "infra/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": ".github/workflows/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "src/FFXIV.Api/appsettings.Production.json",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/",
+      "source": "charter-noGoZone"
+    }
+  ],
+  "solutionRoot": ".",
+  "topologyComposed": true,
+  "dataModelComposed": true,
+  "frontendComposed": false,
+  "operationsSource": "config",
+  "operations": [
+    {
+      "name": "GetRecipe",
+      "entry": "controller",
+      "route": "/api/recipes/{id:int}",
+      "verb": "GET",
+      "controller": "RecipesController",
+      "file": "src\\FFXIV.Api\\Controllers\\RecipesController.cs",
+      "resolved": true,
+      "entryResolution": "class-fallback",
+      "dynamic": false,
+      "unresolvedHops": 6,
+      "steps": [
+        {
+          "seq": 0,
+          "kind": "action",
+          "symbol": "GetRecipe",
+          "file": "src\\FFXIV.Api\\Controllers\\RecipesController.cs",
+          "resolution": "code",
+          "confidence": "high",
+          "touches": {}
+        },
+        {
+          "seq": 1,
+          "kind": "handler",
+          "symbol": "GetRecipeByIdQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 2,
+          "kind": "handler",
+          "symbol": "GetMaterialTreeQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 3,
+          "kind": "handler",
+          "symbol": "GetShoppingListQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 4,
+          "kind": "handler",
+          "symbol": "GetRecipeTreeQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 5,
+          "kind": "handler",
+          "symbol": "GetRecipeCostQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 6,
+          "kind": "handler",
+          "symbol": "AnalyzeSufficiencyQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        }
+      ]
+    },
+    {
+      "name": "SimulateRotation",
+      "entry": "controller",
+      "route": "/api/crafting/simulate",
+      "verb": "POST",
+      "controller": "CraftingController",
+      "file": "src\\FFXIV.Api\\Controllers\\CraftingController.cs",
+      "resolved": true,
+      "entryResolution": "class-fallback",
+      "dynamic": false,
+      "unresolvedHops": 11,
+      "steps": [
+        {
+          "seq": 0,
+          "kind": "action",
+          "symbol": "SimulateRotation",
+          "file": "src\\FFXIV.Api\\Controllers\\CraftingController.cs",
+          "resolution": "code",
+          "confidence": "high",
+          "touches": {}
+        },
+        {
+          "seq": 1,
+          "kind": "handler",
+          "symbol": "SimulateCraftCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 2,
+          "kind": "handler",
+          "symbol": "ExecuteSingleActionCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 3,
+          "kind": "handler",
+          "symbol": "GetCraftingActionsQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 4,
+          "kind": "handler",
+          "symbol": "GetAvailableActionsQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 5,
+          "kind": "handler",
+          "symbol": "ExportMacroCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 6,
+          "kind": "handler",
+          "symbol": "GetInitialStateQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 7,
+          "kind": "handler",
+          "symbol": "StartSolveCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 8,
+          "kind": "handler",
+          "symbol": "QuickSolveQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 9,
+          "kind": "handler",
+          "symbol": "GetSolverJobQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 10,
+          "kind": "handler",
+          "symbol": "CancelSolverJobCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 11,
+          "kind": "handler",
+          "symbol": "GetCraftingJourneyQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        }
+      ]
+    },
+    {
+      "name": "SolveRotation",
+      "entry": "controller",
+      "route": "/api/crafting/solve",
+      "verb": "POST",
+      "controller": "CraftingController",
+      "file": "src\\FFXIV.Api\\Controllers\\CraftingController.cs",
+      "resolved": true,
+      "entryResolution": "class-fallback",
+      "dynamic": false,
+      "unresolvedHops": 11,
+      "steps": [
+        {
+          "seq": 0,
+          "kind": "action",
+          "symbol": "SolveRotation",
+          "file": "src\\FFXIV.Api\\Controllers\\CraftingController.cs",
+          "resolution": "code",
+          "confidence": "high",
+          "touches": {}
+        },
+        {
+          "seq": 1,
+          "kind": "handler",
+          "symbol": "SimulateCraftCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 2,
+          "kind": "handler",
+          "symbol": "ExecuteSingleActionCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 3,
+          "kind": "handler",
+          "symbol": "GetCraftingActionsQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 4,
+          "kind": "handler",
+          "symbol": "GetAvailableActionsQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 5,
+          "kind": "handler",
+          "symbol": "ExportMacroCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 6,
+          "kind": "handler",
+          "symbol": "GetInitialStateQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 7,
+          "kind": "handler",
+          "symbol": "StartSolveCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 8,
+          "kind": "handler",
+          "symbol": "QuickSolveQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 9,
+          "kind": "handler",
+          "symbol": "GetSolverJobQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 10,
+          "kind": "handler",
+          "symbol": "CancelSolverJobCommand",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        },
+        {
+          "seq": 11,
+          "kind": "handler",
+          "symbol": "GetCraftingJourneyQuery",
+          "file": null,
+          "resolution": "unresolved",
+          "confidence": "low",
+          "touches": {}
+        }
+      ]
+    },
+    {
+      "name": "DataSyncService",
+      "entry": "worker",
+      "route": null,
+      "verb": null,
+      "controller": null,
+      "file": "src\\FFXIV.Infrastructure\\DataSync\\DataSyncService.cs",
+      "resolved": true,
+      "entryResolution": "worker-class",
+      "dynamic": false,
+      "unresolvedHops": 0,
+      "steps": [
+        {
+          "seq": 0,
+          "kind": "action",
+          "symbol": "DataSyncService",
+          "file": "src\\FFXIV.Infrastructure\\DataSync\\DataSyncService.cs",
+          "resolution": "code",
+          "confidence": "high",
+          "touches": {}
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "flowsTraced": 4,
+    "unresolvedHops": 28,
+    "classFallbacks": 3
+  }
+}

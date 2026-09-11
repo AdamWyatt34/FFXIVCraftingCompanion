@@ -95,3 +95,6 @@ frontend/out/
 frontend/.env.local
 frontend/public/sw.js
 frontend/public/sw.js.map
+
+# AIOS inner-loop task workspaces (per-machine scratch)
+.aios/tasks/

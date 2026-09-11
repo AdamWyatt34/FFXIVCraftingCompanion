@@ -1,0 +1,527 @@
+{
+  "repo": {
+    "name": "FFXIVCraftingCompanion"
+  },
+  "adapters": [
+    "dotnet-aspnet",
+    "node-web"
+  ],
+  "adapterDetail": {
+    "dotnet-aspnet": {
+      "inboundControllers": 16,
+      "inboundMinimalApi": 0,
+      "inboundMinimalApiDynamic": 0,
+      "inboundMinimalApiPartialRoutes": 0,
+      "outbound": 2
+    }
+  },
+  "excluded": [
+    {
+      "path": "src/FFXIV.Infrastructure/Migrations/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "infra/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": ".github/workflows/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "src/FFXIV.Api/appsettings.Production.json",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/",
+      "source": "charter-noGoZone"
+    }
+  ],
+  "solutionRoot": ".",
+  "frontendComposed": false,
+  "edges": [
+    {
+      "kind": "cache",
+      "direction": "outbound",
+      "sync": "sync",
+      "target": "Redis",
+      "targetDetail": null,
+      "targetResolution": "config",
+      "confidence": "medium",
+      "source": {
+        "file": "src\\FFXIV.Infrastructure\\DependencyInjection.cs",
+        "symbol": "Redis"
+      },
+      "reachedBy": [
+        "FFXIV.Api",
+        "FFXIV.Infrastructure"
+      ],
+      "via": null
+    },
+    {
+      "kind": "database",
+      "direction": "outbound",
+      "sync": "sync",
+      "target": "SQL Server (AppDbContext)",
+      "targetDetail": "ConnectionStrings:DefaultConnection",
+      "targetResolution": "config",
+      "confidence": "medium",
+      "source": {
+        "file": "src\\FFXIV.Infrastructure\\DependencyInjection.cs",
+        "symbol": "AppDbContext"
+      },
+      "reachedBy": [
+        "FFXIV.Api",
+        "FFXIV.Infrastructure"
+      ],
+      "via": null
+    },
+    {
+      "kind": "http-client",
+      "direction": "outbound",
+      "sync": "sync",
+      "target": "unresolved-http (node)",
+      "targetDetail": "3 dynamic route/call site(s) — targets not in static reach",
+      "targetResolution": "opaque",
+      "confidence": "low",
+      "source": {
+        "file": "",
+        "symbol": null
+      },
+      "reachedBy": [],
+      "via": null
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/admin",
+      "controller": "AdminController",
+      "auth": "default",
+      "actions": 4,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\AdminController.cs",
+        "symbol": "AdminController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/analytics",
+      "controller": "AnalyticsController",
+      "auth": "default",
+      "actions": 1,
+      "verbs": [
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\AnalyticsController.cs",
+        "symbol": "AnalyticsController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/auth",
+      "controller": "AuthController",
+      "auth": "default",
+      "actions": 7,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\AuthController.cs",
+        "symbol": "AuthController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/crafting",
+      "controller": "CraftingController",
+      "auth": "default",
+      "actions": 11,
+      "verbs": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\CraftingController.cs",
+        "symbol": "CraftingController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/craft-plans",
+      "controller": "CraftPlansController",
+      "auth": "default",
+      "actions": 9,
+      "verbs": [
+        "DELETE",
+        "GET",
+        "POST",
+        "PUT"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\CraftPlansController.cs",
+        "symbol": "CraftPlansController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/favorites",
+      "controller": "FavoritesController",
+      "auth": "authenticated",
+      "actions": 3,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\FavoritesController.cs",
+        "symbol": "FavoritesController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/feedback",
+      "controller": "FeedbackController",
+      "auth": "default",
+      "actions": 1,
+      "verbs": [
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\FeedbackController.cs",
+        "symbol": "FeedbackController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/gathering",
+      "controller": "GatheringController",
+      "auth": "default",
+      "actions": 2,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\GatheringController.cs",
+        "symbol": "GatheringController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/gear",
+      "controller": "GearController",
+      "auth": "default",
+      "actions": 6,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\GearController.cs",
+        "symbol": "GearController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/items",
+      "controller": "ItemsController",
+      "auth": "default",
+      "actions": 3,
+      "verbs": [
+        "GET"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\ItemsController.cs",
+        "symbol": "ItemsController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/market",
+      "controller": "MarketController",
+      "auth": "default",
+      "actions": 2,
+      "verbs": [
+        "GET"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\MarketController.cs",
+        "symbol": "MarketController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/notifications",
+      "controller": "NotificationsController",
+      "auth": "authenticated",
+      "actions": 3,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\NotificationsController.cs",
+        "symbol": "NotificationsController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/profile",
+      "controller": "ProfileController",
+      "auth": "authenticated",
+      "actions": 10,
+      "verbs": [
+        "DELETE",
+        "GET",
+        "POST",
+        "PUT"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\ProfileController.cs",
+        "symbol": "ProfileController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/recipes",
+      "controller": "RecipesController",
+      "auth": "default",
+      "actions": 6,
+      "verbs": [
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\RecipesController.cs",
+        "symbol": "RecipesController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/rotations",
+      "controller": "RotationsController",
+      "auth": "default",
+      "actions": 5,
+      "verbs": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\RotationsController.cs",
+        "symbol": "RotationsController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/saved-lists",
+      "controller": "SavedListsController",
+      "auth": "authenticated",
+      "actions": 9,
+      "verbs": [
+        "DELETE",
+        "GET",
+        "POST",
+        "PUT"
+      ],
+      "public": false,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\SavedListsController.cs",
+        "symbol": "SavedListsController"
+      },
+      "reachedBy": [
+        "FFXIV.Api"
+      ],
+      "calledByFrontend": []
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/craft-plans/resolve",
+      "controller": "CraftPlansController",
+      "auth": "anonymous",
+      "verb": "POST",
+      "public": true,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\CraftPlansController.cs",
+        "symbol": "CraftPlansController"
+      }
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/craft-plans/export",
+      "controller": "CraftPlansController",
+      "auth": "anonymous",
+      "verb": "POST",
+      "public": true,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\CraftPlansController.cs",
+        "symbol": "CraftPlansController"
+      }
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/craft-plans/{id}/resolved",
+      "controller": "CraftPlansController",
+      "auth": "anonymous",
+      "verb": "GET",
+      "public": true,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\CraftPlansController.cs",
+        "symbol": "CraftPlansController"
+      }
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/craft-plans/{id}/cost",
+      "controller": "CraftPlansController",
+      "auth": "anonymous",
+      "verb": "POST",
+      "public": true,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\CraftPlansController.cs",
+        "symbol": "CraftPlansController"
+      }
+    },
+    {
+      "kind": "inbound-api",
+      "direction": "inbound",
+      "sync": "sync",
+      "target": "/api/profile/lodestone-preview",
+      "controller": "ProfileController",
+      "auth": "anonymous",
+      "verb": "GET",
+      "public": true,
+      "source": {
+        "file": "src\\FFXIV.Api\\Controllers\\ProfileController.cs",
+        "symbol": "ProfileController"
+      }
+    }
+  ],
+  "metrics": {
+    "integrationEdges": 3,
+    "externalTargets": 3,
+    "inboundEndpoints": 16,
+    "opaqueEdges": 1
+  }
+}

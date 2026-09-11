@@ -1,0 +1,8 @@
+{
+  "operations": [
+    { "name": "GetRecipe", "entry": "controller", "controller": "RecipesController", "route": "/api/recipes/{id:int}", "verb": "GET" },
+    { "name": "SimulateRotation", "entry": "controller", "controller": "CraftingController", "route": "/api/crafting/simulate", "verb": "POST" },
+    { "name": "SolveRotation", "entry": "controller", "controller": "CraftingController", "route": "/api/crafting/solve", "verb": "POST" },
+    { "name": "DataSyncService", "entry": "worker", "symbol": "DataSyncService" }
+  ]
+}

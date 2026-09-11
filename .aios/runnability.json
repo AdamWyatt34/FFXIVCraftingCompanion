@@ -1,0 +1,116 @@
+{
+  "repo": {
+    "name": "FFXIVCraftingCompanion"
+  },
+  "adapters": [
+    "dotnet-aspnet-aspire"
+  ],
+  "excluded": [
+    {
+      "path": "src/FFXIV.Infrastructure/Migrations/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "infra/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": ".github/workflows/",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "src/FFXIV.Api/appsettings.Production.json",
+      "source": "charter-noGoZone"
+    },
+    {
+      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/",
+      "source": "charter-noGoZone"
+    }
+  ],
+  "topologyComposed": true,
+  "prerequisites": [
+    {
+      "service": "Redis",
+      "kind": "cache",
+      "source": "topology",
+      "provisioning": "external"
+    },
+    {
+      "service": "SQL Server (AppDbContext)",
+      "kind": "database",
+      "source": "topology",
+      "provisioning": "must-supply"
+    }
+  ],
+  "toolchain": [
+    "dotnet-sdk-10",
+    "node"
+  ],
+  "config": {
+    "required": [
+      {
+        "key": "ConnectionStrings:DefaultConnection",
+        "confidence": "required",
+        "reason": "connection string consumed without a guard",
+        "secret": true,
+        "providedInConfig": true
+      },
+      {
+        "key": "Sentry:Enabled",
+        "confidence": "probably-required",
+        "reason": "GetValue without a default",
+        "secret": false,
+        "providedInConfig": true
+      },
+      {
+        "key": "ApplyMigrationsOnStartup",
+        "confidence": "probably-required",
+        "reason": "GetValue without a default",
+        "secret": false,
+        "providedInConfig": false
+      },
+      {
+        "key": "Discord:ClientSecret",
+        "confidence": "probably-required",
+        "reason": "empty secret-shaped key (must be supplied)",
+        "secret": true,
+        "providedInConfig": false
+      }
+    ],
+    "optional": [
+      {
+        "key": "Sentry:Dsn",
+        "reason": "has a code default (??)"
+      },
+      {
+        "key": "Sentry:TracesSampleRate",
+        "reason": "GetValue with a default"
+      }
+    ],
+    "dead": []
+  },
+  "secrets": [
+    {
+      "key": "ConnectionStrings:DefaultConnection",
+      "sourcedFrom": "connstring",
+      "required": true
+    },
+    {
+      "key": "Discord:ClientSecret",
+      "sourcedFrom": "env",
+      "required": true
+    }
+  ],
+  "frontend": [],
+  "launch": {
+    "appHostCommand": null,
+    "ports": {}
+  },
+  "metrics": {
+    "requiredConfig": 4,
+    "optionalConfig": 2,
+    "deadConfig": 0,
+    "unresolvedConfigReads": 0,
+    "requiredSecrets": 2
+  }
+}

@@ -1,0 +1,455 @@
+{
+  "schemaVersion": "0.4",
+  "repo": {
+    "name": "FFXIVCraftingCompanion",
+    "primaryLanguage": "csharp",
+    "lastExtractedAt": "2026-09-11T21:34:21.032Z"
+  },
+  "product": {
+    "mission": "Crafting, gathering, gear, and market companion for FFXIV players, with a rotation simulator and solver.",
+    "direction": [
+      {
+        "theme": "Port the crafting engine to a Rust crate (crates/xiv-craft) with byte-for-byte parity against the C# engine, targeting wasm32",
+        "why": "One engine implementation that can run client-side and be shared by future solver work",
+        "status": "committed",
+        "added": "2026-09-11",
+        "source": "elicited"
+      },
+      {
+        "theme": "Run the rotation solver client-side via wasm",
+        "why": "Remove server compute from the solver hot path",
+        "status": "exploring",
+        "added": "2026-09-11",
+        "source": "elicited"
+      }
+    ]
+  },
+  "maintenancePosture": "active",
+  "desiredPatterns": [
+    {
+      "name": "Clean Architecture layering: Domain -> Application -> Infrastructure/Api; Domain has no package or project dependencies",
+      "status": "enforced",
+      "detected": true
+    },
+    {
+      "name": "MediatR request/handler pipeline in Application (this repo uses MediatR, not the custom Result mediator from global conventions)",
+      "status": "enforced",
+      "detected": true
+    },
+    {
+      "name": "Crafting engine (state, actions, formulas, HQ, macro export) lives in FFXIV.Domain/CraftingEngine; solver implementations live in FFXIV.Infrastructure/Solver behind IRotationSolver",
+      "status": "enforced",
+      "detected": true
+    },
+    {
+      "name": "EF Core + ASP.NET Identity + JWT bearer auth in Infrastructure; schema changes via EF migrations",
+      "status": "enforced",
+      "detected": true
+    },
+    {
+      "name": "Next.js App Router with server components by default; client components only where interaction requires",
+      "status": "enforced",
+      "detected": true
+    },
+    {
+      "name": "Tests: xUnit + FluentAssertions + NSubstitute; solver benchmarks driven by tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json",
+      "status": "enforced",
+      "detected": true
+    },
+    {
+      "name": "Rust crate crates/xiv-craft mirrors the C# engine; action ids equal C# Id values; parity proven by committed JSONL golden files",
+      "status": "aspirational",
+      "detected": false
+    }
+  ],
+  "noGoZones": [
+    {
+      "path": "src/FFXIV.Infrastructure/Migrations/",
+      "reason": "EF Core migrations are generated and human-reviewed; never hand-edit or regenerate without a human"
+    },
+    {
+      "path": "infra/",
+      "reason": "Bicep templates drive the production Azure deployment"
+    },
+    {
+      "path": ".github/workflows/",
+      "reason": "CI and deploy pipelines; changes need a human"
+    },
+    {
+      "path": "src/FFXIV.Api/appsettings.Production.json",
+      "reason": "Production configuration"
+    },
+    {
+      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/",
+      "reason": "Solver benchmark fixtures and parity golden files pin engine behaviour; regenerate only through the designated generator test with a human's approval"
+    }
+  ],
+  "prGates": [
+    "dotnet build FFXIVCraftingCompanion.slnx --configuration Release succeeds with no warnings-as-errors regressions",
+    "dotnet test FFXIVCraftingCompanion.slnx --configuration Release is green",
+    "npm run lint passes in frontend/ (when frontend/ changes)",
+    "npx tsc --noEmit passes in frontend/ (when frontend/ changes)",
+    "npm run build succeeds in frontend/ (when frontend/ changes)",
+    "cargo test is green on the host target for crates/ (when crates/ changes)",
+    "cargo build --target wasm32-unknown-unknown --release succeeds for crates/ (when crates/ changes)",
+    "the C#/Rust parity golden files are regenerated and committed when engine behaviour changes (when crates/ changes)"
+  ],
+  "layeringRules": [
+    {
+      "from": "FFXIV.Domain",
+      "mustNotDependOn": [
+        "FFXIV.Application",
+        "FFXIV.Infrastructure",
+        "FFXIV.Api"
+      ]
+    },
+    {
+      "from": "FFXIV.Application",
+      "mustNotDependOn": [
+        "FFXIV.Infrastructure",
+        "FFXIV.Api"
+      ]
+    },
+    {
+      "from": "FFXIV.Infrastructure",
+      "mustNotDependOn": [
+        "FFXIV.Api"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "dotnet-backend",
+      "pathPrefix": "src/",
+      "prGates": [
+        "dotnet build FFXIVCraftingCompanion.slnx --configuration Release succeeds with no warnings-as-errors regressions",
+        "dotnet test FFXIVCraftingCompanion.slnx --configuration Release is green"
+      ]
+    },
+    {
+      "name": "dotnet-tests",
+      "pathPrefix": "tests/",
+      "prGates": [
+        "dotnet build FFXIVCraftingCompanion.slnx --configuration Release succeeds with no warnings-as-errors regressions",
+        "dotnet test FFXIVCraftingCompanion.slnx --configuration Release is green"
+      ]
+    },
+    {
+      "name": "frontend",
+      "pathPrefix": "frontend/",
+      "prGates": [
+        "npm run lint passes in frontend/",
+        "npx tsc --noEmit passes in frontend/",
+        "npm run build succeeds in frontend/"
+      ]
+    },
+    {
+      "name": "xiv-craft",
+      "pathPrefix": "crates/",
+      "prGates": [
+        "cargo test is green on the host target for crates/",
+        "cargo build --target wasm32-unknown-unknown --release succeeds for crates/",
+        "the C#/Rust parity golden files are regenerated and committed when engine behaviour changes",
+        "dotnet test FFXIVCraftingCompanion.slnx --configuration Release is green (the parity generator test lives in tests/)"
+      ]
+    }
+  ],
+  "structure": {
+    "repo": {
+      "name": "FFXIVCraftingCompanion"
+    },
+    "primaryLanguage": "csharp",
+    "solutions": [
+      "FFXIVCraftingCompanion.slnx"
+    ],
+    "frameworks": [
+      "net10.0",
+      "next",
+      "react",
+      "typescript"
+    ],
+    "projectCount": 7,
+    "projects": [
+      {
+        "name": "FFXIV.Api",
+        "path": "src\\FFXIV.Api\\FFXIV.Api.csproj",
+        "language": "csharp",
+        "targetFrameworks": [
+          "net10.0"
+        ],
+        "packages": [
+          {
+            "name": "Microsoft.AspNetCore.Authentication.JwtBearer",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.AspNetCore.OpenApi",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.EntityFrameworkCore.Design",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Sentry.AspNetCore",
+            "version": "5.4.0"
+          },
+          {
+            "name": "Serilog.AspNetCore",
+            "version": "10.0.0"
+          },
+          {
+            "name": "Swashbuckle.AspNetCore",
+            "version": "10.1.2"
+          }
+        ],
+        "dependsOn": [
+          "FFXIV.Application",
+          "FFXIV.Infrastructure"
+        ]
+      },
+      {
+        "name": "FFXIV.Application",
+        "path": "src\\FFXIV.Application\\FFXIV.Application.csproj",
+        "language": "csharp",
+        "targetFrameworks": [
+          "net10.0"
+        ],
+        "packages": [
+          {
+            "name": "MediatR",
+            "version": "14.0.0"
+          }
+        ],
+        "dependsOn": [
+          "FFXIV.Domain"
+        ]
+      },
+      {
+        "name": "FFXIV.Domain",
+        "path": "src\\FFXIV.Domain\\FFXIV.Domain.csproj",
+        "language": "csharp",
+        "targetFrameworks": [
+          "net10.0"
+        ],
+        "packages": [],
+        "dependsOn": []
+      },
+      {
+        "name": "FFXIV.Infrastructure",
+        "path": "src\\FFXIV.Infrastructure\\FFXIV.Infrastructure.csproj",
+        "language": "csharp",
+        "targetFrameworks": [
+          "net10.0"
+        ],
+        "packages": [
+          {
+            "name": "Microsoft.EntityFrameworkCore",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.Extensions.Caching.Memory",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.Extensions.Caching.StackExchangeRedis",
+            "version": "10.0.2"
+          },
+          {
+            "name": "NetStone",
+            "version": "1.4.1"
+          },
+          {
+            "name": "Microsoft.EntityFrameworkCore.SqlServer",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.Extensions.Http.Resilience",
+            "version": "9.4.0"
+          },
+          {
+            "name": "Polly",
+            "version": "8.6.5"
+          },
+          {
+            "name": "Cronos",
+            "version": "0.8.4"
+          },
+          {
+            "name": "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Microsoft.AspNetCore.Authentication.JwtBearer",
+            "version": "10.0.2"
+          },
+          {
+            "name": "Serilog.AspNetCore",
+            "version": "10.0.0"
+          }
+        ],
+        "dependsOn": [
+          "FFXIV.Domain",
+          "FFXIV.Application"
+        ]
+      },
+      {
+        "name": "FFXIV.Tests",
+        "path": "tests\\FFXIV.Tests\\FFXIV.Tests.csproj",
+        "language": "csharp",
+        "targetFrameworks": [
+          "net10.0"
+        ],
+        "packages": [
+          {
+            "name": "Microsoft.NET.Test.Sdk",
+            "version": "17.12.0"
+          },
+          {
+            "name": "xunit",
+            "version": "2.9.3"
+          },
+          {
+            "name": "xunit.runner.visualstudio",
+            "version": "3.0.2"
+          },
+          {
+            "name": "NSubstitute",
+            "version": "5.3.0"
+          },
+          {
+            "name": "FluentAssertions",
+            "version": "8.2.0"
+          }
+        ],
+        "dependsOn": [
+          "FFXIV.Application",
+          "FFXIV.Infrastructure"
+        ]
+      },
+      {
+        "name": "frontend",
+        "path": "frontend\\package.json",
+        "language": "typescript",
+        "packages": [
+          {
+            "name": "@sentry/nextjs",
+            "version": "^10.38.0"
+          },
+          {
+            "name": "lucide-react",
+            "version": "^0.563.0"
+          },
+          {
+            "name": "next",
+            "version": "16.1.6"
+          },
+          {
+            "name": "react",
+            "version": "19.2.3"
+          },
+          {
+            "name": "react-dom",
+            "version": "19.2.3"
+          },
+          {
+            "name": "recharts",
+            "version": "^3.7.0"
+          },
+          {
+            "name": "server-only",
+            "version": "^0.0.1"
+          },
+          {
+            "name": "@next/bundle-analyzer",
+            "version": "^16.1.6"
+          },
+          {
+            "name": "@serwist/next",
+            "version": "^9.5.4"
+          },
+          {
+            "name": "@tailwindcss/postcss",
+            "version": "^4"
+          },
+          {
+            "name": "@types/node",
+            "version": "^20"
+          },
+          {
+            "name": "@types/react",
+            "version": "^19"
+          },
+          {
+            "name": "@types/react-dom",
+            "version": "^19"
+          },
+          {
+            "name": "cross-env",
+            "version": "^10.1.0"
+          },
+          {
+            "name": "eslint",
+            "version": "^9"
+          },
+          {
+            "name": "eslint-config-next",
+            "version": "16.1.6"
+          },
+          {
+            "name": "serwist",
+            "version": "^9.5.4"
+          },
+          {
+            "name": "tailwindcss",
+            "version": "^4"
+          },
+          {
+            "name": "typescript",
+            "version": "^5"
+          }
+        ],
+        "dependsOn": []
+      },
+      {
+        "name": "unknown",
+        "path": "package.json",
+        "language": "typescript",
+        "packages": [
+          {
+            "name": "claude",
+            "version": "^0.1.1"
+          }
+        ],
+        "dependsOn": []
+      }
+    ],
+    "adaptersUsed": [
+      {
+        "name": "dotnet",
+        "confidence": 1,
+        "evidence": [
+          "5 .csproj",
+          "1 .sln"
+        ]
+      },
+      {
+        "name": "node",
+        "confidence": 1,
+        "evidence": [
+          "2 package.json"
+        ]
+      }
+    ]
+  },
+  "history": {
+    "ledger": ".aios/history.ndjson",
+    "entries": 5,
+    "firstAt": "2026-09-11T21:36:18+00:00",
+    "lastAt": "2026-09-11T21:38:27Z"
+  }
+}

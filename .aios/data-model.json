@@ -1,0 +1,2700 @@
+{
+  "repo": {
+    "name": "FFXIVCraftingCompanion"
+  },
+  "source": "ef-modelsnapshot",
+  "adapters": [
+    "ef-modelsnapshot"
+  ],
+  "contexts": [
+    {
+      "context": "AppDbContext",
+      "path": "src\\FFXIV.Infrastructure\\Migrations\\AppDbContextModelSnapshot.cs",
+      "defaultSchema": "dbo",
+      "entities": [
+        {
+          "clrType": "AnalyticsEvent",
+          "fqn": "FFXIV.Domain.Entities.AnalyticsEvent",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "long",
+              "sqlType": "bigint",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "long",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Event",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": false,
+              "maxLength": 128,
+              "isNoda": false
+            },
+            {
+              "name": "Metadata",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": 4096,
+              "isNoda": false
+            },
+            {
+              "name": "PageUrl",
+              "clrType": "string",
+              "sqlType": "nvarchar(2048)",
+              "nullable": true,
+              "maxLength": 2048,
+              "isNoda": false
+            },
+            {
+              "name": "Referrer",
+              "clrType": "string",
+              "sqlType": "nvarchar(2048)",
+              "nullable": true,
+              "maxLength": 2048,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "CreatedAt"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "Event"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "CharacterProfile",
+          "fqn": "FFXIV.Domain.Entities.CharacterProfile",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ActiveJob",
+              "clrType": "string",
+              "sqlType": "nvarchar(8)",
+              "nullable": false,
+              "maxLength": 8,
+              "isNoda": false
+            },
+            {
+              "name": "ActiveJobLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "AvatarUrl",
+              "clrType": "string",
+              "sqlType": "nvarchar(512)",
+              "nullable": true,
+              "maxLength": 512,
+              "isNoda": false
+            },
+            {
+              "name": "CP",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CharacterName",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": false,
+              "maxLength": 128,
+              "isNoda": false
+            },
+            {
+              "name": "Control",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Craftsmanship",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CurrentGear",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "DataCenter",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": true,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "GP",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Gathering",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "JobLevels",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LastLodestoneSync",
+              "clrType": "DateTimeOffset?",
+              "sqlType": "datetimeoffset",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LodestoneId",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": true,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "Perception",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ServerName",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": true,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "Source",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UpdatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "LodestoneId"
+              ],
+              "unique": true,
+              "name": null
+            },
+            {
+              "columns": [
+                "UserId"
+              ],
+              "unique": true,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "FFXIV.Domain.Entities.CharacterProfile",
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "CraftPlan",
+          "fqn": "FFXIV.Domain.Entities.CraftPlan",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "string",
+              "sqlType": "nvarchar(36)",
+              "nullable": true,
+              "maxLength": 36,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Items",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": false,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "UpdatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "UserId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "CraftingAction",
+          "fqn": "FFXIV.Domain.Entities.CraftingAction",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "ActionId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "BuffDuration",
+              "clrType": "int?",
+              "sqlType": "int",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "BuffType",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CpCost",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "DurabilityCost",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LevelRequired",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": false,
+              "maxLength": 128,
+              "isNoda": false
+            },
+            {
+              "name": "ProgressPotency",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "QualityPotency",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "ActionId"
+          ],
+          "indexes": [],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "Equipment",
+          "fqn": "FFXIV.Domain.Entities.Equipment",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "EquipmentId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CP",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CanBeHQ",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ClassJobCategory",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Control",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Craftsmanship",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CriticalHit",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Defense",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Determination",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Dexterity",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "DirectHitRate",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "EquipLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "EquipSlot",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "GP",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Gathering",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "IconPath",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Intelligence",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ItemLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "MagicDefense",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "MateriaSlots",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Mind",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Perception",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "PhysicalDamage",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Piety",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Rarity",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RecipeId",
+              "clrType": "int?",
+              "sqlType": "int",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SkillSpeed",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SourceDetails",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SourceType",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SpellSpeed",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Strength",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Tenacity",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Vitality",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "EquipmentId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "EquipSlot"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "Name"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "RecipeId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "ClassJobCategory",
+                "EquipLevel"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "ClassJobCategory",
+                "ItemLevel"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "EquipSlot",
+                "ClassJobCategory",
+                "ItemLevel"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "RecipeId"
+          ]
+        },
+        {
+          "clrType": "FavoriteRecipe",
+          "fqn": "FFXIV.Domain.Entities.FavoriteRecipe",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Note",
+              "clrType": "string",
+              "sqlType": "nvarchar(1024)",
+              "nullable": true,
+              "maxLength": 1024,
+              "isNoda": false
+            },
+            {
+              "name": "RecipeId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "RecipeId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "UserId",
+                "RecipeId"
+              ],
+              "unique": true,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "RecipeId",
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "Feedback",
+          "fqn": "FFXIV.Domain.Entities.Feedback",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Category",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": false,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Email",
+              "clrType": "string",
+              "sqlType": "nvarchar(320)",
+              "nullable": true,
+              "maxLength": 320,
+              "isNoda": false
+            },
+            {
+              "name": "Message",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": 5000,
+              "isNoda": false
+            },
+            {
+              "name": "PageUrl",
+              "clrType": "string",
+              "sqlType": "nvarchar(2048)",
+              "nullable": true,
+              "maxLength": 2048,
+              "isNoda": false
+            },
+            {
+              "name": "UserAgent",
+              "clrType": "string",
+              "sqlType": "nvarchar(512)",
+              "nullable": true,
+              "maxLength": 512,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "Category"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "CreatedAt"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "GatheringInfo",
+          "fqn": "FFXIV.Domain.Entities.GatheringInfo",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "GatheringInfoId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "GatheringInfoId",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "AreaName",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": true,
+              "maxLength": 128,
+              "isNoda": false
+            },
+            {
+              "name": "ClassJob",
+              "clrType": "string",
+              "sqlType": "nvarchar(8)",
+              "nullable": false,
+              "maxLength": 8,
+              "isNoda": false
+            },
+            {
+              "name": "CoordinateX",
+              "clrType": "float?",
+              "sqlType": "real",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CoordinateY",
+              "clrType": "float?",
+              "sqlType": "real",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "GatheringType",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "IsHidden",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "IsTimed",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ItemId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Level",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "NodeType",
+              "clrType": "string",
+              "sqlType": "nvarchar(32)",
+              "nullable": false,
+              "maxLength": 32,
+              "isNoda": false
+            },
+            {
+              "name": "SpawnTimes",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Stars",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ZoneName",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": false,
+              "maxLength": 128,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "GatheringInfoId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "ItemId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "ItemId",
+                "GatheringType",
+                "ZoneName",
+                "IsTimed"
+              ],
+              "unique": true,
+              "name": "IX_GatheringInfos_NaturalKey"
+            }
+          ],
+          "foreignKeys": [
+            "ItemId"
+          ]
+        },
+        {
+          "clrType": "Item",
+          "fqn": "FFXIV.Domain.Entities.Item",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "ItemId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CanBeHQ",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Category",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "IconPath",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ItemLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": false,
+              "maxLength": 256,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "ItemId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "Name"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "ItemSource",
+          "fqn": "FFXIV.Domain.Entities.ItemSource",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "ItemSourceId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ItemSourceId",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ItemId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SourceDetails",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SourceType",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "ItemSourceId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "ItemId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "ItemId",
+                "SourceType"
+              ],
+              "unique": true,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "ItemId"
+          ]
+        },
+        {
+          "clrType": "Recipe",
+          "fqn": "FFXIV.Domain.Entities.Recipe",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "RecipeId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CraftType",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Difficulty",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Durability",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "MaterialQualityFactor",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Quality",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RecipeLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RequiredControl",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RequiredCraftsmanship",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ResultItemId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Yield",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "RecipeId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "ResultItemId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "ResultItemId"
+          ]
+        },
+        {
+          "clrType": "RecipeIngredient",
+          "fqn": "FFXIV.Domain.Entities.RecipeIngredient",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "RecipeId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ItemId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CanBeHQ",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Quantity",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "RecipeId",
+            "ItemId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "ItemId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "ItemId",
+            "RecipeId"
+          ]
+        },
+        {
+          "clrType": "RecipeLevelEntry",
+          "fqn": "FFXIV.Domain.Entities.RecipeLevelEntry",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "RecipeLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ClassJobLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Difficulty",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Durability",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ProgressDivider",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ProgressModifier",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Quality",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "QualityDivider",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "QualityModifier",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Stars",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SuggestedControl",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SuggestedCraftsmanship",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "RecipeLevel"
+          ],
+          "indexes": [],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "RefreshToken",
+          "fqn": "FFXIV.Domain.Entities.RefreshToken",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "Guid",
+              "sqlType": "uniqueidentifier",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ExpiresAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "IsRevoked",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Token",
+              "clrType": "string",
+              "sqlType": "nvarchar(512)",
+              "nullable": false,
+              "maxLength": 512,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "Token"
+              ],
+              "unique": true,
+              "name": null
+            },
+            {
+              "columns": [
+                "UserId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "RotationVote",
+          "fqn": "FFXIV.Domain.Entities.RotationVote",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RotationId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "RotationId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "UserId",
+                "RotationId"
+              ],
+              "unique": true,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "RotationId",
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "SavedList",
+          "fqn": "FFXIV.Domain.Entities.SavedList",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Data",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "IsPinned",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": false,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "Type",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UpdatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "UserId",
+                "IsPinned"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "UserId",
+                "Type"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "SharedRotation",
+          "fqn": "FFXIV.Domain.Entities.SharedRotation",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Algorithm",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": true,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "CP",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Control",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CraftCompleted",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CrafterLevel",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Craftsmanship",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "HQPercent",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "Notes",
+              "clrType": "string",
+              "sqlType": "nvarchar(2048)",
+              "nullable": true,
+              "maxLength": 2048,
+              "isNoda": false
+            },
+            {
+              "name": "QualityPercent",
+              "clrType": "decimal",
+              "sqlType": "decimal(5,2)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RecipeId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Source",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "TotalSteps",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Upvotes",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": 450,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "CreatedAt"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "RecipeId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "Upvotes"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "UserId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "RecipeId",
+                "QualityPercent"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "RecipeId",
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "SyncMetadata",
+          "fqn": "FFXIV.Domain.Entities.SyncMetadata",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "EntityType",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LastPatchVersion",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LastSyncedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RecordCount",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "EntityType"
+              ],
+              "unique": true,
+              "name": null
+            }
+          ],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "VendorInfo",
+          "fqn": "FFXIV.Domain.Entities.VendorInfo",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "VendorInfoId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "VendorInfoId",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CoordinateX",
+              "clrType": "float?",
+              "sqlType": "real",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CoordinateY",
+              "clrType": "float?",
+              "sqlType": "real",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Cost",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CurrencyItemId",
+              "clrType": "int?",
+              "sqlType": "int",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CurrencyType",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": false,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "ItemId",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "NpcName",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": false,
+              "maxLength": 128,
+              "isNoda": false
+            },
+            {
+              "name": "ZoneName",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": false,
+              "maxLength": 128,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "VendorInfoId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "CurrencyItemId"
+              ],
+              "unique": false,
+              "name": null
+            },
+            {
+              "columns": [
+                "ItemId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "CurrencyItemId",
+            "ItemId"
+          ]
+        },
+        {
+          "clrType": "ApplicationUser",
+          "fqn": "FFXIV.Infrastructure.Identity.ApplicationUser",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "AccessFailedCount",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "AvatarUrl",
+              "clrType": "string",
+              "sqlType": "nvarchar(512)",
+              "nullable": true,
+              "maxLength": 512,
+              "isNoda": false
+            },
+            {
+              "name": "ConcurrencyStamp",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "CreatedAt",
+              "clrType": "DateTimeOffset",
+              "sqlType": "datetimeoffset",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "DiscordId",
+              "clrType": "string",
+              "sqlType": "nvarchar(64)",
+              "nullable": true,
+              "maxLength": 64,
+              "isNoda": false
+            },
+            {
+              "name": "DisplayName",
+              "clrType": "string",
+              "sqlType": "nvarchar(128)",
+              "nullable": true,
+              "maxLength": 128,
+              "isNoda": false
+            },
+            {
+              "name": "Email",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "EmailConfirmed",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LastLoginAt",
+              "clrType": "DateTimeOffset?",
+              "sqlType": "datetimeoffset",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LockoutEnabled",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LockoutEnd",
+              "clrType": "DateTimeOffset?",
+              "sqlType": "datetimeoffset",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "NormalizedEmail",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "NormalizedUserName",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "PasswordHash",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "PhoneNumber",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "PhoneNumberConfirmed",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "SecurityStamp",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "TwoFactorEnabled",
+              "clrType": "bool",
+              "sqlType": "bit",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserName",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "DiscordId"
+              ],
+              "unique": true,
+              "name": null
+            },
+            {
+              "columns": [
+                "NormalizedEmail"
+              ],
+              "unique": false,
+              "name": "EmailIndex"
+            },
+            {
+              "columns": [
+                "NormalizedUserName"
+              ],
+              "unique": true,
+              "name": "UserNameIndex"
+            }
+          ],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "IdentityRole",
+          "fqn": "Microsoft.AspNetCore.Identity.IdentityRole",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ConcurrencyStamp",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            },
+            {
+              "name": "NormalizedName",
+              "clrType": "string",
+              "sqlType": "nvarchar(256)",
+              "nullable": true,
+              "maxLength": 256,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "NormalizedName"
+              ],
+              "unique": true,
+              "name": "RoleNameIndex"
+            }
+          ],
+          "foreignKeys": []
+        },
+        {
+          "clrType": "IdentityRoleClaim<string>",
+          "fqn": "Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ClaimType",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ClaimValue",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RoleId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "RoleId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "RoleId"
+          ]
+        },
+        {
+          "clrType": "IdentityUserClaim<string>",
+          "fqn": "Microsoft.AspNetCore.Identity.IdentityUserClaim<string>",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": "int",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Id",
+              "clrType": "int",
+              "sqlType": null,
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ClaimType",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ClaimValue",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "Id"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "UserId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "IdentityUserLogin<string>",
+          "fqn": "Microsoft.AspNetCore.Identity.IdentityUserLogin<string>",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "LoginProvider",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ProviderKey",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "ProviderDisplayName",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": false,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "LoginProvider",
+            "ProviderKey"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "UserId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "IdentityUserRole<string>",
+          "fqn": "Microsoft.AspNetCore.Identity.IdentityUserRole<string>",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "RoleId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "UserId",
+            "RoleId"
+          ],
+          "indexes": [
+            {
+              "columns": [
+                "RoleId"
+              ],
+              "unique": false,
+              "name": null
+            }
+          ],
+          "foreignKeys": [
+            "RoleId",
+            "UserId"
+          ]
+        },
+        {
+          "clrType": "IdentityUserToken<string>",
+          "fqn": "Microsoft.AspNetCore.Identity.IdentityUserToken<string>",
+          "table": null,
+          "schema": "dbo",
+          "columns": [
+            {
+              "name": "UserId",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "LoginProvider",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Name",
+              "clrType": "string",
+              "sqlType": "nvarchar(450)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            },
+            {
+              "name": "Value",
+              "clrType": "string",
+              "sqlType": "nvarchar(max)",
+              "nullable": true,
+              "maxLength": null,
+              "isNoda": false
+            }
+          ],
+          "keys": [
+            "UserId",
+            "LoginProvider",
+            "Name"
+          ],
+          "indexes": [],
+          "foreignKeys": [
+            "UserId"
+          ]
+        }
+      ],
+      "source": "ef-modelsnapshot",
+      "confidence": "high"
+    }
+  ],
+  "metrics": {
+    "contexts": 1,
+    "modelEntities": 26,
+    "modelColumns": 243,
+    "nodaColumns": 0
+  }
+}
