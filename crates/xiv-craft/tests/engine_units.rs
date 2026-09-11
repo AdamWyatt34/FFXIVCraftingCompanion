@@ -3,14 +3,14 @@ use std::path::PathBuf;
 use xiv_craft::{calculate_starting_quality, export_to_macro, HqInput, Ingredient, MacroOptions};
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Golden {
     hq: Vec<HqCase>,
     macros: Vec<MacroCase>,
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct HqCase {
     case: String,
     max_quality: i32,
@@ -21,7 +21,7 @@ struct HqCase {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct HqIngredient {
     item_id: i32,
     quantity: i32,
@@ -29,14 +29,14 @@ struct HqIngredient {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct HqInputJson {
     item_id: i32,
     hq_quantity: i32,
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct MacroCase {
     case: String,
     action_ids: Vec<i32>,
@@ -45,7 +45,7 @@ struct MacroCase {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct MacroOptionsJson {
     lines_per_macro: usize,
     sound_effect: i32,

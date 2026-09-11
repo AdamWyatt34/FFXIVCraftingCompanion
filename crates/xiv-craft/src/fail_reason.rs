@@ -12,7 +12,7 @@ pub enum FailReason {
     WasteNotActive,
     RequiresInnerQuiet,
     RequiresTenInnerQuiet,
-    ExpertOnly,
+    RequiresSpecialist,
     NotOnExpert,
     RecipeLevelUnavailable,
     RequiresCrafterLevel(i32),
@@ -38,7 +38,7 @@ impl fmt::Display for FailReason {
             FailReason::WasteNotActive => f.write_str("Cannot be used while Waste Not is active"),
             FailReason::RequiresInnerQuiet => f.write_str("Requires Inner Quiet stacks"),
             FailReason::RequiresTenInnerQuiet => f.write_str("Requires 10 Inner Quiet stacks"),
-            FailReason::ExpertOnly => f.write_str("Can only be used on expert recipes"),
+            FailReason::RequiresSpecialist => f.write_str("Requires specialist"),
             FailReason::NotOnExpert => f.write_str("Cannot be used on expert recipes"),
             FailReason::RecipeLevelUnavailable => f.write_str("Recipe level data unavailable"),
             FailReason::RequiresCrafterLevel(level) => {

@@ -11,7 +11,7 @@ use xiv_craft::{
 const MIN_GOLDEN_FILES: usize = 10;
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Case {
     case: String,
     recipe: RecipeJson,
@@ -22,11 +22,12 @@ struct Case {
     steps: Vec<StepJson>,
     #[serde(rename = "final")]
     final_state: StateJson,
+    final_availability: Option<Vec<AvailabilityJson>>,
     macros: Vec<String>,
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RecipeJson {
     recipe_id: i32,
     recipe_level: i32,
@@ -48,7 +49,7 @@ struct RecipeJson {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StatsJson {
     level: i32,
     craftsmanship: i32,
@@ -58,7 +59,7 @@ struct StatsJson {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct OptionsJson {
     assume_all_success: bool,
     assume_normal_condition: bool,
@@ -67,7 +68,7 @@ struct OptionsJson {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StepJson {
     step: i32,
     action_id: i32,
@@ -80,7 +81,7 @@ struct StepJson {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AvailabilityJson {
     action_id: i32,
     is_available: bool,
@@ -92,7 +93,7 @@ struct AvailabilityJson {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StateJson {
     progress: i32,
     max_progress: i32,
@@ -353,7 +354,8 @@ fn replay(file: &str, case: &Case) {
     );
 
     // The public single-step call must agree with the full run whenever no success roll is
-    // involved; a forced condition is applied after the step, so it is patched in here.
+    // involved. A forced condition is applied after a step that executed; a gated step returns
+    // before it in C#, so only successful steps are patched.
     if options.assume_all_success
         && (options.assume_normal_condition || options.force_condition.is_some())
     {

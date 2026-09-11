@@ -3,11 +3,13 @@ use std::path::PathBuf;
 use xiv_craft::DotNetRandom;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Golden {
     seeds: Vec<Series>,
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Series {
     seed: i32,
     values: Vec<f64>,

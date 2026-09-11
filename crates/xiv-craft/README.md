@@ -17,7 +17,7 @@ dotnet test FFXIVCraftingCompanion.slnx --configuration Release --filter "FullyQ
 Remove-Item Env:FFXIV_PARITY_GENERATE
 ```
 
-Without the variable the same tests fail on the first byte that differs from the committed goldens, so an engine change cannot land without regenerating them.
+Without the variable the same tests fail on the first byte that differs from the committed goldens, so an engine change cannot land without regenerating them. Set the variable only in the shell that regenerates; a CI runner must never have it set, or every parity assertion passes vacuously.
 
 ```powershell
 cargo test

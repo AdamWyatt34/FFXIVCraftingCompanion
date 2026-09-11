@@ -14,16 +14,30 @@ pub(super) fn apply_effect(
     }
 
     let potency = match action {
-        Action::BasicSynthesis => 120,
-        Action::CarefulSynthesis => 180,
+        // Mastery traits raise the potency at 31, 82 and 86.
+        Action::BasicSynthesis => {
+            if stats.level >= 31 {
+                120
+            } else {
+                100
+            }
+        }
+        Action::CarefulSynthesis => {
+            if stats.level >= 82 {
+                180
+            } else {
+                150
+            }
+        }
         Action::RapidSynthesis => 500,
         Action::FocusedSynthesis => 200,
         // Groundwork loses half its potency when durability cannot cover its full cost.
         Action::Groundwork => {
+            let base = if stats.level >= 86 { 360 } else { 300 };
             if state.durability < action.durability_cost(&state) {
-                150
+                base / 2
             } else {
-                300
+                base
             }
         }
         Action::IntensiveSynthesis => 400,
@@ -34,22 +48,33 @@ pub(super) fn apply_effect(
 
     let mut next = progress_effect(state, stats, recipe, potency);
 
-    match action {
-        Action::MuscleMemory => next.muscle_memory_turns = 5,
-        // Heart and Soul is spent only when it substituted for the missing Good condition.
-        Action::IntensiveSynthesis
-            if state.heart_and_soul_active
-                && !matches!(state.condition, Condition::Good | Condition::Excellent) =>
-        {
-            next.heart_and_soul_active = false;
-        }
-        _ => {}
+    // Heart and Soul is spent only when it substituted for the missing Good condition.
+    if action == Action::IntensiveSynthesis
+        && state.heart_and_soul_active
+        && !matches!(state.condition, Condition::Good | Condition::Excellent)
+    {
+        next.heart_and_soul_active = false;
     }
     next
 }
 
-/// `ProgressAction.ApplyEffect`: Final Appraisal holds progress one short of completion and is
-/// consumed; Muscle Memory is consumed by any progress action.
+pub(super) fn apply_granted_buffs(action: Action, state: CraftingState) -> CraftingState {
+    match action {
+        Action::MuscleMemory => {
+            let mut next = state;
+            next.muscle_memory_turns = if state.condition == Condition::Primed {
+                7
+            } else {
+                5
+            };
+            next
+        }
+        _ => state,
+    }
+}
+
+// Final Appraisal holds progress one short of completion and is consumed; Muscle Memory is
+// consumed by any progress action.
 fn progress_effect(
     state: CraftingState,
     stats: &CrafterStats,
@@ -99,7 +124,9 @@ fn delicate_synthesis(
     stats: &CrafterStats,
     recipe: &Recipe,
 ) -> CraftingState {
-    let progress_increase = calculate_progress(&state, stats, recipe, 100);
+    // Delicate Synthesis Mastery (94) raises only the progress half.
+    let progress_potency = if stats.level >= 94 { 150 } else { 100 };
+    let progress_increase = calculate_progress(&state, stats, recipe, progress_potency);
 
     let effective_control = stats.effective_control(state.inner_quiet_stacks);
     let base_quality = formula::base_quality(
@@ -179,6 +206,25 @@ mod tests {
     }
 
     #[test]
+    fn traits_change_potency_with_crafter_level() {
+        let (state, stats, recipe) = fixture();
+        let low = CrafterStats { level: 30, ..stats };
+        assert_eq!(
+            Action::BasicSynthesis
+                .execute(state, &low, &recipe, true)
+                .progress,
+            235
+        );
+        let high = CrafterStats { level: 90, ..stats };
+        assert_eq!(
+            Action::Groundwork
+                .execute(state, &high, &recipe, true)
+                .progress,
+            846
+        );
+    }
+
+    #[test]
     fn veneration_and_muscle_memory_stack_and_muscle_memory_is_consumed() {
         let (mut state, stats, recipe) = fixture();
         state.veneration_turns = 2;
@@ -186,6 +232,13 @@ mod tests {
         let next = Action::CarefulSynthesis.execute(state, &stats, &recipe, true);
         assert_eq!(next.progress, 775);
         assert_eq!(next.muscle_memory_turns, 0);
+    }
+
+    #[test]
+    fn muscle_memory_lasts_five_steps_from_the_next_action() {
+        let (state, stats, recipe) = fixture();
+        let next = Action::MuscleMemory.execute(state, &stats, &recipe, true);
+        assert_eq!(next.muscle_memory_turns, 5);
     }
 
     #[test]
@@ -203,6 +256,6 @@ mod tests {
         let (mut state, stats, recipe) = fixture();
         state.durability = 15;
         let next = Action::Groundwork.execute(state, &stats, &recipe, true);
-        assert_eq!(next.progress, 352);
+        assert_eq!(next.progress, 423);
     }
 }

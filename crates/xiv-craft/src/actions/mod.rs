@@ -69,7 +69,7 @@ pub enum Action {
     CarefulObservation,
 }
 
-/// Snapshot of one action against a state, as `ICraftingSimulator.GetAvailableActions` reports it.
+/// Mirrors the row shape of the C# `ICraftingSimulator.GetAvailableActions`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActionAvailability {
     pub action: Action,
@@ -160,7 +160,6 @@ impl Action {
         Action::CarefulObservation,
     ];
 
-    // One row per action: id, Name, InGameName, level, category, base CP, base durability, base success.
     #[rustfmt::skip]
     const fn meta(self) -> Meta {
         use ActionCategory::*;
@@ -252,6 +251,24 @@ impl Action {
         self.meta().success
     }
 
+    /// False for the abilities the game resolves without advancing the craft: no buff tick, no
+    /// step count, first-step actions stay available afterwards.
+    pub const fn consumes_step(self) -> bool {
+        !matches!(
+            self,
+            Action::HeartAndSoul
+                | Action::QuickInnovation
+                | Action::CarefulObservation
+                | Action::FinalAppraisal
+        )
+    }
+
+    /// Whether the condition rolls again after this action. Careful Observation rerolls without
+    /// consuming a step; that is its entire purpose.
+    pub const fn advances_condition(self) -> bool {
+        self.consumes_step() || matches!(self, Action::CarefulObservation)
+    }
+
     pub fn cp_cost(self, state: &CraftingState) -> i32 {
         let base = match self {
             Action::StandardTouch if state.combo_action == Action::BasicTouch.id() => 18,
@@ -335,16 +352,18 @@ impl Action {
                 }
             }
             Action::HeartAndSoul => {
-                if state.heart_and_soul_used {
+                if !stats.is_specialist {
+                    Some(FailReason::RequiresSpecialist)
+                } else if state.heart_and_soul_used {
                     Some(FailReason::HeartAndSoulOnce)
-                } else if !recipe.is_expert {
-                    Some(FailReason::ExpertOnly)
                 } else {
                     None
                 }
             }
             Action::QuickInnovation => {
-                if state.quick_innovation_used {
+                if !stats.is_specialist {
+                    Some(FailReason::RequiresSpecialist)
+                } else if state.quick_innovation_used {
                     Some(FailReason::QuickInnovationOnce)
                 } else if state.innovation_turns > 0 {
                     Some(FailReason::InnovationActive)
@@ -356,10 +375,10 @@ impl Action {
                 Some(FailReason::TrainedPerfectionOnce)
             }
             Action::CarefulObservation => {
-                if state.careful_observation_count >= 3 {
+                if !stats.is_specialist {
+                    Some(FailReason::RequiresSpecialist)
+                } else if state.careful_observation_count >= 3 {
                     Some(FailReason::CarefulObservationLimit)
-                } else if !recipe.is_expert {
-                    Some(FailReason::ExpertOnly)
                 } else {
                     None
                 }
@@ -405,34 +424,45 @@ impl Action {
         recipe: &Recipe,
         succeeded: bool,
     ) -> CraftingState {
+        // Costs are read from the state the action was used on, before its own effects land.
+        let durability_cost = self.durability_cost(&state);
         state.cp -= self.cp_cost(&state);
 
         if succeeded {
             state = self.apply_effect(state, stats, recipe);
         }
 
-        state.durability -= self.durability_cost(&state);
+        state.durability -= durability_cost;
 
         if state.trained_perfection_active && self.base_durability_cost() > 0 {
             state.trained_perfection_active = false;
         }
 
-        // Manipulation heals after the tick but is judged on the pre-tick count, so its last turn
-        // still restores durability.
-        let manipulation_before_tick = state.manipulation_turns;
-        state = state.with_buff_tick();
-        if manipulation_before_tick > 0 && state.durability > 0 {
-            state.durability = (state.durability + 5).min(state.max_durability);
+        if self.consumes_step() {
+            // Manipulation is judged before the tick so its final turn still restores durability.
+            let manipulation_before_tick = state.manipulation_turns;
+            state = state.with_buff_tick();
+            if manipulation_before_tick > 0 && state.durability > 0 {
+                state.durability = (state.durability + 5).min(state.max_durability);
+            }
+
+            state.step += 1;
+            state.is_first_step = false;
+            state.combo_action = if succeeded {
+                self.combo_action_after()
+            } else {
+                0
+            };
+            state.observe_active = succeeded && self == Action::Observe;
+        } else {
+            state.combo_action = 0;
+            state.observe_active = false;
         }
 
-        state.step += 1;
-        state.is_first_step = false;
-        state.combo_action = if succeeded {
-            self.combo_action_after()
-        } else {
-            0
-        };
-        state.observe_active = succeeded && self == Action::Observe;
+        // Granted buffs land after the tick so they last their full duration.
+        if succeeded {
+            state = self.apply_granted_buffs(state);
+        }
 
         if state.progress >= state.max_progress {
             state.status = CraftStatus::Completed;
@@ -462,6 +492,14 @@ impl Action {
             ActionCategory::Buff => buffs::apply_effect(self, state, stats, recipe),
             ActionCategory::Repair => repair::apply_effect(self, state, stats, recipe),
             ActionCategory::Other => other::apply_effect(self, state, stats, recipe),
+        }
+    }
+
+    fn apply_granted_buffs(self, state: CraftingState) -> CraftingState {
+        match self.category() {
+            ActionCategory::Progress => progress::apply_granted_buffs(self, state),
+            ActionCategory::Buff => buffs::apply_granted_buffs(self, state),
+            _ => state,
         }
     }
 }
@@ -561,5 +599,25 @@ mod tests {
             Action::BasicSynthesis.fail_reason(&state, &stats, &recipe),
             None
         );
+    }
+
+    #[test]
+    fn step_free_abilities_are_exactly_the_four_instant_ones() {
+        let step_free: Vec<Action> = Action::ALL
+            .iter()
+            .copied()
+            .filter(|a| !a.consumes_step())
+            .collect();
+        assert_eq!(
+            step_free,
+            [
+                Action::FinalAppraisal,
+                Action::HeartAndSoul,
+                Action::QuickInnovation,
+                Action::CarefulObservation
+            ]
+        );
+        assert!(Action::CarefulObservation.advances_condition());
+        assert!(!Action::HeartAndSoul.advances_condition());
     }
 }

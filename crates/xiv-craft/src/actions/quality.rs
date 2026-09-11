@@ -2,7 +2,7 @@ use crate::actions::Action;
 use crate::formula;
 use crate::state::{Condition, CrafterStats, CraftingState, Recipe};
 
-/// The condition multiplier on a quality gain, truncating as the C# casts do.
+// The condition multiplier on a quality gain, truncating as the C# casts do.
 pub(super) fn condition_multiplier(quality_increase: i32, condition: Condition) -> i32 {
     match condition {
         Condition::Good => (quality_increase as f64 * 1.5) as i32,
@@ -43,7 +43,7 @@ pub(super) fn apply_effect(
                 Action::FocusedTouch => (150, 1),
                 Action::PreparatoryTouch => (200, 2),
                 Action::PrudentTouch => (100, 1),
-                Action::Reflect => (300, 1),
+                Action::Reflect => (300, 2),
                 Action::TrainedFinesse => (100, 1),
                 _ => unreachable!("{action:?} is not a quality action"),
             };
@@ -118,6 +118,14 @@ mod tests {
         assert_eq!(next.quality, 243);
         assert_eq!(next.inner_quiet_stacks, 1);
         assert_eq!(next.combo_action, Action::BasicTouch.id());
+    }
+
+    #[test]
+    fn reflect_grants_two_stacks() {
+        let (state, stats, recipe) = fixture();
+        let next = Action::Reflect.execute(state, &stats, &recipe, true);
+        assert_eq!(next.inner_quiet_stacks, 2);
+        assert_eq!(next.quality, 729);
     }
 
     #[test]

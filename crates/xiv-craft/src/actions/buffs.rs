@@ -1,6 +1,8 @@
 use crate::actions::Action;
 use crate::state::{Condition, CrafterStats, CraftingState, Recipe};
 
+// A recast replaces the running buff, so the old one must neither tick nor heal this step; the
+// new duration lands in `apply_granted_buffs` after the tick.
 pub(super) fn apply_effect(
     action: Action,
     state: CraftingState,
@@ -9,15 +11,7 @@ pub(super) fn apply_effect(
 ) -> CraftingState {
     let mut next = state;
     match action {
-        // Inner Quiet is automatic in the current game; the action is kept as a no-op.
-        Action::InnerQuiet | Action::Observe => {}
-        Action::WasteNot => next.waste_not_turns = effective_duration(&state, 4),
-        Action::WasteNotII => next.waste_not_ii_turns = effective_duration(&state, 8),
-        Action::Veneration => next.veneration_turns = effective_duration(&state, 4),
-        Action::Innovation => next.innovation_turns = effective_duration(&state, 4),
-        Action::GreatStrides => next.great_strides_turns = effective_duration(&state, 3),
-        Action::Manipulation => next.manipulation_turns = effective_duration(&state, 8),
-        Action::FinalAppraisal => next.final_appraisal_turns = effective_duration(&state, 5),
+        Action::InnerQuiet | Action::Observe | Action::QuickInnovation => {}
         Action::HeartAndSoul => {
             next.heart_and_soul_active = true;
             next.heart_and_soul_used = true;
@@ -26,14 +20,57 @@ pub(super) fn apply_effect(
             next.trained_perfection_active = true;
             next.trained_perfection_used = true;
         }
-        // Quick Innovation grants a fixed single turn; Primed does not extend it.
-        Action::QuickInnovation => {
-            next.innovation_turns = 1;
-            next.quick_innovation_used = true;
-        }
-        _ => unreachable!("{action:?} is not a buff"),
+        _ => next = with_buff_turns(action, next, 0),
+    }
+    if action == Action::QuickInnovation {
+        next.quick_innovation_used = true;
     }
     next
+}
+
+pub(super) fn apply_granted_buffs(action: Action, state: CraftingState) -> CraftingState {
+    match action {
+        Action::QuickInnovation => {
+            let mut next = state;
+            next.innovation_turns = 1;
+            next
+        }
+        Action::WasteNot
+        | Action::WasteNotII
+        | Action::Veneration
+        | Action::Innovation
+        | Action::GreatStrides
+        | Action::Manipulation
+        | Action::FinalAppraisal => {
+            let duration = effective_duration(&state, base_duration(action));
+            with_buff_turns(action, state, duration)
+        }
+        _ => state,
+    }
+}
+
+fn base_duration(action: Action) -> i32 {
+    match action {
+        Action::WasteNot | Action::Veneration | Action::Innovation => 4,
+        Action::WasteNotII | Action::Manipulation => 8,
+        Action::GreatStrides => 3,
+        Action::FinalAppraisal => 5,
+        _ => 0,
+    }
+}
+
+fn with_buff_turns(action: Action, mut state: CraftingState, turns: i32) -> CraftingState {
+    match action {
+        Action::WasteNot => state.waste_not_turns = turns,
+        Action::WasteNotII => state.waste_not_ii_turns = turns,
+        Action::Veneration => state.veneration_turns = turns,
+        Action::Innovation => state.innovation_turns = turns,
+        Action::GreatStrides => state.great_strides_turns = turns,
+        Action::Manipulation => state.manipulation_turns = turns,
+        Action::FinalAppraisal => state.final_appraisal_turns = turns,
+        _ => unreachable!("{action:?} has no timer"),
+    }
+    state
 }
 
 fn effective_duration(state: &CraftingState, duration: i32) -> i32 {
@@ -54,7 +91,7 @@ mod tests {
             craftsmanship: 4500,
             control: 4400,
             cp: 700,
-            is_specialist: false,
+            is_specialist: true,
         };
         let recipe = Recipe {
             recipe_level: 690,
@@ -75,12 +112,11 @@ mod tests {
     }
 
     #[test]
-    fn buff_ticks_on_the_step_it_is_applied() {
+    fn buff_keeps_its_full_duration_on_the_cast_step() {
         let (state, stats, recipe) = fixture();
         let next = Action::Innovation.execute(state, &stats, &recipe, true);
-        assert_eq!(next.innovation_turns, 3);
+        assert_eq!(next.innovation_turns, 4);
         assert_eq!(next.cp, 682);
-        assert_eq!(next.durability, 70);
     }
 
     #[test]
@@ -88,15 +124,35 @@ mod tests {
         let (mut state, stats, recipe) = fixture();
         state.condition = Condition::Primed;
         let next = Action::Manipulation.execute(state, &stats, &recipe, true);
-        assert_eq!(next.manipulation_turns, 9);
+        assert_eq!(next.manipulation_turns, 10);
     }
 
     #[test]
-    fn manipulation_heals_from_its_first_step() {
+    fn manipulation_does_not_heal_on_its_own_cast_or_recast() {
         let (mut state, stats, recipe) = fixture();
         state.durability = 40;
-        let next = Action::Manipulation.execute(state, &stats, &recipe, true);
-        assert_eq!(next.durability, 45);
+        let cast = Action::Manipulation.execute(state, &stats, &recipe, true);
+        assert_eq!(cast.durability, 40);
+        let after_action = Action::BasicSynthesis.execute(cast, &stats, &recipe, true);
+        assert_eq!(after_action.durability, 35);
+        assert_eq!(after_action.manipulation_turns, 7);
+        let recast = Action::Manipulation.execute(after_action, &stats, &recipe, true);
+        assert_eq!(recast.durability, 35);
+        assert_eq!(recast.manipulation_turns, 8);
+    }
+
+    #[test]
+    fn quick_innovation_and_heart_and_soul_take_no_step() {
+        let (mut state, stats, recipe) = fixture();
+        state.veneration_turns = 3;
+        let quick = Action::QuickInnovation.execute(state, &stats, &recipe, true);
+        assert_eq!(quick.innovation_turns, 1);
+        assert_eq!(quick.step, 0);
+        assert!(quick.is_first_step);
+        assert_eq!(quick.veneration_turns, 3);
+        let heart = Action::HeartAndSoul.execute(quick, &stats, &recipe, true);
+        assert!(heart.heart_and_soul_active && heart.heart_and_soul_used);
+        assert_eq!(heart.step, 0);
     }
 
     #[test]

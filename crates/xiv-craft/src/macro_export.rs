@@ -21,7 +21,16 @@ impl Default for MacroOptions {
 
 /// `MacroExporter.ExportToMacro`: one string per in-game macro, lines joined with `\n`.
 /// Unknown ids are skipped, as the C# exporter skips them.
+///
+/// # Panics
+///
+/// When `lines_per_macro` is zero; the C# exporter throws on that input as well.
 pub fn export_to_macro(action_ids: &[ActionId], options: &MacroOptions) -> Vec<String> {
+    assert!(
+        options.lines_per_macro > 0,
+        "lines_per_macro must be at least 1"
+    );
+
     let lines: Vec<String> = action_ids
         .iter()
         .filter_map(|id| Action::from_id(*id))

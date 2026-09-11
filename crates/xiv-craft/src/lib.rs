@@ -14,11 +14,12 @@ pub mod state;
 pub use actions::{Action, ActionAvailability, ActionCategory, ActionId};
 pub use condition::ConditionResolver;
 pub use fail_reason::FailReason;
+pub use formula::{base_progress, base_quality};
 pub use hq::{calculate_starting_quality, HqInput, Ingredient};
 pub use macro_export::{export_to_macro, MacroOptions};
 pub use rng::DotNetRandom;
 pub use simulator::{
     action_availability, create_initial, execute_action, legal_actions, simulate, simulate_with,
-    SimulationOptions, SimulationResult, StepResult,
+    SimulationOptions, SimulationResult, StepResult, DEFAULT_SEED,
 };
 pub use state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};

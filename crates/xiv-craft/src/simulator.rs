@@ -11,6 +11,12 @@ use crate::state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};
 /// which is neither reproducible nor available on wasm, so the engine pins a constant instead.
 pub const DEFAULT_SEED: i32 = 0;
 
+/// Mirrors the C# `SimulationOptions`, defaults included: every action succeeds and the
+/// condition stays Normal, which is the path both solvers run on.
+///
+/// With `assume_all_success` or `assume_normal_condition` off and `random_seed` unset, every run
+/// uses [`DEFAULT_SEED`] and is therefore identical call after call. A caller that wants varied
+/// rollouts (a solver sampling outcomes) must supply its own seed each time.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SimulationOptions {
     pub assume_all_success: bool,
@@ -240,7 +246,7 @@ fn execute_internal(
 
     if let Some(forced) = options.force_condition {
         after.condition = forced;
-    } else if !options.assume_normal_condition {
+    } else if !options.assume_normal_condition && action.advances_condition() {
         after.condition =
             conditions.next_condition(after.condition, recipe.is_expert, recipe.conditions_flag);
     }
@@ -264,19 +270,30 @@ fn execute_internal(
 mod tests {
     use super::*;
 
-    #[test]
-    fn unknown_action_records_a_failed_step_and_continues() {
+    fn fixture() -> (Recipe, CrafterStats) {
         let recipe = Recipe {
-            difficulty: 100,
-            quality: 100,
+            difficulty: 1000,
+            quality: 1000,
             durability: 40,
+            progress_divider: 100,
+            progress_modifier: 100,
+            quality_divider: 100,
+            quality_modifier: 100,
             ..Default::default()
         };
         let stats = CrafterStats {
-            level: 1,
-            cp: 10,
-            ..Default::default()
+            level: 100,
+            craftsmanship: 1000,
+            control: 1000,
+            cp: 500,
+            is_specialist: false,
         };
+        (recipe, stats)
+    }
+
+    #[test]
+    fn unknown_action_records_a_failed_step_and_continues() {
+        let (recipe, stats) = fixture();
         let result = simulate(&recipe, &stats, &[999999, 999999]);
         assert_eq!(result.steps.len(), 2);
         assert_eq!(result.steps[0].fail_reason, Some(FailReason::UnknownAction));
@@ -286,20 +303,58 @@ mod tests {
 
     #[test]
     fn legal_actions_follow_registry_order() {
-        let recipe = Recipe {
-            difficulty: 100,
-            quality: 100,
-            durability: 40,
-            ..Default::default()
-        };
-        let stats = CrafterStats {
-            level: 100,
-            cp: 500,
-            ..Default::default()
-        };
+        let (recipe, stats) = fixture();
         let state = create_initial(&recipe, &stats);
         let legal = legal_actions(&state, &stats, &recipe);
         assert_eq!(legal.first(), Some(&Action::BasicSynthesis.id()));
         assert!(!legal.contains(&Action::HeartAndSoul.id()));
+    }
+
+    #[test]
+    fn unseeded_random_runs_are_deterministic() {
+        let (recipe, stats) = fixture();
+        let options = SimulationOptions {
+            assume_all_success: false,
+            assume_normal_condition: false,
+            random_seed: None,
+            force_condition: None,
+        };
+        let actions = [Action::RapidSynthesis.id(); 6];
+        let first = simulate_with(&recipe, &stats, &actions, &options);
+        let second = simulate_with(&recipe, &stats, &actions, &options);
+        let pinned = simulate_with(
+            &recipe,
+            &stats,
+            &actions,
+            &SimulationOptions {
+                random_seed: Some(DEFAULT_SEED),
+                ..options
+            },
+        );
+        assert_eq!(first, second);
+        assert_eq!(first, pinned);
+    }
+
+    #[test]
+    fn step_free_abilities_do_not_roll_a_new_condition() {
+        let (recipe, stats) = fixture();
+        let specialist = CrafterStats {
+            is_specialist: true,
+            ..stats
+        };
+        let options = SimulationOptions {
+            assume_normal_condition: false,
+            random_seed: Some(3),
+            ..SimulationOptions::default()
+        };
+        let result = simulate_with(
+            &recipe,
+            &specialist,
+            &[Action::HeartAndSoul.id(), Action::BasicSynthesis.id()],
+            &options,
+        );
+        assert_eq!(result.steps[0].state_after.condition, Condition::Normal);
+        assert_eq!(result.steps[0].state_after.step, 0);
+        assert_eq!(result.steps[1].state_after.step, 1);
     }
 }

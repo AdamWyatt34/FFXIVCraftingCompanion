@@ -36,7 +36,7 @@ mod tests {
             craftsmanship: 4500,
             control: 4400,
             cp: 700,
-            is_specialist: false,
+            is_specialist: true,
         };
         let recipe = Recipe {
             recipe_level: 690,
@@ -47,7 +47,6 @@ mod tests {
             progress_modifier: 80,
             quality_divider: 115,
             quality_modifier: 70,
-            is_expert: true,
             ..Default::default()
         };
         (
@@ -74,12 +73,36 @@ mod tests {
     }
 
     #[test]
-    fn careful_observation_counts_uses_and_costs_nothing() {
-        let (state, stats, recipe) = fixture();
+    fn careful_observation_counts_uses_without_consuming_a_step() {
+        let (mut state, stats, recipe) = fixture();
+        state.innovation_turns = 2;
         let next = Action::CarefulObservation.execute(state, &stats, &recipe, true);
         assert_eq!(next.careful_observation_count, 1);
         assert_eq!(next.cp, 700);
         assert_eq!(next.durability, 70);
-        assert_eq!(next.step, 1);
+        assert_eq!(next.step, 0);
+        assert_eq!(next.innovation_turns, 2);
+        assert!(next.is_first_step);
+    }
+
+    #[test]
+    fn specialist_abilities_are_gated_on_the_crafter_not_the_recipe() {
+        let (state, stats, recipe) = fixture();
+        let non_specialist = CrafterStats {
+            is_specialist: false,
+            ..stats
+        };
+        assert_eq!(
+            Action::CarefulObservation.fail_reason(&state, &non_specialist, &recipe),
+            Some(crate::FailReason::RequiresSpecialist)
+        );
+        assert_eq!(
+            Action::CarefulObservation.fail_reason(&state, &stats, &recipe),
+            None
+        );
+        assert_eq!(
+            Action::HeartAndSoul.fail_reason(&state, &stats, &recipe),
+            None
+        );
     }
 }

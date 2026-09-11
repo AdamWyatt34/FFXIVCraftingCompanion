@@ -61,7 +61,7 @@ pub struct CrafterStats {
     pub craftsmanship: i32,
     pub control: i32,
     pub cp: i32,
-    /// Carried for shape parity with the C# record; the engine never reads it.
+    /// Gates the specialist abilities (Heart and Soul, Careful Observation, Quick Innovation).
     pub is_specialist: bool,
 }
 
@@ -192,22 +192,19 @@ impl CraftingState {
     }
 }
 
-// The community-documented HQ curve as the C# engine approximates it: three linear pieces
-// with truncation, 1% at zero quality and 100% only at full quality.
+// The in-game HQ chance per whole percent of quality (0..100), as datamined by the community;
+// it is a table, not a formula.
+#[rustfmt::skip]
+const HQ_CHANCE_BY_QUALITY_PERCENT: [i32; 101] = [
+    1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8,
+    9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 17, 17,
+    17, 18, 18, 18, 19, 19, 20, 20, 21, 22, 23, 24, 26, 28, 31, 34, 38, 42, 47, 52, 58, 64, 68, 71,
+    74, 76, 78, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 94, 96, 98, 100,
+];
+
 fn hq_percent(quality_percent: f64) -> i32 {
-    if quality_percent == 0.0 {
-        return 1;
-    }
-    if quality_percent >= 100.0 {
-        return 100;
-    }
-    if quality_percent <= 30.0 {
-        return (quality_percent * 10.0 / 30.0) as i32 + 1;
-    }
-    if quality_percent <= 70.0 {
-        return ((quality_percent - 30.0) * 39.0 / 40.0) as i32 + 11;
-    }
-    ((quality_percent - 70.0) * 50.0 / 30.0) as i32 + 50
+    let index = (quality_percent.floor() as i32).clamp(0, 100);
+    HQ_CHANCE_BY_QUALITY_PERCENT[index as usize]
 }
 
 #[cfg(test)]
@@ -215,11 +212,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hq_curve_matches_engine_breakpoints() {
+    fn hq_table_endpoints_and_steep_middle() {
         assert_eq!(hq_percent(0.0), 1);
-        assert_eq!(hq_percent(30.0), 11);
-        assert_eq!(hq_percent(70.0), 50);
-        assert_eq!(hq_percent(99.9), 99);
+        assert_eq!(hq_percent(4.9), 1);
+        assert_eq!(hq_percent(5.0), 2);
+        assert_eq!(hq_percent(70.0), 28);
+        assert_eq!(hq_percent(99.9), 98);
         assert_eq!(hq_percent(100.0), 100);
     }
 
