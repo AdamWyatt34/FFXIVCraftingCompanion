@@ -24,13 +24,9 @@ impl Default for MacroOptions {
 ///
 /// # Panics
 ///
-/// When `lines_per_macro` is zero; the C# exporter throws on that input as well.
+/// When `lines_per_macro` is zero and there is at least one line to chunk; the C# exporter
+/// throws on exactly that input and returns an empty list before reaching it otherwise.
 pub fn export_to_macro(action_ids: &[ActionId], options: &MacroOptions) -> Vec<String> {
-    assert!(
-        options.lines_per_macro > 0,
-        "lines_per_macro must be at least 1"
-    );
-
     let lines: Vec<String> = action_ids
         .iter()
         .filter_map(|id| Action::from_id(*id))
@@ -47,6 +43,10 @@ pub fn export_to_macro(action_ids: &[ActionId], options: &MacroOptions) -> Vec<S
     if lines.is_empty() {
         return Vec::new();
     }
+    assert!(
+        options.lines_per_macro > 0,
+        "lines_per_macro must be at least 1"
+    );
 
     let mut macros = Vec::new();
     for (index, chunk) in lines.chunks(options.lines_per_macro).enumerate() {
