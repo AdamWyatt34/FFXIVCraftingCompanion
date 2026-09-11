@@ -20,6 +20,17 @@ const PORTED: &[Action] = &[
     Action::PrudentSynthesis,
     Action::MuscleMemory,
     Action::DelicateSynthesis,
+    Action::BasicTouch,
+    Action::StandardTouch,
+    Action::AdvancedTouch,
+    Action::HastyTouch,
+    Action::FocusedTouch,
+    Action::PreparatoryTouch,
+    Action::PrudentTouch,
+    Action::Reflect,
+    Action::ByregotsBlessing,
+    Action::TrainedFinesse,
+    Action::TrainedEye,
 ];
 
 const MIN_GOLDEN_FILES: usize = 10;
