@@ -31,6 +31,20 @@ const PORTED: &[Action] = &[
     Action::ByregotsBlessing,
     Action::TrainedFinesse,
     Action::TrainedEye,
+    Action::InnerQuiet,
+    Action::WasteNot,
+    Action::WasteNotII,
+    Action::Veneration,
+    Action::Innovation,
+    Action::GreatStrides,
+    Action::Manipulation,
+    Action::FinalAppraisal,
+    Action::Observe,
+    Action::HeartAndSoul,
+    Action::TrainedPerfection,
+    Action::QuickInnovation,
+    Action::MastersMend,
+    Action::ImmaculateMend,
 ];
 
 const MIN_GOLDEN_FILES: usize = 10;
