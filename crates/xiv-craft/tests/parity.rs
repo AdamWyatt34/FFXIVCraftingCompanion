@@ -10,7 +10,17 @@ use xiv_craft::{
 
 /// Actions whose effects are implemented; cases using anything else are skipped until the
 /// last checkpoint deletes this filter.
-const PORTED: &[Action] = &[];
+const PORTED: &[Action] = &[
+    Action::BasicSynthesis,
+    Action::CarefulSynthesis,
+    Action::RapidSynthesis,
+    Action::FocusedSynthesis,
+    Action::Groundwork,
+    Action::IntensiveSynthesis,
+    Action::PrudentSynthesis,
+    Action::MuscleMemory,
+    Action::DelicateSynthesis,
+];
 
 const MIN_GOLDEN_FILES: usize = 10;
 
