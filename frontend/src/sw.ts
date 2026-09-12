@@ -20,6 +20,24 @@ const cacheableResponse: SerwistPlugin = new CacheableResponsePlugin({
 });
 
 const runtimeCaching = [
+  // Pages and their RSC payloads — network-first, so a page visited online opens offline
+  // (the simulator and solver then run locally from the precached WASM engine). Never-visited
+  // pages still fall through to the /offline fallback below.
+  {
+    matcher: ({ request }: { request: Request }) =>
+      request.mode === "navigate" || request.headers.get("RSC") === "1",
+    handler: new NetworkFirst({
+      cacheName: "pages",
+      networkTimeoutSeconds: 5,
+      plugins: [
+        cacheableResponse,
+        new ExpirationPlugin({
+          maxEntries: 100,
+          maxAgeSeconds: 7 * 24 * 60 * 60,
+        }),
+      ],
+    }),
+  },
   // Game data APIs — stale-while-revalidate, 7 day TTL
   {
     matcher: ({ request, url }: { request: Request; url: URL }) =>
@@ -31,19 +49,26 @@ const runtimeCaching = [
       cacheName: "game-data-api",
       plugins: [
         cacheableResponse,
-        new ExpirationPlugin({ maxEntries: 5000, maxAgeSeconds: 7 * 24 * 60 * 60 }),
+        new ExpirationPlugin({
+          maxEntries: 5000,
+          maxAgeSeconds: 7 * 24 * 60 * 60,
+        }),
       ],
     }),
   },
   // XIVAPI icon assets — cache-first, 30 day TTL
   {
     matcher: ({ url }: { url: URL }) =>
-      url.hostname === "v2.xivapi.com" && url.pathname.startsWith("/api/asset/"),
+      url.hostname === "v2.xivapi.com" &&
+      url.pathname.startsWith("/api/asset/"),
     handler: new CacheFirst({
       cacheName: "xivapi-icons",
       plugins: [
         cacheableResponse,
-        new ExpirationPlugin({ maxEntries: 10000, maxAgeSeconds: 30 * 24 * 60 * 60 }),
+        new ExpirationPlugin({
+          maxEntries: 10000,
+          maxAgeSeconds: 30 * 24 * 60 * 60,
+        }),
       ],
     }),
   },
@@ -57,8 +82,7 @@ const runtimeCaching = [
   // Market data — network-first, 15 min TTL
   {
     matcher: ({ request, url }: { request: Request; url: URL }) =>
-      request.destination === "" &&
-      /\/api\/market(\/|$|\?)/.test(url.pathname),
+      request.destination === "" && /\/api\/market(\/|$|\?)/.test(url.pathname),
     handler: new NetworkFirst({
       cacheName: "market-data",
       networkTimeoutSeconds: 5,

@@ -1,0 +1,25 @@
+{
+    "recipeId": 37783,
+    "recipeLevel": 759,
+    "difficulty": 12500,
+    "quality": 33500,
+    "durability": 70,
+    "progressDivider": 180,
+    "progressModifier": 100,
+    "qualityDivider": 180,
+    "qualityModifier": 100,
+    "classJobLevel": 100,
+    "stars": 3,
+    "isExpert": false,
+    "conditionsFlag": 0,
+    "suggestedCraftsmanship": 4740,
+    "suggestedControl": 0,
+    "materialQualityFactor": 0,
+    "ingredients": [
+        {
+            "itemId": 49878,
+            "quantity": 1,
+            "canBeHQ": false
+        }
+    ]
+}

@@ -8,6 +8,7 @@ import {
   getInitialCraftingState,
   executeCraftingAction,
   exportCraftingMacro,
+  prefetchRecipeParameters,
   simulateCraft,
 } from "@/lib/crafting-engine";
 import { useProfile } from "@/hooks/useProfile";
@@ -335,6 +336,7 @@ export function useSimulator(): UseSimulatorReturn {
       };
       setSelectedRecipe(summary);
       setRecipeId(id);
+      prefetchRecipeParameters(id);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setError(

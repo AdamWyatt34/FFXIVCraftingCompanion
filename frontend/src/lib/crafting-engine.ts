@@ -53,6 +53,18 @@ export function getRecipeParameters(
   return promise;
 }
 
+/**
+ * Warms the parameter cache (memory and, through the service worker, disk) as soon as a recipe is
+ * selected, so a recipe opened online can be crafted and solved offline even if no engine call
+ * was made while online. A no-op on the API path.
+ */
+export function prefetchRecipeParameters(recipeId: number): void {
+  if (getEngineMode() === "api") return;
+  getRecipeParameters(recipeId).catch(() => {
+    // The next engine call reports the failure with the API's message.
+  });
+}
+
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 }
