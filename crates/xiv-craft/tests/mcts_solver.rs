@@ -233,6 +233,105 @@ fn max_nodes_caps_the_tree_and_the_search_still_completes() {
     assert_eq!(result.metrics.iterations_completed, 5_000);
 }
 
+#[test]
+fn chunked_run_matches_the_one_shot_search() {
+    let settings = SolverSettings {
+        time_budget_ms: f64::INFINITY,
+        max_iterations: Some(20_000),
+        random_seed: Some(7),
+    };
+    let mut solver = solver();
+
+    let one_shot = solver.solve(
+        &default_recipe(),
+        &default_stats(),
+        &SolverConstraints::default(),
+        &settings,
+        &mut frozen_clock(),
+    );
+
+    solver.begin(
+        &default_recipe(),
+        &default_stats(),
+        &SolverConstraints::default(),
+        &settings,
+        &mut frozen_clock(),
+    );
+    let mut chunks = 0;
+    loop {
+        let progress = solver.run(1_000, &mut frozen_clock());
+        chunks += 1;
+        assert!(progress.iterations <= 20_000);
+        if progress.done {
+            break;
+        }
+    }
+    let chunked = solver.finish(&mut frozen_clock());
+
+    assert!(chunks > 1, "the search must have been sliced");
+    assert_eq!(chunked.action_ids, one_shot.action_ids);
+    assert_eq!(chunked.metrics, one_shot.metrics);
+}
+
+#[test]
+fn finish_after_a_partial_run_reports_the_best_so_far() {
+    let settings = SolverSettings {
+        time_budget_ms: f64::INFINITY,
+        max_iterations: Some(50_000),
+        random_seed: Some(42),
+    };
+    let mut solver = solver();
+    solver.begin(
+        &default_recipe(),
+        &default_stats(),
+        &SolverConstraints::default(),
+        &settings,
+        &mut frozen_clock(),
+    );
+
+    let progress = solver.run(200, &mut frozen_clock());
+    assert_eq!(progress.iterations, 200);
+    assert!(!progress.done);
+    assert!(progress.best_steps > 0, "the greedy seed is a best-so-far");
+    assert_eq!(solver.progress(&mut frozen_clock()), progress);
+
+    let result = solver.finish(&mut frozen_clock());
+
+    assert_eq!(result.status, SolverStatus::Completed);
+    assert_eq!(result.metrics.iterations_completed, 200);
+    assert_eq!(result.metrics.total_steps, progress.best_steps);
+    assert_eq!(
+        result.metrics.final_quality_percent,
+        progress.best_quality_percent
+    );
+    assert_eq!(result.metrics.final_hq_percent, progress.best_hq_percent);
+    assert!(result.simulation.as_ref().expect("simulation").success());
+}
+
+#[test]
+fn run_after_a_stop_condition_does_nothing() {
+    let settings = SolverSettings {
+        time_budget_ms: f64::INFINITY,
+        max_iterations: Some(300),
+        random_seed: Some(42),
+    };
+    let mut solver = solver();
+    solver.begin(
+        &default_recipe(),
+        &default_stats(),
+        &SolverConstraints::default(),
+        &settings,
+        &mut frozen_clock(),
+    );
+
+    let first = solver.run(u64::MAX, &mut frozen_clock());
+    let second = solver.run(u64::MAX, &mut frozen_clock());
+
+    assert!(first.done);
+    assert_eq!(first.iterations, 300);
+    assert_eq!(second, first);
+}
+
 // MCTSNodeTests. Statistics live on edges and are only written by backpropagation, so the
 // fixtures build them by backpropagating instead of setting fields.
 

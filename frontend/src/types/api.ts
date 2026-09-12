@@ -45,6 +45,34 @@ export interface RecipeIngredientDto {
   canBeHQ: boolean;
 }
 
+/** The crafting engine's view of a recipe (GET /api/recipes/{id}/crafting-parameters). */
+export interface RecipeCraftingParametersDto {
+  recipeId: number;
+  /** The recipe level (rlvl), not the class job level. */
+  recipeLevel: number;
+  difficulty: number;
+  quality: number;
+  durability: number;
+  progressDivider: number;
+  progressModifier: number;
+  qualityDivider: number;
+  qualityModifier: number;
+  classJobLevel: number;
+  stars: number;
+  isExpert: boolean;
+  conditionsFlag: number;
+  suggestedCraftsmanship: number;
+  suggestedControl: number;
+  materialQualityFactor: number;
+  ingredients: RecipeCraftingIngredientDto[];
+}
+
+export interface RecipeCraftingIngredientDto {
+  itemId: number;
+  quantity: number;
+  canBeHQ: boolean;
+}
+
 export interface ItemSearchResultDto {
   items: ItemDto[];
   totalCount: number;
@@ -70,14 +98,7 @@ export type ItemCategory =
   | "Other";
 
 export type CraftType =
-  | "CRP"
-  | "BSM"
-  | "ARM"
-  | "GSM"
-  | "LTW"
-  | "WVR"
-  | "ALC"
-  | "CUL";
+  "CRP" | "BSM" | "ARM" | "GSM" | "LTW" | "WVR" | "ALC" | "CUL";
 
 export type EquipSlot =
   | "Head"

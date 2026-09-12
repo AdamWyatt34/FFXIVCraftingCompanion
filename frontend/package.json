@@ -7,7 +7,9 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "analyze": "cross-env ANALYZE=true next build --webpack"
+    "analyze": "cross-env ANALYZE=true next build --webpack",
+    "wasm:build": "node scripts/wasm-build.mjs",
+    "wasm:check": "node scripts/wasm-check.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.38.0",

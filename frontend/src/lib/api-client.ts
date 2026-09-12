@@ -2,6 +2,7 @@ import type {
   ItemDto,
   ItemSearchResultDto,
   RecipeDto,
+  RecipeCraftingParametersDto,
   MaterialTreeResultDto,
   ShoppingListResultDto,
   ApiError,
@@ -98,7 +99,10 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   return fetchApiInternal<T>(path, init);
 }
 
-async function fetchApiInternal<T>(path: string, init?: RequestInit): Promise<T> {
+async function fetchApiInternal<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const url = `${getBaseUrl()}${path}`;
 
   const timeoutController = new AbortController();
@@ -197,7 +201,9 @@ export function searchItems(
   });
   if (query) params.set("q", query);
   if (craftType) params.set("craftType", craftType);
-  return fetchApi<ItemSearchResultDto>(`/api/items/search?${params}`, { signal });
+  return fetchApi<ItemSearchResultDto>(`/api/items/search?${params}`, {
+    signal,
+  });
 }
 
 export function getItem(id: number): Promise<ItemDto> {
@@ -212,6 +218,16 @@ export function getRecipe(
 ): Promise<RecipeDto> {
   const params = includeMaterials ? "?includeMaterials=true" : "";
   return fetchApi<RecipeDto>(`/api/recipes/${id}${params}`);
+}
+
+export function getRecipeCraftingParameters(
+  id: number,
+  signal?: AbortSignal,
+): Promise<RecipeCraftingParametersDto> {
+  return fetchApi<RecipeCraftingParametersDto>(
+    `/api/recipes/${id}/crafting-parameters`,
+    { signal },
+  );
 }
 
 export function getMaterialTree(
@@ -253,7 +269,9 @@ export function getGearRecommendations(
     profile,
   });
   if (craftedOnly) params.set("craftedOnly", "true");
-  return fetchApi<GearSetDto>(`/api/gear/recommendations?${params}`, { signal });
+  return fetchApi<GearSetDto>(`/api/gear/recommendations?${params}`, {
+    signal,
+  });
 }
 
 export function getSlotRecommendation(
@@ -268,7 +286,9 @@ export function getSlotRecommendation(
     level: String(level),
     profile,
   });
-  return fetchApi<GearSlotDto>(`/api/gear/recommendations/${slot}?${params}`, { signal });
+  return fetchApi<GearSlotDto>(`/api/gear/recommendations/${slot}?${params}`, {
+    signal,
+  });
 }
 
 export function getStatWeightProfiles(
@@ -276,7 +296,9 @@ export function getStatWeightProfiles(
   signal?: AbortSignal,
 ): Promise<StatWeightProfileDto[]> {
   const params = new URLSearchParams({ job });
-  return fetchApi<StatWeightProfileDto[]>(`/api/gear/profiles?${params}`, { signal });
+  return fetchApi<StatWeightProfileDto[]>(`/api/gear/profiles?${params}`, {
+    signal,
+  });
 }
 
 export function calculateGearStats(
@@ -334,7 +356,10 @@ export function authRefresh(refreshToken: string): Promise<AuthTokensDto> {
   });
 }
 
-export function authLogout(accessToken: string, refreshToken: string): Promise<void> {
+export function authLogout(
+  accessToken: string,
+  refreshToken: string,
+): Promise<void> {
   return fetchApi<void>("/api/auth/logout", {
     method: "POST",
     headers: {
@@ -367,7 +392,9 @@ export function getProfile(signal?: AbortSignal): Promise<CharacterProfileDto> {
   return authFetchApi<CharacterProfileDto>("/api/profile", { signal });
 }
 
-export function createProfile(req: CreateProfileRequest): Promise<CharacterProfileDto> {
+export function createProfile(
+  req: CreateProfileRequest,
+): Promise<CharacterProfileDto> {
   return authFetchApi<CharacterProfileDto>("/api/profile", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -375,7 +402,9 @@ export function createProfile(req: CreateProfileRequest): Promise<CharacterProfi
   });
 }
 
-export function updateProfile(req: UpdateProfileRequest): Promise<CharacterProfileDto> {
+export function updateProfile(
+  req: UpdateProfileRequest,
+): Promise<CharacterProfileDto> {
   return authFetchApi<CharacterProfileDto>("/api/profile", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -383,7 +412,9 @@ export function updateProfile(req: UpdateProfileRequest): Promise<CharacterProfi
   });
 }
 
-export function updateJobLevels(jobLevels: Record<string, number>): Promise<CharacterProfileDto> {
+export function updateJobLevels(
+  jobLevels: Record<string, number>,
+): Promise<CharacterProfileDto> {
   return authFetchApi<CharacterProfileDto>("/api/profile/jobs", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -395,7 +426,9 @@ export function deleteProfile(): Promise<void> {
   return authFetchApi<void>("/api/profile", { method: "DELETE" });
 }
 
-export function importLodestone(req: ImportLodestoneRequest): Promise<CharacterProfileDto> {
+export function importLodestone(
+  req: ImportLodestoneRequest,
+): Promise<CharacterProfileDto> {
   return authFetchApi<CharacterProfileDto>("/api/profile/import-lodestone", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -415,7 +448,10 @@ export function previewLodestone(
   signal?: AbortSignal,
 ): Promise<LodestonePreviewDto> {
   const params = new URLSearchParams({ name, server });
-  return fetchApi<LodestonePreviewDto>(`/api/profile/lodestone-preview?${params}`, { signal });
+  return fetchApi<LodestonePreviewDto>(
+    `/api/profile/lodestone-preview?${params}`,
+    { signal },
+  );
 }
 
 // --- Saved Lists API ---
@@ -425,7 +461,9 @@ export function getSavedLists(
   signal?: AbortSignal,
 ): Promise<SavedListSummaryDto[]> {
   const params = type ? `?type=${type}` : "";
-  return authFetchApi<SavedListSummaryDto[]>(`/api/saved-lists${params}`, { signal });
+  return authFetchApi<SavedListSummaryDto[]>(`/api/saved-lists${params}`, {
+    signal,
+  });
 }
 
 export function getSavedListById(id: number): Promise<SavedListDto> {
@@ -449,7 +487,12 @@ export function deleteSavedList(id: number): Promise<void> {
 
 export function addItemToSavedList(
   listId: number,
-  req: { itemId: number; itemName: string; quantity: number; category?: string },
+  req: {
+    itemId: number;
+    itemName: string;
+    quantity: number;
+    category?: string;
+  },
 ): Promise<SavedListDto> {
   return authFetchApi<SavedListDto>(`/api/saved-lists/${listId}/items`, {
     method: "POST",
@@ -462,15 +505,22 @@ export function removeItemFromSavedList(
   listId: number,
   itemId: number,
 ): Promise<SavedListDto> {
-  return authFetchApi<SavedListDto>(`/api/saved-lists/${listId}/items/${itemId}`, {
-    method: "DELETE",
-  });
+  return authFetchApi<SavedListDto>(
+    `/api/saved-lists/${listId}/items/${itemId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 // --- Favorites API ---
 
-export function getFavoriteRecipes(signal?: AbortSignal): Promise<FavoriteRecipeDto[]> {
-  return authFetchApi<FavoriteRecipeDto[]>("/api/favorites/recipes", { signal });
+export function getFavoriteRecipes(
+  signal?: AbortSignal,
+): Promise<FavoriteRecipeDto[]> {
+  return authFetchApi<FavoriteRecipeDto[]>("/api/favorites/recipes", {
+    signal,
+  });
 }
 
 export function toggleFavoriteRecipe(
@@ -484,8 +534,12 @@ export function toggleFavoriteRecipe(
   });
 }
 
-export function getFavoriteStatus(recipeId: number): Promise<FavoriteStatusDto> {
-  return authFetchApi<FavoriteStatusDto>(`/api/favorites/recipes/${recipeId}/status`);
+export function getFavoriteStatus(
+  recipeId: number,
+): Promise<FavoriteStatusDto> {
+  return authFetchApi<FavoriteStatusDto>(
+    `/api/favorites/recipes/${recipeId}/status`,
+  );
 }
 
 // --- Gear Comparison API ---
@@ -501,7 +555,9 @@ export function getGearComparison(
     level: String(level),
     profile,
   });
-  return authFetchApi(`/api/gear/recommendations/compare?${params}`, { signal });
+  return authFetchApi(`/api/gear/recommendations/compare?${params}`, {
+    signal,
+  });
 }
 
 // --- Profile Gear Update ---
@@ -630,8 +686,11 @@ export function getInitialCraftingState(
     cp: String(cp),
     isSpecialist: String(isSpecialist),
   });
-  if (startingQuality > 0) params.set("startingQuality", String(startingQuality));
-  return fetchApi<CraftingState>(`/api/crafting/initial-state?${params}`, { signal });
+  if (startingQuality > 0)
+    params.set("startingQuality", String(startingQuality));
+  return fetchApi<CraftingState>(`/api/crafting/initial-state?${params}`, {
+    signal,
+  });
 }
 
 // --- Solver API ---
@@ -652,7 +711,10 @@ export function getSolveJob(
   jobId: string,
   signal?: AbortSignal,
 ): Promise<SolverJob> {
-  return fetchApi<SolverJob>(`/api/crafting/solve/${encodeURIComponent(jobId)}`, { signal });
+  return fetchApi<SolverJob>(
+    `/api/crafting/solve/${encodeURIComponent(jobId)}`,
+    { signal },
+  );
 }
 
 export function cancelSolveJob(jobId: string): Promise<void> {
@@ -672,7 +734,9 @@ export function quickSolve(
     cp: String(params.cp),
     level: String(params.level),
   });
-  return fetchApi<SolverResult>(`/api/crafting/solve/quick?${search}`, { signal });
+  return fetchApi<SolverResult>(`/api/crafting/solve/quick?${search}`, {
+    signal,
+  });
 }
 
 // --- Rotation Library API ---
@@ -781,7 +845,8 @@ export function getRecipeCost(
     quantity: String(quantity),
   });
   if (options?.useMinPrice) params.set("useMinPrice", "true");
-  if (options?.includeGatheredItemPrices === false) params.set("includeGatheredPrices", "false");
+  if (options?.includeGatheredItemPrices === false)
+    params.set("includeGatheredPrices", "false");
   return fetchApi(`/api/recipes/${recipeId}/cost?${params}`, { signal });
 }
 
@@ -860,7 +925,9 @@ export function getResolvedCraftPlan(
   id: string,
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
-  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/resolved`, { signal });
+  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/resolved`, {
+    signal,
+  });
 }
 
 export function updateCraftPlan(
@@ -899,7 +966,13 @@ export async function getBisStats(
   level: number,
   signal?: AbortSignal,
 ): Promise<{ craftsmanship: number; control: number; cp: number }> {
-  const gearSet = await getGearRecommendations(job, level, "balanced", signal, false);
+  const gearSet = await getGearRecommendations(
+    job,
+    level,
+    "balanced",
+    signal,
+    false,
+  );
   return {
     craftsmanship: gearSet.totalStats.craftsmanship,
     control: gearSet.totalStats.control,
@@ -954,7 +1027,8 @@ export function trackAnalyticsEvent(
     const body: Record<string, unknown> = { event };
     if (metadata) body.metadata = JSON.stringify(metadata);
     if (pageUrl) body.pageUrl = pageUrl;
-    if (typeof document !== "undefined") body.referrer = document.referrer || undefined;
+    if (typeof document !== "undefined")
+      body.referrer = document.referrer || undefined;
     fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -2,7 +2,7 @@
 
 Rust port of the crafting engine in `src/FFXIV.Domain/CraftingEngine`. The C# engine is the reference: this crate reproduces its results integer for integer, including behaviours that differ from the in-game rules. Do not fix a suspected engine bug here; fix it in C#, regenerate the goldens, then port the change.
 
-- No runtime dependencies. Builds for the host and for `wasm32-unknown-unknown` (`rlib`, no bindings yet).
+- No runtime dependencies. Builds for the host and for `wasm32-unknown-unknown` (`rlib`). The bindings live in the sibling crate `xiv-craft-wasm` (wasm-bindgen, API DTO shapes), built into `frontend/src/wasm` by `npm run wasm:build`.
 - `CraftingState` and `StepResult` are `Copy`; `execute_action` allocates nothing.
 - Action ids equal the C# `ICraftingAction.Id` values, so saved rotations and macros are interchangeable.
 - Randomness is explicit: `SimulationOptions.random_seed` drives a port of seeded `System.Random`, so seeded C# runs replay exactly.
@@ -11,7 +11,8 @@ Rust port of the crafting engine in `src/FFXIV.Domain/CraftingEngine`. The C# en
 
 `xiv_craft::solver` ports `FFXIV.Infrastructure/Solver`: `greedy::solve` (one pass, three phases) and `MctsSolver` (UCB1 search seeded with the greedy rotation). Same knobs as the C# `GreedySolverConfig` and `MCTSConfig`, same result shape (`SolverResult`: action ids, replayed simulation, macros, metrics).
 
-- The wall clock is injected: `solve(..., now_ms: &mut dyn FnMut() -> f64)`. Native callers pass an `Instant`-based closure, a Web Worker passes `performance.now()`; the library never touches `std::time`, so it runs on wasm32.
+- The wall clock is injected: `solve(..., now_ms: &mut dyn FnMut() -> f64)`. Native callers pass an `Instant`-based closure, the wasm bindings pass `Date.now()`; the library never touches `std::time`, so it runs on wasm32.
+- `solve` is `begin` + `run` + `finish`. A caller that needs to yield (a Web Worker reading cancel messages and posting progress) calls `run(max_iterations, now)` in slices and `progress()` / `finish()` when it likes; a sliced run walks the same iterations as the one-shot call, so a seed and an iteration budget give the same rotation either way.
 - `SolverSettings.max_iterations` bounds the search without a clock. With a seed and an iteration budget a run is reproducible; with a time budget it is not (the iteration count depends on the machine).
 - The tree is two chunked arenas with `u32` links: 48-byte nodes (a 24-byte packed state, untried actions as a `u64` bitset) and 16-byte edges holding the visit statistics, one contiguous slice per expanded node. A `MctsSolver` kept between calls allocates nothing per iteration after the first solve.
 - `MctsConfig.early_termination_threshold` counts iterations without improvement, as in C#. At Rust iteration rates the default (5000) stops a search within ~50 ms; pass `u64::MAX` to spend the whole budget.
