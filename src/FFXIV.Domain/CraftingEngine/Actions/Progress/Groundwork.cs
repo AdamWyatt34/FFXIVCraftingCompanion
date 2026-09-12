@@ -10,12 +10,14 @@ public class Groundwork : ProgressAction
     public override int LevelRequirement => 72;
     protected override int BaseCPCost => 18;
     protected override int BaseDurabilityCost => 20;
-    protected override int Potency => 300;
+    // Groundwork Mastery, unlocked at level 86.
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => stats.Level >= 86 ? 360 : 300;
 
     protected override CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
-        var effectivePotency = state.Durability < GetDurabilityCost(state) ? 150 : 300;
+        var basePotency = GetPotency(state, stats);
+        var effectivePotency = state.Durability < GetDurabilityCost(state) ? basePotency / 2 : basePotency;
 
         var baseProgress = FormulaCalculator.CalculateBaseProgress(
             stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,

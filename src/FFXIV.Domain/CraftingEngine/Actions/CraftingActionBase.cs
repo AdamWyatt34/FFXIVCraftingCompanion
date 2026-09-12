@@ -10,12 +10,19 @@ public abstract class CraftingActionBase : ICraftingAction
     public abstract int LevelRequirement { get; }
     public abstract ActionCategory Category { get; }
 
+    public virtual bool ConsumesStep => true;
+    public virtual bool AdvancesCondition => ConsumesStep;
+
     protected abstract int BaseCPCost { get; }
     protected abstract int BaseDurabilityCost { get; }
     protected abstract int BaseSuccessRate { get; }
 
     protected abstract CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe);
+
+    // Applied after the buff tick so a granted buff lasts its full duration instead of losing a
+    // turn on the step that cast it.
+    protected virtual CraftingState ApplyGrantedBuffs(CraftingState state) => state;
 
     public virtual int GetCPCost(CraftingState state)
     {
@@ -71,40 +78,42 @@ public abstract class CraftingActionBase : ICraftingAction
     public virtual CraftingState Execute(
         CraftingState state, CrafterStats stats, RecipeParameters recipe, bool forceSuccess = true)
     {
-        // 1. Deduct CP
+        // Costs are read from the state the action was used on, before its own effects land.
+        var durabilityCost = GetDurabilityCost(state);
         state = state with { CP = state.CP - GetCPCost(state) };
 
-        // 2. Apply action-specific effects (only on success)
         if (forceSuccess)
             state = ApplyEffect(state, stats, recipe);
 
-        // 3. Deduct durability
-        state = state with { Durability = state.Durability - GetDurabilityCost(state) };
+        state = state with { Durability = state.Durability - durabilityCost };
 
-        // 4. Consume Trained Perfection if it was active and action has durability cost
         if (state.TrainedPerfectionActive && BaseDurabilityCost > 0)
             state = state with { TrainedPerfectionActive = false };
 
-        // 5. Capture Manipulation turns before tick (heals for full duration)
-        var manipTurnsBeforeTick = state.ManipulationTurns;
-
-        // 6. Tick buffs
-        state = state.WithBuffTick();
-
-        // 7. Manipulation heal (+5 durability if was active and item isn't broken)
-        if (manipTurnsBeforeTick > 0 && state.Durability > 0)
-            state = state with { Durability = Math.Min(state.MaxDurability, state.Durability + 5) };
-
-        // 8. Update step counter and combo state (combo broken on failure)
-        state = state with
+        if (ConsumesStep)
         {
-            Step = state.Step + 1,
-            IsFirstStep = false,
-            ComboAction = forceSuccess ? GetComboAction() : 0,
-            ObserveActive = forceSuccess ? GetObserveActive() : false,
-        };
+            // Manipulation is judged before the tick so its final turn still restores durability.
+            var manipTurnsBeforeTick = state.ManipulationTurns;
+            state = state.WithBuffTick();
+            if (manipTurnsBeforeTick > 0 && state.Durability > 0)
+                state = state with { Durability = Math.Min(state.MaxDurability, state.Durability + 5) };
 
-        // 9. Determine status
+            state = state with
+            {
+                Step = state.Step + 1,
+                IsFirstStep = false,
+                ComboAction = forceSuccess ? GetComboAction() : 0,
+                ObserveActive = forceSuccess ? GetObserveActive() : false,
+            };
+        }
+        else
+        {
+            state = state with { ComboAction = 0, ObserveActive = false };
+        }
+
+        if (forceSuccess)
+            state = ApplyGrantedBuffs(state);
+
         if (state.Progress >= state.MaxProgress)
             state = state with { Status = CraftStatus.Completed };
         else if (state.Durability <= 0)

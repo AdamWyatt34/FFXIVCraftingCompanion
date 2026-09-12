@@ -76,21 +76,19 @@ public record CraftingState
         IsFirstStep = true,
     };
 
+    // The in-game HQ chance per whole percent of quality (0..100), as datamined by the community
+    // and used by the Teamcraft simulator; it is not a formula.
+    private static readonly int[] HQChanceByQualityPercent =
+    [
+        1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8,
+        9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 17, 17,
+        17, 18, 18, 18, 19, 19, 20, 20, 21, 22, 23, 24, 26, 28, 31, 34, 38, 42, 47, 52, 58, 64, 68, 71,
+        74, 76, 78, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 94, 96, 98, 100,
+    ];
+
     private static int CalculateHQPercent(double qualityPercent)
     {
-        if (qualityPercent == 0) return 1;
-        if (qualityPercent >= 100) return 100;
-
-        // FFXIV's HQ probability curve (community-documented):
-        // Approximate piecewise function:
-        // 0-29%: ~1-10% HQ
-        // 30-69%: ~11-49% HQ
-        // 70-99%: ~50-99% HQ
-        // 100%: 100% HQ
-        if (qualityPercent <= 30)
-            return (int)(qualityPercent * 10.0 / 30.0) + 1;
-        if (qualityPercent <= 70)
-            return (int)((qualityPercent - 30) * 39.0 / 40.0) + 11;
-        return (int)((qualityPercent - 70) * 50.0 / 30.0) + 50;
+        var index = Math.Clamp((int)Math.Floor(qualityPercent), 0, 100);
+        return HQChanceByQualityPercent[index];
     }
 }

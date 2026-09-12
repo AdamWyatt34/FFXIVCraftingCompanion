@@ -112,24 +112,25 @@ public class OtherActionsTests
     // --- Careful Observation ---
 
     [Fact]
-    public void CarefulObservation_ExpertRecipesOnly()
+    public void CarefulObservation_SpecialistOnly()
     {
         var action = new CarefulObservation();
         var state = CraftingTestHelpers.CreateDefaultState();
-        var normalRecipe = _recipe with { IsExpert = false };
+        var nonSpecialist = _stats with { IsSpecialist = false };
 
-        action.CanExecute(state, _stats, normalRecipe).Should().BeFalse();
-        action.GetFailReason(state, _stats, normalRecipe).Should().Contain("expert");
+        action.CanExecute(state, nonSpecialist, _recipe).Should().BeFalse();
+        action.GetFailReason(state, nonSpecialist, _recipe).Should().Contain("specialist");
     }
 
     [Fact]
-    public void CarefulObservation_CanExecuteOnExpertRecipe()
+    public void CarefulObservation_CanExecuteAsSpecialistOnAnyRecipe()
     {
         var action = new CarefulObservation();
         var state = CraftingTestHelpers.CreateDefaultState();
-        var expertRecipe = _recipe with { IsExpert = true };
+        var specialist = _stats with { IsSpecialist = true };
 
-        action.CanExecute(state, _stats, expertRecipe).Should().BeTrue();
+        action.CanExecute(state, specialist, _recipe with { IsExpert = false }).Should().BeTrue();
+        action.CanExecute(state, specialist, _recipe with { IsExpert = true }).Should().BeTrue();
     }
 
     [Fact]
@@ -137,22 +138,24 @@ public class OtherActionsTests
     {
         var action = new CarefulObservation();
         var state = CraftingTestHelpers.CreateDefaultState() with { CarefulObservationCount = 3 };
-        var expertRecipe = _recipe with { IsExpert = true };
+        var specialist = _stats with { IsSpecialist = true };
 
-        action.CanExecute(state, _stats, expertRecipe).Should().BeFalse();
-        action.GetFailReason(state, _stats, expertRecipe).Should().Contain("3 times");
+        action.CanExecute(state, specialist, _recipe).Should().BeFalse();
+        action.GetFailReason(state, specialist, _recipe).Should().Contain("3 times");
     }
 
     [Fact]
-    public void CarefulObservation_IncrementsCount()
+    public void CarefulObservation_IncrementsCount_WithoutConsumingAStep()
     {
         var action = new CarefulObservation();
-        var state = CraftingTestHelpers.CreateDefaultState() with { CarefulObservationCount = 1 };
-        var expertRecipe = _recipe with { IsExpert = true };
+        var state = CraftingTestHelpers.CreateDefaultState() with { CarefulObservationCount = 1, InnovationTurns = 2 };
+        var specialist = _stats with { IsSpecialist = true };
 
-        var result = action.Execute(state, _stats, expertRecipe);
+        var result = action.Execute(state, specialist, _recipe);
 
         result.CarefulObservationCount.Should().Be(2);
+        result.Step.Should().Be(0);
+        result.InnovationTurns.Should().Be(2);
     }
 
     [Fact]

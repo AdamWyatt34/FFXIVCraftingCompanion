@@ -1,3 +1,5 @@
+using FFXIV.Domain.CraftingEngine.Models;
+
 namespace FFXIV.Domain.CraftingEngine.Actions.Progress;
 
 public class BasicSynthesis : ProgressAction
@@ -7,5 +9,6 @@ public class BasicSynthesis : ProgressAction
     public override string InGameName => "Basic Synthesis";
     public override int LevelRequirement => 1;
     protected override int BaseCPCost => 0;
-    protected override int Potency => 120;
+    // Basic Synthesis Mastery, unlocked at level 31.
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => stats.Level >= 31 ? 120 : 100;
 }

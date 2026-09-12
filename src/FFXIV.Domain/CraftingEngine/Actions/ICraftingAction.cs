@@ -10,6 +10,15 @@ public interface ICraftingAction
     int LevelRequirement { get; }
     ActionCategory Category { get; }
 
+    // False for the abilities the game resolves without advancing the craft (Heart and Soul,
+    // Quick Innovation, Careful Observation, Final Appraisal): no buff tick, no step count,
+    // first-step actions stay available afterwards.
+    bool ConsumesStep { get; }
+
+    // Only Careful Observation rerolls the condition without consuming a step; that is its
+    // entire purpose.
+    bool AdvancesCondition { get; }
+
     int GetCPCost(CraftingState state);
     int GetDurabilityCost(CraftingState state);
     int GetSuccessRate(CraftingState state);

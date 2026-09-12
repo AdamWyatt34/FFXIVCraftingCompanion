@@ -8,12 +8,15 @@ public class QuickInnovation : BuffAction
     public override string Name => "QuickInnovation";
     public override string InGameName => "Quick Innovation";
     public override int LevelRequirement => 96;
+    public override bool ConsumesStep => false;
     protected override int BaseCPCost => 0;
     protected override int BuffDuration => 0;
 
     public override string? GetFailReason(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
+        if (!stats.IsSpecialist)
+            return "Requires specialist";
         if (state.QuickInnovationUsed)
             return "Quick Innovation can only be used once per craft";
         if (state.InnovationTurns > 0)
@@ -24,10 +27,9 @@ public class QuickInnovation : BuffAction
     protected override CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
-        return state with
-        {
-            InnovationTurns = 1,
-            QuickInnovationUsed = true,
-        };
+        return state with { QuickInnovationUsed = true };
     }
+
+    protected override CraftingState ApplyGrantedBuffs(CraftingState state)
+        => state with { InnovationTurns = 1 };
 }

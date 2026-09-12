@@ -33,8 +33,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 4, set in ApplyEffect, then ticked by WithBuffTick → 3
-        result.WasteNotTurns.Should().Be(3);
+        result.WasteNotTurns.Should().Be(4);
     }
 
     // --- Waste Not II ---
@@ -47,8 +46,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 8, ticked → 7
-        result.WasteNotIITurns.Should().Be(7);
+        result.WasteNotIITurns.Should().Be(8);
     }
 
     // --- Veneration ---
@@ -61,8 +59,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 4, ticked → 3
-        result.VenerationTurns.Should().Be(3);
+        result.VenerationTurns.Should().Be(4);
     }
 
     // --- Innovation ---
@@ -75,8 +72,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 4, ticked → 3
-        result.InnovationTurns.Should().Be(3);
+        result.InnovationTurns.Should().Be(4);
     }
 
     // --- Great Strides ---
@@ -89,8 +85,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 3, ticked → 2
-        result.GreatStridesTurns.Should().Be(2);
+        result.GreatStridesTurns.Should().Be(3);
     }
 
     // --- Manipulation ---
@@ -103,8 +98,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 8, ticked → 7
-        result.ManipulationTurns.Should().Be(7);
+        result.ManipulationTurns.Should().Be(8);
     }
 
     // --- Final Appraisal ---
@@ -117,8 +111,7 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration 5, ticked → 4
-        result.FinalAppraisalTurns.Should().Be(4);
+        result.FinalAppraisalTurns.Should().Be(5);
     }
 
     [Fact]
@@ -155,24 +148,25 @@ public class BuffActionsTests
     // --- Heart and Soul ---
 
     [Fact]
-    public void HeartAndSoul_ExpertRecipesOnly()
+    public void HeartAndSoul_SpecialistOnly()
     {
         var action = new HeartAndSoul();
         var state = CraftingTestHelpers.CreateDefaultState();
-        var normalRecipe = _recipe with { IsExpert = false };
+        var nonSpecialist = _stats with { IsSpecialist = false };
 
-        action.CanExecute(state, _stats, normalRecipe).Should().BeFalse();
-        action.GetFailReason(state, _stats, normalRecipe).Should().Contain("expert");
+        action.CanExecute(state, nonSpecialist, _recipe).Should().BeFalse();
+        action.GetFailReason(state, nonSpecialist, _recipe).Should().Contain("specialist");
     }
 
     [Fact]
-    public void HeartAndSoul_CanExecuteOnExpertRecipe()
+    public void HeartAndSoul_CanExecuteAsSpecialistOnAnyRecipe()
     {
         var action = new HeartAndSoul();
         var state = CraftingTestHelpers.CreateDefaultState();
-        var expertRecipe = _recipe with { IsExpert = true };
+        var specialist = _stats with { IsSpecialist = true };
 
-        action.CanExecute(state, _stats, expertRecipe).Should().BeTrue();
+        action.CanExecute(state, specialist, _recipe with { IsExpert = false }).Should().BeTrue();
+        action.CanExecute(state, specialist, _recipe with { IsExpert = true }).Should().BeTrue();
     }
 
     [Fact]
@@ -180,23 +174,26 @@ public class BuffActionsTests
     {
         var action = new HeartAndSoul();
         var state = CraftingTestHelpers.CreateDefaultState() with { HeartAndSoulUsed = true };
-        var expertRecipe = _recipe with { IsExpert = true };
+        var specialist = _stats with { IsSpecialist = true };
 
-        action.CanExecute(state, _stats, expertRecipe).Should().BeFalse();
-        action.GetFailReason(state, _stats, expertRecipe).Should().Contain("once");
+        action.CanExecute(state, specialist, _recipe).Should().BeFalse();
+        action.GetFailReason(state, specialist, _recipe).Should().Contain("once");
     }
 
     [Fact]
-    public void HeartAndSoul_SetsActiveAndUsedFlags()
+    public void HeartAndSoul_SetsActiveAndUsedFlags_WithoutConsumingAStep()
     {
         var action = new HeartAndSoul();
-        var state = CraftingTestHelpers.CreateDefaultState();
-        var expertRecipe = _recipe with { IsExpert = true };
+        var state = CraftingTestHelpers.CreateDefaultState() with { InnovationTurns = 2 };
+        var specialist = _stats with { IsSpecialist = true };
 
-        var result = action.Execute(state, _stats, expertRecipe);
+        var result = action.Execute(state, specialist, _recipe);
 
         result.HeartAndSoulActive.Should().BeTrue();
         result.HeartAndSoulUsed.Should().BeTrue();
+        result.Step.Should().Be(0);
+        result.IsFirstStep.Should().BeTrue();
+        result.InnovationTurns.Should().Be(2);
     }
 
     // --- Trained Perfection ---
@@ -231,23 +228,35 @@ public class BuffActionsTests
     {
         var action = new QuickInnovation();
         var state = CraftingTestHelpers.CreateDefaultState() with { QuickInnovationUsed = true };
-        var stats = _stats with { Level = 96 };
+        var stats = _stats with { Level = 96, IsSpecialist = true };
 
         action.CanExecute(state, stats, _recipe).Should().BeFalse();
     }
 
     [Fact]
-    public void QuickInnovation_Grants1TurnInnovation()
+    public void QuickInnovation_Grants1TurnInnovation_WithoutConsumingAStep()
     {
         var action = new QuickInnovation();
-        var state = CraftingTestHelpers.CreateDefaultState();
-        var stats = _stats with { Level = 96 };
+        var state = CraftingTestHelpers.CreateDefaultState() with { VenerationTurns = 3 };
+        var stats = _stats with { Level = 96, IsSpecialist = true };
 
         var result = action.Execute(state, stats, _recipe);
 
-        // Innovation set to 1 in ApplyEffect, then ticked → 0
-        result.InnovationTurns.Should().Be(0);
+        result.InnovationTurns.Should().Be(1);
         result.QuickInnovationUsed.Should().BeTrue();
+        result.Step.Should().Be(0);
+        result.VenerationTurns.Should().Be(3);
+    }
+
+    [Fact]
+    public void QuickInnovation_SpecialistOnly()
+    {
+        var action = new QuickInnovation();
+        var state = CraftingTestHelpers.CreateDefaultState();
+        var stats = _stats with { Level = 96, IsSpecialist = false };
+
+        action.CanExecute(state, stats, _recipe).Should().BeFalse();
+        action.GetFailReason(state, stats, _recipe).Should().Contain("specialist");
     }
 
     [Fact]
@@ -264,7 +273,7 @@ public class BuffActionsTests
     {
         var action = new QuickInnovation();
         var state = CraftingTestHelpers.CreateDefaultState() with { InnovationTurns = 3 };
-        var stats = _stats with { Level = 96 };
+        var stats = _stats with { Level = 96, IsSpecialist = true };
 
         action.CanExecute(state, stats, _recipe).Should().BeFalse();
         action.GetFailReason(state, stats, _recipe).Should().Contain("Innovation");
@@ -275,7 +284,7 @@ public class BuffActionsTests
     {
         var action = new QuickInnovation();
         var state = CraftingTestHelpers.CreateDefaultState() with { InnovationTurns = 0 };
-        var stats = _stats with { Level = 96 };
+        var stats = _stats with { Level = 96, IsSpecialist = true };
 
         action.CanExecute(state, stats, _recipe).Should().BeTrue();
     }
@@ -290,7 +299,6 @@ public class BuffActionsTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Duration = 4 + 2 (Primed) = 6, ticked → 5
-        result.VenerationTurns.Should().Be(5);
+        result.VenerationTurns.Should().Be(6);
     }
 }

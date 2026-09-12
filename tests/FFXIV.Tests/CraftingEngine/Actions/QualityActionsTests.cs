@@ -234,16 +234,14 @@ public class QualityActionsTests
     }
 
     [Fact]
-    public void Reflect_Grants1IQFromAction()
+    public void Reflect_GrantsTwoInnerQuietStacks()
     {
         var action = new Reflect();
         var state = CraftingTestHelpers.CreateDefaultState();
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // GetInnerQuietGain returns 1 (base quality action adds 1 IQ)
-        // High potency (300) gives significant quality
-        result.InnerQuietStacks.Should().Be(1);
+        result.InnerQuietStacks.Should().Be(2);
         result.Quality.Should().BeGreaterThan(0);
     }
 

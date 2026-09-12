@@ -1,0 +1,505 @@
+{
+  "hq": [
+    {
+      "case": "all-hq",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 2
+        },
+        {
+          "itemId": 2,
+          "hqQuantity": 1
+        }
+      ],
+      "expected": 9000
+    },
+    {
+      "case": "half-hq",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 1
+        }
+      ],
+      "expected": 3000
+    },
+    {
+      "case": "no-hq-inputs",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [],
+      "expected": 0
+    },
+    {
+      "case": "zero-factor",
+      "maxQuality": 12000,
+      "materialQualityFactor": 0,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 0
+    },
+    {
+      "case": "zero-max-quality",
+      "maxQuality": 0,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 0
+    },
+    {
+      "case": "no-hqable-ingredients",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 3,
+          "hqQuantity": 3
+        }
+      ],
+      "expected": 0
+    },
+    {
+      "case": "hq-quantity-clamped",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 99
+        },
+        {
+          "itemId": 2,
+          "hqQuantity": 99
+        }
+      ],
+      "expected": 9000
+    },
+    {
+      "case": "hq-item-not-in-recipe",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 42,
+          "hqQuantity": 5
+        }
+      ],
+      "expected": 0
+    },
+    {
+      "case": "duplicate-hq-input-first-wins",
+      "maxQuality": 12000,
+      "materialQualityFactor": 75,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 3,
+          "quantity": 3,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 1
+        },
+        {
+          "itemId": 1,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 3000
+    },
+    {
+      "case": "odd-rounding",
+      "maxQuality": 7777,
+      "materialQualityFactor": 33,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 3,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 4,
+          "canBeHq": true
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 2
+        },
+        {
+          "itemId": 2,
+          "hqQuantity": 1
+        }
+      ],
+      "expected": 1099
+    },
+    {
+      "case": "ingredient-hq-flag-false-with-input",
+      "maxQuality": 5000,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 1,
+          "canBeHq": true
+        },
+        {
+          "itemId": 2,
+          "quantity": 1,
+          "canBeHq": false
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 1,
+          "hqQuantity": 1
+        },
+        {
+          "itemId": 2,
+          "hqQuantity": 1
+        }
+      ],
+      "expected": 2500
+    }
+  ],
+  "macros": [
+    {
+      "case": "default-two-macros",
+      "actionIds": [
+        100379,
+        100297,
+        100403,
+        100403,
+        100278,
+        100209,
+        100002,
+        100004,
+        100411,
+        100260,
+        100339,
+        100003,
+        100297,
+        100403,
+        100203,
+        100371,
+        100395
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Muscle Memory\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/ac \"Groundwork\" <wait.3>\n/ac \"Manipulation\" <wait.2>\n/ac \"Innovation\" <wait.2>\n/ac \"Basic Touch\" <wait.3>\n/ac \"Standard Touch\" <wait.3>\n/ac \"Advanced Touch\" <wait.3>\n/ac \"Great Strides\" <wait.2>\n/ac \"Byregot's Blessing\" <wait.3>\n/ac \"Master's Mend\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/echo Macro #1 complete <se.1>",
+        "/ac \"Careful Synthesis\" <wait.3>\n/ac \"Tricks of the Trade\" <wait.3>\n/ac \"Careful Observation\" <wait.3>\n/echo Craft complete <se.2>"
+      ]
+    },
+    {
+      "case": "exactly-fourteen",
+      "actionIds": [
+        100379,
+        100297,
+        100403,
+        100403,
+        100278,
+        100209,
+        100002,
+        100004,
+        100411,
+        100260,
+        100339,
+        100003,
+        100297,
+        100403
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Muscle Memory\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/ac \"Groundwork\" <wait.3>\n/ac \"Manipulation\" <wait.2>\n/ac \"Innovation\" <wait.2>\n/ac \"Basic Touch\" <wait.3>\n/ac \"Standard Touch\" <wait.3>\n/ac \"Advanced Touch\" <wait.3>\n/ac \"Great Strides\" <wait.2>\n/ac \"Byregot's Blessing\" <wait.3>\n/ac \"Master's Mend\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/echo Craft complete <se.2>"
+      ]
+    },
+    {
+      "case": "fifteen",
+      "actionIds": [
+        100379,
+        100297,
+        100403,
+        100403,
+        100278,
+        100209,
+        100002,
+        100004,
+        100411,
+        100260,
+        100339,
+        100003,
+        100297,
+        100403,
+        100203
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Muscle Memory\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/ac \"Groundwork\" <wait.3>\n/ac \"Manipulation\" <wait.2>\n/ac \"Innovation\" <wait.2>\n/ac \"Basic Touch\" <wait.3>\n/ac \"Standard Touch\" <wait.3>\n/ac \"Advanced Touch\" <wait.3>\n/ac \"Great Strides\" <wait.2>\n/ac \"Byregot's Blessing\" <wait.3>\n/ac \"Master's Mend\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/echo Macro #1 complete <se.1>",
+        "/ac \"Careful Synthesis\" <wait.3>\n/echo Craft complete <se.2>"
+      ]
+    },
+    {
+      "case": "five-per-macro-custom-sounds",
+      "actionIds": [
+        100379,
+        100297,
+        100403,
+        100403,
+        100278,
+        100209,
+        100002,
+        100004,
+        100411,
+        100260,
+        100339,
+        100003,
+        100297,
+        100403,
+        100203,
+        100371,
+        100395
+      ],
+      "options": {
+        "linesPerMacro": 5,
+        "soundEffect": 3,
+        "completeSoundEffect": 4,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Muscle Memory\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/ac \"Groundwork\" <wait.3>\n/ac \"Manipulation\" <wait.2>\n/echo Macro #1 complete <se.3>",
+        "/ac \"Innovation\" <wait.2>\n/ac \"Basic Touch\" <wait.3>\n/ac \"Standard Touch\" <wait.3>\n/ac \"Advanced Touch\" <wait.3>\n/ac \"Great Strides\" <wait.2>\n/echo Macro #2 complete <se.3>",
+        "/ac \"Byregot's Blessing\" <wait.3>\n/ac \"Master's Mend\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/ac \"Careful Synthesis\" <wait.3>\n/echo Macro #3 complete <se.3>",
+        "/ac \"Tricks of the Trade\" <wait.3>\n/ac \"Careful Observation\" <wait.3>\n/echo Craft complete <se.4>"
+      ]
+    },
+    {
+      "case": "no-echo",
+      "actionIds": [
+        100379,
+        100297,
+        100403,
+        100403,
+        100278,
+        100209
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": false
+      },
+      "expected": [
+        "/ac \"Muscle Memory\" <wait.3>\n/ac \"Veneration\" <wait.2>\n/ac \"Groundwork\" <wait.3>\n/ac \"Groundwork\" <wait.3>\n/ac \"Manipulation\" <wait.2>\n/ac \"Innovation\" <wait.2>"
+      ]
+    },
+    {
+      "case": "empty",
+      "actionIds": [],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": []
+    },
+    {
+      "case": "unknown-ids-skipped",
+      "actionIds": [
+        100001,
+        999999,
+        100002
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Basic Synthesis\" <wait.3>\n/ac \"Basic Touch\" <wait.3>\n/echo Craft complete <se.2>"
+      ]
+    },
+    {
+      "case": "only-unknown",
+      "actionIds": [
+        999999
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": []
+    }
+  ]
+}

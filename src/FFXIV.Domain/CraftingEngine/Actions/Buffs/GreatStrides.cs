@@ -11,9 +11,6 @@ public class GreatStrides : BuffAction
     protected override int BaseCPCost => 32;
     protected override int BuffDuration => 3;
 
-    protected override CraftingState ApplyEffect(
-        CraftingState state, CrafterStats stats, RecipeParameters recipe)
-    {
-        return state with { GreatStridesTurns = GetEffectiveDuration(state) };
-    }
+    protected override CraftingState WithBuffTurns(CraftingState state, int turns)
+        => state with { GreatStridesTurns = turns };
 }

@@ -1,0 +1,2 @@
+# Parity goldens are byte-compared by ParityGoldenTests; never convert line endings.
+tests/FFXIV.Tests/CraftingEngine/TestData/parity/** -text

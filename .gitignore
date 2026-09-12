@@ -98,3 +98,6 @@ frontend/public/sw.js.map
 
 # AIOS inner-loop task workspaces (per-machine scratch)
 .aios/tasks/
+
+# Rust (crates/)
+crates/**/target/

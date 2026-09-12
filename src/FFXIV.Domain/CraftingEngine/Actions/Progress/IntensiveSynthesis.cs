@@ -9,7 +9,7 @@ public class IntensiveSynthesis : ProgressAction
     public override string InGameName => "Intensive Synthesis";
     public override int LevelRequirement => 78;
     protected override int BaseCPCost => 6;
-    protected override int Potency => 400;
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => 400;
 
     public override string? GetFailReason(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)

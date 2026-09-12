@@ -6,7 +6,7 @@ Crafting, gathering, gear, and market companion for FFXIV players, with a rotati
 
 - Backend: .NET 10, Clean Architecture. `src/FFXIV.Domain` (crafting engine, formulas, entities; zero dependencies) -> `src/FFXIV.Application` (MediatR 14 handlers, DTOs) -> `src/FFXIV.Infrastructure` (EF Core SQL Server, Identity + JWT, caching, XIVAPI/Universalis/Lodestone clients, Greedy + MCTS solvers) -> `src/FFXIV.Api` (controllers, Swagger, Serilog, Sentry).
 - Frontend: Next.js 16 App Router + React 19 PWA in `frontend/` (Tailwind 4, Recharts, Serwist). Node 22.
-- Planned: `crates/xiv-craft`, a Rust port of the crafting engine targeting wasm32, with parity against the C# engine proven by committed JSONL golden files.
+- Rust: `crates/xiv-craft`, a dependency-free port of the crafting engine (no solver, no bindings yet) that builds for the host and `wasm32-unknown-unknown`. Parity with the C# engine is proven by the JSONL goldens in `tests/FFXIV.Tests/CraftingEngine/TestData/parity/`, written by `ParityGoldenTests` and replayed by the crate's tests. The C# engine is the reference; port changes, never invent them.
 - Deploy: Azure Container Apps + Azure SQL via `infra/` Bicep; frontend on Vercel. See `DEPLOYMENT.md`. End-to-end manual test flows: `TESTING_GUIDE.md`.
 
 ## Commands
@@ -17,6 +17,13 @@ Build/test/run recipe: `.claude/skills/run/SKILL.md`. Short form:
 dotnet build FFXIVCraftingCompanion.slnx --configuration Release
 dotnet test FFXIVCraftingCompanion.slnx --configuration Release
 cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm run build
+cd crates/xiv-craft && cargo test && cargo build --target wasm32-unknown-unknown --release
+```
+
+Regenerating the parity goldens after an intended C# engine change (the generator test otherwise fails on the first differing byte):
+
+```powershell
+$env:FFXIV_PARITY_GENERATE = "1"; dotnet test FFXIVCraftingCompanion.slnx --configuration Release --filter "FullyQualifiedName~Parity"; Remove-Item Env:FFXIV_PARITY_GENERATE
 ```
 
 ## Conventions that differ from global defaults
@@ -32,7 +39,8 @@ cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm run build
 - `src/FFXIV.Infrastructure/Migrations/` (EF migrations)
 - `infra/` and `.github/workflows/` (prod deploy and CI)
 - `src/FFXIV.Api/appsettings.Production.json`
-- `tests/FFXIV.Tests/CraftingEngine/TestData/` (solver benchmarks and parity golden files; regenerate only through the designated generator test with approval)
+- `tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json` (hand-maintained solver benchmarks)
+- `tests/FFXIV.Tests/CraftingEngine/TestData/parity/` (generator-only output of `ParityGoldenTests`; never hand-edit, regenerate only for an intended engine change)
 
 ## Gotchas
 

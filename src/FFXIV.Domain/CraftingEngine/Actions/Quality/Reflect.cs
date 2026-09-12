@@ -19,5 +19,5 @@ public class Reflect : QualityAction
         return base.GetFailReason(state, stats, recipe);
     }
 
-    protected override int GetInnerQuietGain() => 1;
+    protected override int GetInnerQuietGain() => 2;
 }

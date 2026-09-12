@@ -11,9 +11,6 @@ public class Innovation : BuffAction
     protected override int BaseCPCost => 18;
     protected override int BuffDuration => 4;
 
-    protected override CraftingState ApplyEffect(
-        CraftingState state, CrafterStats stats, RecipeParameters recipe)
-    {
-        return state with { InnovationTurns = GetEffectiveDuration(state) };
-    }
+    protected override CraftingState WithBuffTurns(CraftingState state, int turns)
+        => state with { InnovationTurns = turns };
 }

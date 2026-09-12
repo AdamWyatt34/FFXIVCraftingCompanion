@@ -8,7 +8,8 @@ public abstract class ProgressAction : CraftingActionBase
     protected override int BaseDurabilityCost => 10;
     protected override int BaseSuccessRate => 100;
 
-    protected abstract int Potency { get; }
+    // Mastery traits raise the potency at the crafter's level for some actions.
+    protected abstract int GetPotency(CraftingState state, CrafterStats stats);
 
     protected override CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
@@ -40,7 +41,7 @@ public abstract class ProgressAction : CraftingActionBase
             stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,
             stats.Level, recipe.RecipeLevel);
 
-        var efficiency = Potency;
+        var efficiency = GetPotency(state, stats);
 
         if (state.VenerationTurns > 0)
             efficiency += 50;

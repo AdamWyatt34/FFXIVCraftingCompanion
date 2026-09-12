@@ -10,7 +10,7 @@ public class PrudentSynthesis : ProgressAction
     public override int LevelRequirement => 88;
     protected override int BaseCPCost => 18;
     protected override int BaseDurabilityCost => 5;
-    protected override int Potency => 180;
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => 180;
 
     public override string? GetFailReason(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
