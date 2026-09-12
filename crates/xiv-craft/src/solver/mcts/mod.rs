@@ -2,6 +2,7 @@
 //! reward. The solver owns its arena and scratch buffers, so a caller that keeps one instance
 //! allocates nothing per iteration after the first solve.
 
+pub mod packed;
 pub mod tree;
 
 use crate::actions::{Action, ActionCategory, ActionId};
@@ -15,7 +16,7 @@ use super::{
     ActionSet, Clock, SolverAlgorithm, SolverConstraints, SolverMetrics, SolverResult,
     SolverSettings, SolverStatus,
 };
-use tree::{Arena, NONE};
+use tree::Arena;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MctsConfig {
@@ -40,7 +41,7 @@ pub struct MctsConfig {
     pub early_termination_threshold: u64,
     pub perfect_reward_threshold: f64,
 
-    /// Ceiling on tree nodes (about 144 bytes each). Once reached, the search keeps running
+    /// Ceiling on tree nodes (48 bytes each, plus 16 bytes per edge of an expanded node). Once reached, the search keeps running
     /// rollouts from the existing leaves instead of expanding. No C# counterpart: the C# tree is
     /// unbounded, so the default is too; a Web Worker should set one.
     pub max_nodes: usize,
@@ -101,6 +102,11 @@ impl MctsSolver {
         &self.config
     }
 
+    /// Bytes the tree of the last solve occupies; the arena keeps them for the next solve.
+    pub fn tree_memory_bytes(&self) -> usize {
+        self.arena.memory_bytes()
+    }
+
     pub fn solve(
         &mut self,
         recipe: &Recipe,
@@ -142,8 +148,9 @@ impl MctsSolver {
 
         while now_ms() - started < settings.time_budget_ms && iterations < max_iterations {
             let selected = self.select(root);
-            let expanded = self.expand(selected, stats, recipe, constraints, &mut rng);
-            let reward = self.rollout(expanded, stats, recipe, constraints, &mut rng);
+            let (expanded, expanded_state) =
+                self.expand(selected, stats, recipe, constraints, &mut rng);
+            let reward = self.rollout(expanded_state, stats, recipe, constraints, &mut rng);
             self.arena.backpropagate(expanded, reward);
 
             if reward > best_reward {
@@ -230,8 +237,7 @@ impl MctsSolver {
         let mut node = root;
         loop {
             let current = self.arena.get(node);
-            if current.is_terminal() || !current.is_fully_expanded() || current.first_child == NONE
-            {
+            if current.is_terminal() || !current.is_fully_expanded() || current.edge_len == 0 {
                 return node;
             }
             node = self
@@ -240,6 +246,8 @@ impl MctsSolver {
         }
     }
 
+    /// Adds one child of `node` and returns it with its state; returns `node` itself when it is
+    /// terminal, fully expanded, or the tree is at `max_nodes`.
     fn expand(
         &mut self,
         node: u32,
@@ -247,37 +255,36 @@ impl MctsSolver {
         recipe: &Recipe,
         constraints: &SolverConstraints,
         rng: &mut Xoshiro256,
-    ) -> u32 {
+    ) -> (u32, CraftingState) {
         let current = *self.arena.get(node);
+        let state = self.arena.state(node);
         if current.is_terminal()
             || current.untried.is_empty()
             || self.arena.len() >= self.config.max_nodes
         {
-            return node;
+            return (node, state);
         }
 
-        let action = pick_untried_action(&current.state, current.untried, rng, &self.config);
-        self.arena.get_mut(node).untried.remove(action);
-
-        let child_state = action.execute(current.state, stats, recipe, true);
+        let action = pick_untried_action(&state, current.untried, rng, &self.config);
+        let child_state = action.execute(state, stats, recipe, true);
         let untried = if child_state.status == CraftStatus::InProgress {
             self.legal(&child_state, stats, recipe, constraints)
         } else {
             ActionSet::EMPTY
         };
-        self.arena.push_child(node, action, child_state, untried)
+        let child = self.arena.push_child(node, action, child_state, untried);
+        (child, child_state)
     }
 
-    /// Plays the rollout policy out from `node`, leaving the actions in `rollout_actions`.
+    /// Plays the rollout policy out from `state`, leaving the actions in `rollout_actions`.
     fn rollout(
         &mut self,
-        node: u32,
+        mut state: CraftingState,
         stats: &CrafterStats,
         recipe: &Recipe,
         constraints: &SolverConstraints,
         rng: &mut Xoshiro256,
     ) -> f64 {
-        let mut state = self.arena.get(node).state;
         self.rollout_actions.clear();
 
         while state.status == CraftStatus::InProgress

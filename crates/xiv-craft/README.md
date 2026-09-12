@@ -13,9 +13,9 @@ Rust port of the crafting engine in `src/FFXIV.Domain/CraftingEngine`. The C# en
 
 - The wall clock is injected: `solve(..., now_ms: &mut dyn FnMut() -> f64)`. Native callers pass an `Instant`-based closure, a Web Worker passes `performance.now()`; the library never touches `std::time`, so it runs on wasm32.
 - `SolverSettings.max_iterations` bounds the search without a clock. With a seed and an iteration budget a run is reproducible; with a time budget it is not (the iteration count depends on the machine).
-- The tree is an arena (`Vec<Node>`, `u32` links, untried actions as a `u64` bitset); a `MctsSolver` kept between calls allocates nothing per iteration after the first solve.
+- The tree is two chunked arenas with `u32` links: 48-byte nodes (a 24-byte packed state, untried actions as a `u64` bitset) and 16-byte edges holding the visit statistics, one contiguous slice per expanded node. A `MctsSolver` kept between calls allocates nothing per iteration after the first solve.
 - `MctsConfig.early_termination_threshold` counts iterations without improvement, as in C#. At Rust iteration rates the default (5000) stops a search within ~50 ms; pass `u64::MAX` to spend the whole budget.
-- `MctsConfig.max_nodes` caps the tree (about 144 bytes per node; a 10 s search grows to 1.5-2 M nodes). Past the cap the search keeps running rollouts from existing leaves. Unbounded by default, as in C#; set it in a worker.
+- `MctsConfig.max_nodes` caps the tree. A node is 48 bytes plus a 16-byte edge per legal action once it is expanded, about 130 bytes per node in practice; a 10 s search grows to 2-5 M nodes (250-700 MB, see `MctsSolver::tree_memory_bytes`). Past the cap the search keeps running rollouts from existing leaves. Unbounded by default, as in C#; a worker should set it (1 M nodes is roughly 130 MB).
 - Randomness is xoshiro256** seeded from `SolverSettings.random_seed` (a fixed constant when unset); C# MCTS runs are not replayable across languages, only the engine is.
 
 Benchmark over the ten recipes in `tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json`, with the C# numbers alongside:

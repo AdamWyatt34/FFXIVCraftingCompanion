@@ -54,6 +54,7 @@ struct Row {
     greedy_steps: usize,
     defaults: SolverResult,
     full: SolverResult,
+    full_tree_mb: f64,
 }
 
 fn wall_clock() -> impl FnMut() -> f64 {
@@ -113,6 +114,7 @@ fn main() {
         let defaults_result =
             defaults.solve(&recipe, &stats, &constraints, &settings, &mut wall_clock());
         let full_result = full.solve(&recipe, &stats, &constraints, &settings, &mut wall_clock());
+        let full_tree_mb = full.tree_memory_bytes() as f64 / (1024.0 * 1024.0);
 
         rows.push(Row {
             id: entry.id,
@@ -121,6 +123,7 @@ fn main() {
             greedy_steps: greedy.metrics.total_steps,
             defaults: defaults_result,
             full: full_result,
+            full_tree_mb,
         });
     }
 
@@ -137,19 +140,21 @@ fn main() {
 
     println!();
     println!("MCTS (Rust), budget {budget_ms} ms, seed {seed}");
-    println!(
-        "| Benchmark | Mode | Time(ms) | Iterations | Nodes | Iter/s | Quality% | HQ% | Steps |"
-    );
-    println!("|---|---|---:|---:|---:|---:|---:|---:|---:|");
+    println!("| Benchmark | Mode | Time(ms) | Iterations | Nodes | Tree MB | Iter/s | Quality% | HQ% | Steps |");
+    println!("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|");
     for row in &rows {
-        for (mode, result) in [("defaults", &row.defaults), ("full budget", &row.full)] {
+        for (mode, result, tree_mb) in [
+            ("defaults", &row.defaults, None),
+            ("full budget", &row.full, Some(row.full_tree_mb)),
+        ] {
             println!(
-                "| {} | {} | {:.0} | {} | {} | {:.0} | {:.1} | {} | {} |",
+                "| {} | {} | {:.0} | {} | {} | {} | {:.0} | {:.1} | {} | {} |",
                 row.id,
                 mode,
                 result.metrics.solve_time_ms,
                 result.metrics.iterations_completed,
                 result.metrics.nodes_explored,
+                tree_mb.map_or(String::from("-"), |mb| format!("{mb:.0}")),
                 iter_per_s(result),
                 result.metrics.final_quality_percent,
                 result.metrics.final_hq_percent,

@@ -233,36 +233,52 @@ fn max_nodes_caps_the_tree_and_the_search_still_completes() {
     assert_eq!(result.metrics.iterations_completed, 5_000);
 }
 
-// MCTSNodeTests
+// MCTSNodeTests. Statistics live on edges and are only written by backpropagation, so the
+// fixtures build them by backpropagating instead of setting fields.
 
-#[test]
-fn ucb1_unvisited_node_returns_max_value() {
+fn actions(list: &[Action]) -> ActionSet {
+    let mut set = ActionSet::EMPTY;
+    for action in list {
+        set.insert(*action);
+    }
+    set
+}
+
+fn root_with_two_children(root_visits: u32) -> (Arena, u32, u32, u32) {
     let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
-    arena.get_mut(root).visits = 10;
-    let child = arena.push_child(
+    let root = arena.push_root(
+        default_state(),
+        actions(&[Action::BasicSynthesis, Action::BasicTouch]),
+    );
+    let first = arena.push_child(
         root,
         Action::BasicSynthesis,
         default_state(),
         ActionSet::EMPTY,
     );
+    let second = arena.push_child(root, Action::BasicTouch, default_state(), ActionSet::EMPTY);
+    for _ in 0..root_visits {
+        arena.backpropagate(root, 0.5);
+    }
+    (arena, root, first, second)
+}
 
+fn visit(arena: &mut Arena, node: u32, times: u32, reward: f64) {
+    for _ in 0..times {
+        arena.backpropagate(node, reward);
+    }
+}
+
+#[test]
+fn ucb1_unvisited_node_returns_max_value() {
+    let (arena, _, child, _) = root_with_two_children(10);
     assert_eq!(arena.ucb1(child, 1.41), f64::MAX);
 }
 
 #[test]
 fn ucb1_visited_node_returns_finite_value() {
-    let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
-    arena.get_mut(root).visits = 100;
-    let child = arena.push_child(
-        root,
-        Action::BasicSynthesis,
-        default_state(),
-        ActionSet::EMPTY,
-    );
-    arena.get_mut(child).visits = 10;
-    arena.get_mut(child).total_reward = 7.0;
+    let (mut arena, _, child, _) = root_with_two_children(90);
+    visit(&mut arena, child, 10, 0.7);
 
     let score = arena.ucb1(child, 1.41);
     assert!(score > 0.0);
@@ -271,40 +287,18 @@ fn ucb1_visited_node_returns_finite_value() {
 
 #[test]
 fn ucb1_higher_reward_higher_score() {
-    let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
-    arena.get_mut(root).visits = 100;
-    let good = arena.push_child(
-        root,
-        Action::BasicSynthesis,
-        default_state(),
-        ActionSet::EMPTY,
-    );
-    arena.get_mut(good).visits = 10;
-    arena.get_mut(good).total_reward = 8.0;
-    let bad = arena.push_child(root, Action::BasicTouch, default_state(), ActionSet::EMPTY);
-    arena.get_mut(bad).visits = 10;
-    arena.get_mut(bad).total_reward = 2.0;
+    let (mut arena, _, good, bad) = root_with_two_children(80);
+    visit(&mut arena, good, 10, 0.8);
+    visit(&mut arena, bad, 10, 0.2);
 
     assert!(arena.ucb1(good, 1.41) > arena.ucb1(bad, 1.41));
 }
 
 #[test]
 fn ucb1_less_visited_higher_exploration_bonus() {
-    let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
-    arena.get_mut(root).visits = 100;
-    let less = arena.push_child(
-        root,
-        Action::BasicSynthesis,
-        default_state(),
-        ActionSet::EMPTY,
-    );
-    arena.get_mut(less).visits = 2;
-    arena.get_mut(less).total_reward = 1.0;
-    let more = arena.push_child(root, Action::BasicTouch, default_state(), ActionSet::EMPTY);
-    arena.get_mut(more).visits = 50;
-    arena.get_mut(more).total_reward = 25.0;
+    let (mut arena, _, less, more) = root_with_two_children(48);
+    visit(&mut arena, less, 2, 0.5);
+    visit(&mut arena, more, 50, 0.5);
 
     assert!(arena.ucb1(less, 1.41) > arena.ucb1(more, 1.41));
 }
@@ -313,8 +307,7 @@ fn ucb1_less_visited_higher_exploration_bonus() {
 fn ucb1_root_node_returns_average_reward() {
     let mut arena = Arena::default();
     let root = arena.push_root(default_state(), ActionSet::EMPTY);
-    arena.get_mut(root).visits = 10;
-    arena.get_mut(root).total_reward = 5.0;
+    visit(&mut arena, root, 10, 0.5);
 
     assert_eq!(arena.ucb1(root, 1.41), 0.5);
 }
@@ -341,16 +334,16 @@ fn is_terminal_follows_status() {
     assert!(!arena.get(in_progress).is_terminal());
     assert!(arena.get(completed).is_terminal());
     assert!(arena.get(failed).is_terminal());
+    assert_eq!(arena.state(in_progress), default_state());
 }
 
 #[test]
 fn is_fully_expanded_when_no_untried_actions() {
-    let mut untried = ActionSet::EMPTY;
-    untried.insert(Action::BasicSynthesis);
-    untried.insert(Action::BasicTouch);
-    untried.insert(Action::Observe);
     let mut arena = Arena::default();
-    let pending = arena.push_root(default_state(), untried);
+    let pending = arena.push_root(
+        default_state(),
+        actions(&[Action::BasicSynthesis, Action::BasicTouch, Action::Observe]),
+    );
     let done = arena.push_root(default_state(), ActionSet::EMPTY);
 
     assert!(!arena.get(pending).is_fully_expanded());
@@ -361,32 +354,31 @@ fn is_fully_expanded_when_no_untried_actions() {
 fn average_reward_calculation() {
     let mut arena = Arena::default();
     let node = arena.push_root(default_state(), ActionSet::EMPTY);
-    assert_eq!(arena.get(node).average_reward(), 0.0);
+    assert_eq!(arena.stats(node).average_reward(), 0.0);
 
-    arena.get_mut(node).visits = 4;
-    arena.get_mut(node).total_reward = 3.0;
-    assert_eq!(arena.get(node).average_reward(), 0.75);
+    visit(&mut arena, node, 3, 1.0);
+    arena.backpropagate(node, 0.0);
+    assert_eq!(arena.stats(node).average_reward(), 0.75);
 }
 
 #[test]
 fn backpropagate_updates_all_ancestors() {
     let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
+    let root = arena.push_root(default_state(), actions(&[Action::BasicSynthesis]));
     let child = arena.push_child(
         root,
         Action::BasicSynthesis,
         default_state(),
-        ActionSet::EMPTY,
+        actions(&[Action::BasicTouch]),
     );
     let grandchild = arena.push_child(child, Action::BasicTouch, default_state(), ActionSet::EMPTY);
 
     arena.backpropagate(grandchild, 0.8);
 
     for index in [grandchild, child, root] {
-        let node = arena.get(index);
-        assert_eq!(node.visits, 1);
-        assert_eq!(node.total_reward, 0.8);
-        assert_eq!(node.best_reward, 0.8);
+        let stats = arena.stats(index);
+        assert_eq!(stats.visits, 1);
+        assert_eq!(stats.total_reward, 0.8);
     }
     assert_eq!(arena.get(root).parent, NONE);
 }
@@ -394,7 +386,7 @@ fn backpropagate_updates_all_ancestors() {
 #[test]
 fn backpropagate_multiple_updates_accumulates() {
     let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
+    let root = arena.push_root(default_state(), actions(&[Action::BasicSynthesis]));
     let child = arena.push_child(
         root,
         Action::BasicSynthesis,
@@ -405,25 +397,27 @@ fn backpropagate_multiple_updates_accumulates() {
     arena.backpropagate(child, 0.6);
     arena.backpropagate(child, 0.9);
 
-    let child_node = arena.get(child);
-    assert_eq!(child_node.visits, 2);
-    assert!((child_node.total_reward - 1.5).abs() < 0.001);
-    assert_eq!(child_node.best_reward, 0.9);
-    assert!((child_node.average_reward() - 0.75).abs() < 0.001);
-    let root_node = arena.get(root);
-    assert_eq!(root_node.visits, 2);
-    assert!((root_node.total_reward - 1.5).abs() < 0.001);
+    let child_stats = arena.stats(child);
+    assert_eq!(child_stats.visits, 2);
+    assert!((child_stats.total_reward - 1.5).abs() < 0.001);
+    assert!((child_stats.average_reward() - 0.75).abs() < 0.001);
+    let root_stats = arena.stats(root);
+    assert_eq!(root_stats.visits, 2);
+    assert!((root_stats.total_reward - 1.5).abs() < 0.001);
 }
 
 #[test]
-fn path_actions_lists_root_to_node_and_children_keep_insertion_ties_first() {
+fn path_actions_lists_root_to_node_and_children_keep_insertion_order() {
     let mut arena = Arena::default();
-    let root = arena.push_root(default_state(), ActionSet::EMPTY);
+    let root = arena.push_root(
+        default_state(),
+        actions(&[Action::MuscleMemory, Action::Reflect]),
+    );
     let first = arena.push_child(
         root,
         Action::MuscleMemory,
         default_state(),
-        ActionSet::EMPTY,
+        actions(&[Action::Manipulation]),
     );
     let second = arena.push_child(root, Action::Reflect, default_state(), ActionSet::EMPTY);
     let leaf = arena.push_child(
@@ -436,7 +430,7 @@ fn path_actions_lists_root_to_node_and_children_keep_insertion_ties_first() {
     let mut path = Vec::new();
     arena.path_actions(leaf, &mut path);
     assert_eq!(path, [Action::MuscleMemory.id(), Action::Manipulation.id()]);
-    assert_eq!(arena.children(root).collect::<Vec<_>>(), [second, first]);
+    assert_eq!(arena.children(root).collect::<Vec<_>>(), [first, second]);
 }
 
 // RewardFunctionTests
