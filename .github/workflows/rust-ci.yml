@@ -1,0 +1,57 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['crates/**', 'frontend/src/wasm/**', 'frontend/scripts/wasm-*.mjs', '.github/workflows/rust-ci.yml']
+  pull_request:
+    branches: [main]
+    paths: ['crates/**', 'frontend/src/wasm/**', 'frontend/scripts/wasm-*.mjs', '.github/workflows/rust-ci.yml']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            crates/xiv-craft/target
+            crates/xiv-craft-wasm/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('crates/**/Cargo.lock') }}
+
+      - name: Test the engine and solvers
+        working-directory: crates/xiv-craft
+        run: cargo test --release
+
+      - name: Build the engine for wasm32
+        working-directory: crates/xiv-craft
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Test the wasm bindings on the host
+        working-directory: crates/xiv-craft-wasm
+        run: cargo test
+
+  artifact:
+    # The frontend ships a committed wasm-pack build; fail when crates/ moved without a rebuild.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check the committed artifact against crates/
+        working-directory: frontend
+        run: node scripts/wasm-check.mjs

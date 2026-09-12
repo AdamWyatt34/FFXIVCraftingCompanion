@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Eye, Copy, Wrench, ThumbsUp, Map } from "lucide-react";
 import { getActionIconUrlById } from "@/lib/action-icons";
 import { CRAFT_TYPE_INFO, ROTATION_SOURCE_INFO } from "@/lib/constants";
-import { exportCraftingMacro } from "@/lib/api-client";
+import { exportCraftingMacro } from "@/lib/crafting-engine";
 import type { RotationListItem } from "@/types/solver";
 import type { CraftType } from "@/types/api";
 
@@ -40,11 +40,14 @@ export function RotationCard({
   const [macroCopied, setMacroCopied] = useState(false);
 
   const craftInfo = CRAFT_TYPE_INFO[rotation.craftType as CraftType];
-  const sourceInfo = ROTATION_SOURCE_INFO[rotation.source] ?? ROTATION_SOURCE_INFO.User;
+  const sourceInfo =
+    ROTATION_SOURCE_INFO[rotation.source] ?? ROTATION_SOURCE_INFO.User;
 
   const handleCopyMacro = useCallback(async () => {
     try {
-      const result = await exportCraftingMacro({ actionIds: rotation.actionIds });
+      const result = await exportCraftingMacro({
+        actionIds: rotation.actionIds,
+      });
       const macroText = result.macros.join("\n\n");
       await navigator.clipboard.writeText(macroText);
       setMacroCopied(true);
@@ -64,10 +67,14 @@ export function RotationCard({
   if (compact) {
     return (
       <div className="flex items-center gap-3 p-2 bg-bg-surface border border-border rounded-lg hover:border-gold/30 transition-colors">
-        <span className={`text-sm font-bold ${getQualityColor(rotation.hqPercent)}`}>
+        <span
+          className={`text-sm font-bold ${getQualityColor(rotation.hqPercent)}`}
+        >
           {rotation.hqPercent}% HQ
         </span>
-        <span className="text-xs text-text-muted">{rotation.totalSteps} steps</span>
+        <span className="text-xs text-text-muted">
+          {rotation.totalSteps} steps
+        </span>
         <span className="text-sm text-text-secondary truncate flex-1">
           {rotation.recipeName}
         </span>
@@ -85,7 +92,9 @@ export function RotationCard({
     <div className="bg-bg-surface border border-border rounded-lg p-4 hover:border-gold/30 transition-colors space-y-3">
       {/* Top row: HQ%, steps, source badge */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className={`text-lg font-bold ${getQualityColor(rotation.hqPercent)}`}>
+        <span
+          className={`text-lg font-bold ${getQualityColor(rotation.hqPercent)}`}
+        >
           {rotation.hqPercent}% HQ
         </span>
         <span className="text-sm text-text-muted">
@@ -123,7 +132,9 @@ export function RotationCard({
 
       {/* Stats */}
       <div className="flex items-center gap-3 text-xs text-text-muted">
-        <span>{rotation.craftsmanship}/{rotation.control}/{rotation.cp}</span>
+        <span>
+          {rotation.craftsmanship}/{rotation.control}/{rotation.cp}
+        </span>
         {rotation.authorName && (
           <>
             <span className="text-border">|</span>

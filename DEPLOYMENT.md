@@ -119,6 +119,8 @@ az containerapp update \
 
 Vercel will auto-deploy on pushes to `main` and create preview deployments for PRs.
 
+The simulator and solver run in the browser from a prebuilt WASM module committed at `frontend/src/wasm/` (the Vercel build image has no Rust toolchain, so nothing is compiled at deploy time). After any change under `crates/`, run `npm run wasm:build` in `frontend/` and commit the result; the `WasmArtifactTests` test in backend CI fails when the artifact is stale. `NEXT_PUBLIC_ENGINE_MODE=api` switches every browser back to the .NET crafting endpoints; a single browser can do the same with `?engine=api`.
+
 ---
 
 ## 6. Initial Data Sync

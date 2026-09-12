@@ -17,11 +17,8 @@ import {
 } from "lucide-react";
 import { useRotationDetail } from "@/hooks/useRotationDetail";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  toggleRotationUpvote,
-  deleteRotation,
-  exportCraftingMacro,
-} from "@/lib/api-client";
+import { toggleRotationUpvote, deleteRotation } from "@/lib/api-client";
+import { exportCraftingMacro } from "@/lib/crafting-engine";
 import {
   getActionIconUrlById,
   getActionNameById,
@@ -44,7 +41,10 @@ interface CollapsedGroup {
   count: number;
 }
 
-function collapseActionIds(actionIds: number[], actionNames: string[]): CollapsedGroup[] {
+function collapseActionIds(
+  actionIds: number[],
+  actionNames: string[],
+): CollapsedGroup[] {
   const groups: CollapsedGroup[] = [];
   for (let i = 0; i < actionIds.length; i++) {
     const id = actionIds[i];
@@ -183,9 +183,7 @@ export default function RotationDetailPage() {
             <h1 className="text-xl font-bold">Rotation</h1>
           </div>
           <div className="text-center py-16">
-            <p className="text-red-400 mb-3">
-              {error ?? "Rotation not found"}
-            </p>
+            <p className="text-red-400 mb-3">{error ?? "Rotation not found"}</p>
             <button
               onClick={retry}
               className="text-sm text-gold hover:text-gold-light transition-colors"
@@ -495,7 +493,12 @@ function getCategoryForAction(name: string): ActionCategory {
   if (repair.some((r) => r.replace(/\s+/g, "") === pascal)) return "Repair";
 
   // Buffs and other
-  const other = ["Tricks of the Trade", "Careful Observation", "TricksOfTheTrade", "CarefulObservation"];
+  const other = [
+    "Tricks of the Trade",
+    "Careful Observation",
+    "TricksOfTheTrade",
+    "CarefulObservation",
+  ];
   if (other.includes(name) || other.includes(pascal)) return "Other";
 
   return "Buff";

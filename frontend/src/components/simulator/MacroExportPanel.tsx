@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
-import { exportCraftingMacro, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { exportCraftingMacro } from "@/lib/crafting-engine";
 import { formatRotationSummary } from "@/lib/format-utils";
 import type {
   MacroOptions,
@@ -47,13 +48,7 @@ function MacroLine({ line }: { line: string }) {
 
 // ── Copy button with feedback ──
 
-function CopyButton({
-  text,
-  label,
-}: {
-  text: string;
-  label: string;
-}) {
+function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -331,7 +326,8 @@ export function MacroExportPanel({
             <div className="flex items-center justify-between text-sm text-text-secondary">
               <span>
                 Rotation: {actionIds.length} actions
-                {macroCount > 0 && ` → ${macroCount} macro${macroCount > 1 ? "s" : ""}`}
+                {macroCount > 0 &&
+                  ` → ${macroCount} macro${macroCount > 1 ? "s" : ""}`}
               </span>
             </div>
 

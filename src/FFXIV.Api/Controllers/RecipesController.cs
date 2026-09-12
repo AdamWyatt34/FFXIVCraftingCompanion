@@ -55,6 +55,25 @@ public class RecipesController : ControllerBase
     }
 
     /// <summary>
+    /// Get the crafting engine parameters for a recipe: the recipe row plus its RecipeLevelTable entry.
+    /// A client-side engine runs the simulator and solver from these.
+    /// </summary>
+    /// <param name="id">The recipe ID.</param>
+    /// <response code="200">Returns the crafting parameters.</response>
+    /// <response code="404">Recipe or its recipe level not found.</response>
+    [HttpGet("{id:int}/crafting-parameters")]
+    [ProducesResponseType(typeof(RecipeCraftingParametersDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCraftingParameters(int id)
+    {
+        var result = await _mediator.Send(new GetRecipeCraftingParametersQuery(id));
+        if (result is null)
+            return NotFound(new { error = $"Recipe {id} not found." });
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Get the full material tree for a recipe, including shopping list and crafting order.
     /// </summary>
     /// <param name="id">The recipe ID.</param>

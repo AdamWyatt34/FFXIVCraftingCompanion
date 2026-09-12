@@ -23,7 +23,9 @@ public class ParityGoldenTests
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    private static readonly JsonSerializerOptions JsonIndented = new(Json) { WriteIndented = true };
+    // Byte-compared goldens must not depend on the generating OS: WriteIndented defaults to
+    // Environment.NewLine, which is CRLF on Windows and LF on the Linux CI runner.
+    private static readonly JsonSerializerOptions JsonIndented = new(Json) { WriteIndented = true, NewLine = "\n" };
 
     public static IEnumerable<object[]> Benchmarks => BenchmarkLoader.GetBenchmarkMemberData();
 

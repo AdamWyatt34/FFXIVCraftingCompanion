@@ -1,0 +1,32 @@
+{
+    "recipeId": 37783,
+    "resultItem": {
+        "itemId": 49988,
+        "name": "Pure Cosmic Tool-compatible Gel",
+        "iconUrl": "https://v2.xivapi.com/api/asset?path=ui%2Ficon%2F023000%2F023517.tex&format=png",
+        "itemLevel": 1,
+        "category": "Other",
+        "canBeHQ": false,
+        "recipeId": null,
+        "isEquipment": false
+    },
+    "craftType": "CUL",
+    "recipeLevel": 759,
+    "difficulty": 12500,
+    "quality": 33500,
+    "durability": 70,
+    "requiredCraftsmanship": 4740,
+    "requiredControl": 0,
+    "yield": 1,
+    "ingredients": [
+        {
+            "itemId": 49878,
+            "itemName": "Oizys Rarities",
+            "iconUrl": "https://v2.xivapi.com/api/asset?path=ui%2Ficon%2F026000%2F026124.tex&format=png",
+            "quantity": 1,
+            "canBeHQ": false
+        }
+    ],
+    "materialSummary": null,
+    "equipmentInfo": null
+}

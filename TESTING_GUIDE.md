@@ -282,8 +282,8 @@ These are free, public APIs used by the data sync pipeline:
 | # | Test Step | Expected Result | API Call |
 |---|-----------|-----------------|----------|
 | 1 | Set up recipe + stats in simulator | Solver button becomes available | — |
-| 2 | Click "Quick Solve" | Greedy solver returns rotation in ~1-3 seconds | `GET /api/crafting/solve/quick?...` |
-| 3 | Click "Full Solve" (MCTS) | Job enqueued, polling begins, progress shown | `POST /api/crafting/solve` -> `GET /api/crafting/solve/{jobId}` |
+| 2 | Click "Quick Solve" | Greedy solver returns a rotation within a second | None in `wasm` engine mode (runs in the browser); `GET /api/crafting/solve/quick?...` with `?engine=api` |
+| 3 | Click "Full Solve" (MCTS) | Progress overlay shows elapsed time, iterations and best quality | None in `wasm` mode (solver Web Worker); `POST /api/crafting/solve` -> `GET /api/crafting/solve/{jobId}` with `?engine=api` |
 | 4 | Solver completes | RotationResultPanel shows: quality, HQ%, step list | — |
 | 5 | Click "Replay" | Step-by-step replay with animations | — |
 | 6 | Click "Load into Simulator" | Rotation loads into manual simulator | — |
@@ -521,15 +521,17 @@ npm run start            # Serves production build on :3000
 | 1 | **Game data caching** | Visit `/recipes`, search for items. Go offline. Search again. | Cached results return from `game-data-api` cache (StaleWhileRevalidate, 7-day TTL) |
 | 2 | **Icon caching** | View recipes with icons. Go offline. Revisit. | Icons load from `xivapi-icons` cache (CacheFirst, 30-day TTL) |
 | 3 | **Market data** | View market prices. Go offline within 15 min. Revisit. | Cached prices shown (NetworkFirst, 15-min TTL, 5s timeout) |
-| 4 | **Solver never cached** | Run solver. Go offline. Try solver again. | Fails with network error (NetworkOnly strategy) |
-| 5 | **Simulate never cached** | Same as above for simulation | Fails with network error (NetworkOnly strategy) |
+| 4 | **Solver offline** | Open a recipe in the simulator online. Go offline. Reload and run Auto-Solve. | Solves locally from the precached WASM engine; no network request (`npm run test:e2e` automates this) |
+| 5 | **Simulator offline** | Same as above, then Start Manual Craft and execute actions | Every step computes locally; the recipe and its crafting parameters come from the `game-data-api` cache |
+| 6 | **API engine mode** | Add `?engine=api` to any URL (or set `localStorage.ffxiv_engine = "api"`), then solve | Solver and simulate requests reach the API again (NetworkOnly, never cached); `?engine=wasm` switches back |
 
 ### D3. Offline Behavior
 
 | # | Test | Expected |
 |---|------|----------|
 | 1 | Go offline and navigate to uncached page | Redirected to `/offline` page |
-| 2 | `/offline` page content | Shows two cards: "Available Offline" (cached recipes, items, gear, simulator UI) and "Requires Internet" (solver, market, new searches, account sync) |
+| 2 | `/offline` page content | Shows two cards: "Available Offline" (cached recipes, items, gear, simulator, solver for cached recipes) and "Requires Internet" (market, new searches, account sync) |
+| 4 | Previously visited page offline | A page opened online (e.g. the simulator for a recipe) opens again offline from the `pages` cache instead of `/offline` |
 | 3 | Come back online | Can navigate away from offline page normally |
 
 ### D4. Install Prompt (PWA Add to Home Screen)

@@ -7,16 +7,11 @@ import type {
   SolveRequest,
   QuickSolveParams,
 } from "@/types/solver";
-import { isSolverJob } from "@/types/solver";
+import type { SolverProgress } from "@/types/solver-worker";
 import * as Sentry from "@sentry/nextjs";
-import {
-  submitSolveJob,
-  getSolveJob,
-  cancelSolveJob,
-  quickSolve,
-  ApiClientError,
-  trackAnalyticsEvent,
-} from "@/lib/api-client";
+import { ApiClientError, trackAnalyticsEvent } from "@/lib/api-client";
+import { getEngineMode } from "@/lib/engine-mode";
+import { startSolve as runSolve, quickSolve } from "@/lib/solver-client";
 import { SOLVER_CONSTANTS } from "@/lib/constants";
 
 export interface UseSolverReturn {
@@ -25,6 +20,8 @@ export interface UseSolverReturn {
   solverResult: SolverResult | null;
   quickResult: SolverResult | null;
   elapsedMs: number;
+  /** Live search statistics; null on the API path, which reports only status and time. */
+  progress: SolverProgress | null;
   error: string | null;
   jobId: string | null;
 
@@ -41,87 +38,47 @@ export interface UseSolverReturn {
   progressPercent: number;
 }
 
+function isAbort(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
+}
+
 export function useSolver(): UseSolverReturn {
-  const [solverStatus, setSolverStatus] = useState<SolverJobStatus | "Idle">("Idle");
+  const [solverStatus, setSolverStatus] = useState<SolverJobStatus | "Idle">(
+    "Idle",
+  );
   const [solverResult, setSolverResult] = useState<SolverResult | null>(null);
   const [quickResult, setQuickResult] = useState<SolverResult | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [progress, setProgress] = useState<SolverProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [timeBudgetMs, setTimeBudgetMs] = useState<number>(SOLVER_CONSTANTS.DEFAULT_TIME_BUDGET_MS);
+  const [timeBudgetMs, setTimeBudgetMs] = useState<number>(
+    SOLVER_CONSTANTS.DEFAULT_TIME_BUDGET_MS,
+  );
 
+  // Aborting the controller cancels the worker search or the API job, whichever is running.
   const abortRef = useRef<AbortController | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const jobIdRef = useRef<string | null>(null);
-
-  // Keep jobIdRef in sync for use in cleanup/polling closures
-  useEffect(() => {
-    jobIdRef.current = jobId;
-  }, [jobId]);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
 
   const cleanup = useCallback(() => {
     abortRef.current?.abort();
-    stopPolling();
-  }, [stopPolling]);
+    abortRef.current = null;
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (pollRef.current) clearInterval(pollRef.current);
-      // Fire-and-forget cancel for any running job
-      if (jobIdRef.current) {
-        cancelSolveJob(jobIdRef.current).catch(() => {});
-      }
     };
   }, []);
 
-  const startPolling = useCallback(
-    (id: string, signal: AbortSignal) => {
-      stopPolling();
-
-      pollRef.current = setInterval(async () => {
-        if (signal.aborted) {
-          stopPolling();
-          return;
-        }
-
-        try {
-          const job = await getSolveJob(id, signal);
-          if (signal.aborted) return;
-
-          setSolverStatus(job.status);
-          setElapsedMs(job.elapsedMs);
-
-          if (job.status === "Completed" && job.result) {
-            setSolverResult(job.result);
-            stopPolling();
-          } else if (job.status === "Failed" || job.status === "TimedOut") {
-            setError(job.errorMessage ?? `Solve ${job.status.toLowerCase()}`);
-            stopPolling();
-          }
-        } catch (err) {
-          if (signal.aborted) return;
-          if (err instanceof DOMException && err.name === "AbortError") return;
-
-          const msg =
-            err instanceof ApiClientError
-              ? err.body.error
-              : "Failed to check solve status";
-          setError(msg);
-          stopPolling();
-        }
-      }, SOLVER_CONSTANTS.POLL_INTERVAL_MS);
-    },
-    [stopPolling],
-  );
+  const resetState = useCallback(() => {
+    setSolverResult(null);
+    setQuickResult(null);
+    setElapsedMs(0);
+    setProgress(null);
+    setError(null);
+    setJobId(null);
+  }, []);
 
   const startSolve = useCallback(
     async (request: SolveRequest) => {
@@ -131,69 +88,63 @@ export function useSolver(): UseSolverReturn {
       abortRef.current = controller;
 
       setSolverStatus("Queued");
-      setSolverResult(null);
-      setQuickResult(null);
-      setElapsedMs(0);
-      setError(null);
-      setJobId(null);
+      resetState();
 
-      const budget = request.settings?.timeBudgetMs ?? SOLVER_CONSTANTS.DEFAULT_TIME_BUDGET_MS;
+      const budget =
+        request.settings?.timeBudgetMs ??
+        SOLVER_CONSTANTS.DEFAULT_TIME_BUDGET_MS;
       setTimeBudgetMs(budget);
 
-      // Fire quick solve and MCTS in parallel
-      const greedyPromise = request.stats
-        ? quickSolve(
-            {
-              recipeId: request.recipeId,
-              craftsmanship: request.stats.craftsmanship,
-              control: request.stats.control,
-              cp: request.stats.cp,
-              level: request.stats.level,
-            },
-            controller.signal,
-          )
-        : null;
-
-      const mctsPromise = submitSolveJob(request, controller.signal);
-
-      // Handle greedy (non-blocking)
-      if (greedyPromise) {
-        greedyPromise
+      // The greedy preview runs alongside the main solve, as before
+      if (request.stats) {
+        quickSolve(
+          {
+            recipeId: request.recipeId,
+            craftsmanship: request.stats.craftsmanship,
+            control: request.stats.control,
+            cp: request.stats.cp,
+            level: request.stats.level,
+          },
+          controller.signal,
+        )
           .then((result) => {
-            if (!controller.signal.aborted) {
-              setQuickResult(result);
-            }
+            if (!controller.signal.aborted) setQuickResult(result);
           })
           .catch((err) => {
-            if (controller.signal.aborted) return;
-            if (err instanceof DOMException && err.name === "AbortError") return;
-            // Greedy failure is non-fatal — MCTS may still succeed
+            if (controller.signal.aborted || isAbort(err)) return;
+            // Greedy failure is non-fatal — the main solve may still succeed
             console.warn("Quick solve failed:", err);
           });
       }
 
-      // Handle MCTS job submission
       try {
-        const response = await mctsPromise;
+        const job = await runSolve(request, {
+          signal: controller.signal,
+          onProgress: (update) => {
+            if (controller.signal.aborted) return;
+            setSolverStatus(update.status);
+            setElapsedMs(update.elapsedMs);
+            if (update.iterations !== undefined) setProgress(update);
+          },
+        });
         if (controller.signal.aborted) return;
 
-        if (isSolverJob(response) && response.result) {
-          // 200: cached result returned immediately
-          setJobId(response.jobId);
-          setSolverStatus("Completed");
-          setSolverResult(response.result);
-          setElapsedMs(response.elapsedMs);
-          trackAnalyticsEvent("solver_run", { recipeId: request.recipeId, algorithm: request.settings?.algorithm, cached: true });
+        setJobId(job.jobId);
+        setElapsedMs(job.elapsedMs);
+        setSolverStatus(job.status);
+        if (job.status === "Completed" && job.result) {
+          setSolverResult(job.result);
+          trackAnalyticsEvent("solver_run", {
+            recipeId: request.recipeId,
+            algorithm: request.settings?.algorithm,
+            cached: job.jobId === "cached",
+            engine: getEngineMode(),
+          });
         } else {
-          // 202: job enqueued — start polling
-          const id = response.jobId;
-          setJobId(id);
-          setSolverStatus("Queued");
-          startPolling(id, controller.signal);
+          setError(job.errorMessage ?? `Solve ${job.status.toLowerCase()}`);
         }
       } catch (err) {
-        if (controller.signal.aborted) return;
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted || isAbort(err)) return;
 
         const msg =
           err instanceof ApiClientError
@@ -201,14 +152,18 @@ export function useSolver(): UseSolverReturn {
             : "Failed to start solve";
         setError(msg);
         Sentry.withScope((scope) => {
-          scope.setContext("solver", { recipeId: request.recipeId, algorithm: request.settings?.algorithm });
+          scope.setContext("solver", {
+            recipeId: request.recipeId,
+            algorithm: request.settings?.algorithm,
+            engine: getEngineMode(),
+          });
           Sentry.captureException(err);
         });
         // If greedy already fired, status stays usable; otherwise idle
         setSolverStatus("Failed");
       }
     },
-    [cleanup, startPolling],
+    [cleanup, resetState],
   );
 
   const startQuickSolve = useCallback(
@@ -219,11 +174,7 @@ export function useSolver(): UseSolverReturn {
       abortRef.current = controller;
 
       setSolverStatus("Running");
-      setSolverResult(null);
-      setQuickResult(null);
-      setElapsedMs(0);
-      setError(null);
-      setJobId(null);
+      resetState();
 
       try {
         const result = await quickSolve(params, controller.signal);
@@ -232,50 +183,27 @@ export function useSolver(): UseSolverReturn {
         setQuickResult(result);
         setSolverStatus("Completed");
       } catch (err) {
-        if (controller.signal.aborted) return;
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted || isAbort(err)) return;
 
         const msg =
-          err instanceof ApiClientError
-            ? err.body.error
-            : "Quick solve failed";
+          err instanceof ApiClientError ? err.body.error : "Quick solve failed";
         setError(msg);
         setSolverStatus("Failed");
       }
     },
-    [cleanup],
+    [cleanup, resetState],
   );
 
   const cancelSolveAction = useCallback(async () => {
     cleanup();
-
-    if (jobIdRef.current) {
-      try {
-        await cancelSolveJob(jobIdRef.current);
-      } catch {
-        // Ignore cancel errors (job may already be done)
-      }
-    }
-
-    setSolverStatus((prev) =>
-      prev === "Completed" ? "Completed" : "Idle",
-    );
+    setSolverStatus((prev) => (prev === "Completed" ? "Completed" : "Idle"));
   }, [cleanup]);
 
   const clearResult = useCallback(() => {
     cleanup();
-
-    if (jobIdRef.current) {
-      cancelSolveJob(jobIdRef.current).catch(() => {});
-    }
-
     setSolverStatus("Idle");
-    setSolverResult(null);
-    setQuickResult(null);
-    setElapsedMs(0);
-    setError(null);
-    setJobId(null);
-  }, [cleanup]);
+    resetState();
+  }, [cleanup, resetState]);
 
   // Computed values
   const isSolving = solverStatus === "Queued" || solverStatus === "Running";
@@ -293,6 +221,7 @@ export function useSolver(): UseSolverReturn {
     solverResult,
     quickResult,
     elapsedMs,
+    progress,
     error,
     jobId,
     startSolve,

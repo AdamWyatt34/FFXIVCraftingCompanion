@@ -101,3 +101,6 @@ frontend/public/sw.js.map
 
 # Rust (crates/)
 crates/**/target/
+
+# Playwright MCP session artifacts
+.playwright-mcp/

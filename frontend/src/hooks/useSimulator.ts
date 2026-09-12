@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { getRecipe, ApiClientError } from "@/lib/api-client";
 import {
-  getRecipe,
   getCraftingActions,
   getAvailableActions as fetchAvailableActions,
   getInitialCraftingState,
   executeCraftingAction,
   exportCraftingMacro,
+  prefetchRecipeParameters,
   simulateCraft,
-  ApiClientError,
-} from "@/lib/api-client";
+} from "@/lib/crafting-engine";
 import { useProfile } from "@/hooks/useProfile";
 import type { RecipeSummaryDto } from "@/types/api";
 import type {
@@ -62,7 +62,11 @@ export interface UseSimulatorReturn {
   setRecipe: (recipeId: number) => Promise<void>;
   setStats: (stats: CrafterStatsInput) => void;
   setStatsFromUrl: (stats: CrafterStatsInput) => void;
-  loadSharedRotation: (recipeId: number, stats: CrafterStatsInput, actionIds: number[]) => Promise<void>;
+  loadSharedRotation: (
+    recipeId: number,
+    stats: CrafterStatsInput,
+    actionIds: number[],
+  ) => Promise<void>;
   initializeCraft: () => Promise<void>;
   executeAction: (actionId: number) => Promise<void>;
   undoLastAction: () => void;
@@ -83,16 +87,22 @@ export interface UseSimulatorReturn {
 
 export function useSimulator(): UseSimulatorReturn {
   // Setup
-  const [selectedRecipe, setSelectedRecipe] = useState<RecipeSummaryDto | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeSummaryDto | null>(
+    null,
+  );
   const [recipeId, setRecipeId] = useState<number | null>(null);
-  const [crafterStats, setCrafterStats] = useState<CrafterStatsInput | null>(null);
+  const [crafterStats, setCrafterStats] = useState<CrafterStatsInput | null>(
+    null,
+  );
   const [startingQuality, setStartingQuality] = useState(0);
 
   // Simulation
   const [currentState, setCurrentState] = useState<CraftingState | null>(null);
   const [initialState, setInitialState] = useState<CraftingState | null>(null);
   const [stateHistory, setStateHistory] = useState<StepResult[]>([]);
-  const [availableActions, setAvailableActions] = useState<ActionAvailability[]>([]);
+  const [availableActions, setAvailableActions] = useState<
+    ActionAvailability[]
+  >([]);
   const [isSimulating, setIsSimulating] = useState(false);
   const initialStateRef = useRef<CraftingState | null>(null);
 
@@ -139,7 +149,14 @@ export function useSimulator(): UseSimulatorReturn {
 
   // Session persistence: save
   const saveSession = useCallback(() => {
-    if (!recipeId || !selectedRecipe || !crafterStats || !currentState || !initialState) return;
+    if (
+      !recipeId ||
+      !selectedRecipe ||
+      !crafterStats ||
+      !currentState ||
+      !initialState
+    )
+      return;
     try {
       const data: SimulatorSessionData = {
         recipeId,
@@ -154,7 +171,14 @@ export function useSimulator(): UseSimulatorReturn {
     } catch {
       // sessionStorage may be full or unavailable
     }
-  }, [recipeId, selectedRecipe, crafterStats, currentState, initialState, stateHistory]);
+  }, [
+    recipeId,
+    selectedRecipe,
+    crafterStats,
+    currentState,
+    initialState,
+    stateHistory,
+  ]);
 
   const clearSession = useCallback(() => {
     try {
@@ -180,7 +204,13 @@ export function useSimulator(): UseSimulatorReturn {
         return;
       }
 
-      if (!data.recipeId || !data.crafterStats || !data.currentState || !data.initialState) return;
+      if (
+        !data.recipeId ||
+        !data.crafterStats ||
+        !data.currentState ||
+        !data.initialState
+      )
+        return;
 
       setSelectedRecipe(data.recipeSummary);
       setRecipeId(data.recipeId);
@@ -191,11 +221,15 @@ export function useSimulator(): UseSimulatorReturn {
       setStateHistory(data.stateHistory);
       setIsSimulating(true);
 
-      refreshAvailableActions(data.currentState, data.crafterStats, data.recipeId);
+      refreshAvailableActions(
+        data.currentState,
+        data.crafterStats,
+        data.recipeId,
+      );
     } catch {
       // corrupt data, ignore
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-save session whenever simulation state changes
@@ -237,8 +271,15 @@ export function useSimulator(): UseSimulatorReturn {
         }
       })
       .catch((err) => {
-        if (!cancelled && !(err instanceof DOMException && err.name === "AbortError")) {
-          setError(err instanceof ApiClientError ? err.body.error : "Failed to load actions");
+        if (
+          !cancelled &&
+          !(err instanceof DOMException && err.name === "AbortError")
+        ) {
+          setError(
+            err instanceof ApiClientError
+              ? err.body.error
+              : "Failed to load actions",
+          );
         }
       })
       .finally(() => {
@@ -295,9 +336,14 @@ export function useSimulator(): UseSimulatorReturn {
       };
       setSelectedRecipe(summary);
       setRecipeId(id);
+      prefetchRecipeParameters(id);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof ApiClientError ? err.body.error : "Failed to load recipe");
+      setError(
+        err instanceof ApiClientError
+          ? err.body.error
+          : "Failed to load recipe",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -349,7 +395,11 @@ export function useSimulator(): UseSimulatorReturn {
       await refreshAvailableActions(state, crafterStats, recipeId);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof ApiClientError ? err.body.error : "Failed to initialize craft");
+      setError(
+        err instanceof ApiClientError
+          ? err.body.error
+          : "Failed to initialize craft",
+      );
     } finally {
       if (!controller.signal.aborted) setIsLoading(false);
     }
@@ -384,17 +434,28 @@ export function useSimulator(): UseSimulatorReturn {
 
         setStateHistory((prev) => {
           // Guard: skip if we already have a step with this number (prevents duplicate keys)
-          if (prev.length > 0 && prev[prev.length - 1].stepNumber >= result.stepNumber) {
+          if (
+            prev.length > 0 &&
+            prev[prev.length - 1].stepNumber >= result.stepNumber
+          ) {
             return prev;
           }
           return [...prev, result];
         });
         setCurrentState(result.stateAfter);
 
-        await refreshAvailableActions(result.stateAfter, crafterStats, recipeId);
+        await refreshAvailableActions(
+          result.stateAfter,
+          crafterStats,
+          recipeId,
+        );
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setError(err instanceof ApiClientError ? err.body.error : "Failed to execute action");
+        setError(
+          err instanceof ApiClientError
+            ? err.body.error
+            : "Failed to execute action",
+        );
       } finally {
         executingRef.current = false;
         if (!controller.signal.aborted) setIsLoading(false);
@@ -477,7 +538,11 @@ export function useSimulator(): UseSimulatorReturn {
       await refreshAvailableActions(state, crafterStats, recipeId);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof ApiClientError ? err.body.error : "Failed to reset craft");
+      setError(
+        err instanceof ApiClientError
+          ? err.body.error
+          : "Failed to reset craft",
+      );
     } finally {
       if (!controller.signal.aborted) setIsLoading(false);
     }
@@ -506,7 +571,11 @@ export function useSimulator(): UseSimulatorReturn {
   }, [stateHistory]);
 
   const loadSharedRotation = useCallback(
-    async (sharedRecipeId: number, stats: CrafterStatsInput, sharedActionIds: number[]) => {
+    async (
+      sharedRecipeId: number,
+      stats: CrafterStatsInput,
+      sharedActionIds: number[],
+    ) => {
       setIsLoading(true);
       setError(null);
 

@@ -83,6 +83,39 @@ pub struct MctsSolver {
     rollout_actions: Vec<ActionId>,
     candidate: Vec<ActionId>,
     best_sequence: Vec<ActionId>,
+    session: Option<Session>,
+}
+
+/// The loop state of a search between [`MctsSolver::begin`] and [`MctsSolver::finish`]. Kept
+/// out of the solver's scratch fields so a chunked run and a one-shot [`MctsSolver::solve`] walk
+/// the same iterations in the same order.
+struct Session {
+    recipe: Recipe,
+    stats: CrafterStats,
+    constraints: SolverConstraints,
+    settings: SolverSettings,
+    root: u32,
+    rng: Xoshiro256,
+    started_ms: f64,
+    iterations: u64,
+    best_reward: f64,
+    without_improvement: u64,
+    done: bool,
+}
+
+/// What a search has found so far. `best_*` replay the best sequence with the engine, so they are
+/// the numbers [`MctsSolver::finish`] will report if the search stopped now.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SearchProgress {
+    pub iterations: u64,
+    pub nodes_explored: u64,
+    pub elapsed_ms: f64,
+    pub best_steps: usize,
+    pub best_quality_percent: f64,
+    pub best_hq_percent: i32,
+    /// A stop condition was hit (budget, iteration cap, perfect reward or early termination);
+    /// further [`MctsSolver::run`] calls do nothing.
+    pub done: bool,
 }
 
 impl MctsSolver {
@@ -95,6 +128,7 @@ impl MctsSolver {
             rollout_actions: Vec::with_capacity(64),
             candidate: Vec::with_capacity(64),
             best_sequence: Vec::with_capacity(64),
+            session: None,
         }
     }
 
@@ -107,6 +141,8 @@ impl MctsSolver {
         self.arena.memory_bytes()
     }
 
+    /// One-shot search: [`MctsSolver::begin`], [`MctsSolver::run`] to a stop condition,
+    /// [`MctsSolver::finish`].
     pub fn solve(
         &mut self,
         recipe: &Recipe,
@@ -115,10 +151,23 @@ impl MctsSolver {
         settings: &SolverSettings,
         now_ms: Clock<'_>,
     ) -> SolverResult {
-        let started = now_ms();
+        self.begin(recipe, stats, constraints, settings, &mut *now_ms);
+        self.run(u64::MAX, &mut *now_ms);
+        self.finish(now_ms)
+    }
+
+    /// Seeds the search with the greedy rotation and builds the root. Drops any search in
+    /// progress.
+    pub fn begin(
+        &mut self,
+        recipe: &Recipe,
+        stats: &CrafterStats,
+        constraints: &SolverConstraints,
+        settings: &SolverSettings,
+        now_ms: Clock<'_>,
+    ) {
+        let started_ms = now_ms();
         let initial = create_initial(recipe, stats);
-        let mut rng = Xoshiro256::from_seed(settings.random_seed.unwrap_or(DEFAULT_SEED));
-        let mut iterations: u64 = 0;
 
         self.best_sequence.clear();
         let mut best_reward = -1.0;
@@ -143,42 +192,128 @@ impl MctsSolver {
             .arena
             .push_root(initial, self.legal(&initial, stats, recipe, constraints));
 
-        let max_iterations = settings.max_iterations.unwrap_or(u64::MAX);
-        let mut without_improvement: u64 = 0;
+        self.session = Some(Session {
+            recipe: *recipe,
+            stats: *stats,
+            constraints: *constraints,
+            settings: *settings,
+            root,
+            rng: Xoshiro256::from_seed(settings.random_seed.unwrap_or(DEFAULT_SEED)),
+            started_ms,
+            iterations: 0,
+            best_reward,
+            without_improvement: 0,
+            done: false,
+        });
+    }
 
-        while now_ms() - started < settings.time_budget_ms && iterations < max_iterations {
+    /// Runs up to `max_iterations` more iterations of the search begun by [`MctsSolver::begin`],
+    /// stopping early at the budget, the settings' iteration cap, a perfect reward or the
+    /// early-termination threshold. A worker calls this in slices and yields between them.
+    ///
+    /// # Panics
+    ///
+    /// Without a search in progress.
+    pub fn run(&mut self, max_iterations: u64, now_ms: Clock<'_>) -> SearchProgress {
+        let mut session = self.session.take().expect("begin before run");
+        let Session {
+            recipe,
+            stats,
+            constraints,
+            settings,
+            root,
+            ..
+        } = session;
+        let max_total = settings.max_iterations.unwrap_or(u64::MAX);
+        let mut ran: u64 = 0;
+
+        while !session.done && ran < max_iterations {
+            if now_ms() - session.started_ms >= settings.time_budget_ms
+                || session.iterations >= max_total
+            {
+                session.done = true;
+                break;
+            }
+
             let selected = self.select(root);
             let (expanded, expanded_state) =
-                self.expand(selected, stats, recipe, constraints, &mut rng);
-            let reward = self.rollout(expanded_state, stats, recipe, constraints, &mut rng);
+                self.expand(selected, &stats, &recipe, &constraints, &mut session.rng);
+            let reward = self.rollout(
+                expanded_state,
+                &stats,
+                &recipe,
+                &constraints,
+                &mut session.rng,
+            );
             self.arena.backpropagate(expanded, reward);
 
-            if reward > best_reward {
+            if reward > session.best_reward {
                 self.candidate.clear();
                 self.arena.path_actions(expanded, &mut self.candidate);
                 self.candidate.extend_from_slice(&self.rollout_actions);
                 if self.candidate.len() <= constraints.max_steps {
-                    best_reward = reward;
+                    session.best_reward = reward;
                     core::mem::swap(&mut self.best_sequence, &mut self.candidate);
-                    without_improvement = 0;
+                    session.without_improvement = 0;
                 } else {
-                    without_improvement += 1;
+                    session.without_improvement += 1;
                 }
             } else {
-                without_improvement += 1;
+                session.without_improvement += 1;
             }
 
-            iterations += 1;
+            session.iterations += 1;
+            ran += 1;
 
-            if best_reward >= self.config.perfect_reward_threshold {
-                break;
-            }
-            if without_improvement >= self.config.early_termination_threshold {
-                break;
+            if session.best_reward >= self.config.perfect_reward_threshold
+                || session.without_improvement >= self.config.early_termination_threshold
+            {
+                session.done = true;
             }
         }
 
-        let solve_time_ms = now_ms() - started;
+        let progress = self.snapshot(&session, now_ms() - session.started_ms);
+        self.session = Some(session);
+        progress
+    }
+
+    /// The search so far, without advancing it.
+    ///
+    /// # Panics
+    ///
+    /// Without a search in progress.
+    pub fn progress(&self, now_ms: Clock<'_>) -> SearchProgress {
+        let session = self.session.as_ref().expect("begin before progress");
+        self.snapshot(session, now_ms() - session.started_ms)
+    }
+
+    fn snapshot(&self, session: &Session, elapsed_ms: f64) -> SearchProgress {
+        let (best_quality_percent, best_hq_percent) = if self.best_sequence.is_empty() {
+            (0.0, 0)
+        } else {
+            let replay = simulate(&session.recipe, &session.stats, &self.best_sequence);
+            (replay.final_quality_percent(), replay.final_hq_percent())
+        };
+        SearchProgress {
+            iterations: session.iterations,
+            nodes_explored: self.arena.len() as u64,
+            elapsed_ms,
+            best_steps: self.best_sequence.len(),
+            best_quality_percent,
+            best_hq_percent,
+            done: session.done,
+        }
+    }
+
+    /// Ends the search begun by [`MctsSolver::begin`] and reports the best rotation found, which
+    /// after a partial run is the best so far.
+    ///
+    /// # Panics
+    ///
+    /// Without a search in progress.
+    pub fn finish(&mut self, now_ms: Clock<'_>) -> SolverResult {
+        let session = self.session.take().expect("begin before finish");
+        let solve_time_ms = now_ms() - session.started_ms;
         let nodes_explored = self.arena.len() as u64;
 
         if self.best_sequence.is_empty() {
@@ -187,7 +322,7 @@ impl MctsSolver {
                 "MCTS solver could not find a valid rotation.",
                 SolverMetrics {
                     solve_time_ms,
-                    iterations_completed: iterations,
+                    iterations_completed: session.iterations,
                     nodes_explored,
                     ..SolverMetrics::default()
                 },
@@ -195,7 +330,7 @@ impl MctsSolver {
         }
 
         let action_ids = self.best_sequence.clone();
-        let simulation = simulate(recipe, stats, &action_ids);
+        let simulation = simulate(&session.recipe, &session.stats, &action_ids);
         let macros = export_to_macro(&action_ids, &MacroOptions::default());
 
         SolverResult {
@@ -208,7 +343,7 @@ impl MctsSolver {
                 final_hq_percent: simulation.final_hq_percent(),
                 craft_completed: simulation.success(),
                 nodes_explored,
-                iterations_completed: iterations,
+                iterations_completed: session.iterations,
             },
             action_ids,
             simulation: Some(simulation),

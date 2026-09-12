@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Header, BottomTabNav, Footer } from "@/components/layout";
 import { ToastProvider, Breadcrumbs, InstallBanner } from "@/components/ui";
 import { FeedbackButton } from "@/components/feedback";
+import { EngineModeFromUrl } from "@/components/EngineModeFromUrl";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CraftPlanProvider } from "@/contexts/CraftPlanContext";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
@@ -12,8 +13,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
   title: {
-    default:
-      "FFXIV Crafting Companion — Recipe Explorer, Simulator & Solver",
+    default: "FFXIV Crafting Companion — Recipe Explorer, Simulator & Solver",
     template: "%s | FFXIV Crafting Companion",
   },
   description:
@@ -76,6 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased">
+        <EngineModeFromUrl />
         <AuthProvider>
           <BreadcrumbProvider>
             <Header />

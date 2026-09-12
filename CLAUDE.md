@@ -6,7 +6,8 @@ Crafting, gathering, gear, and market companion for FFXIV players, with a rotati
 
 - Backend: .NET 10, Clean Architecture. `src/FFXIV.Domain` (crafting engine, formulas, entities; zero dependencies) -> `src/FFXIV.Application` (MediatR 14 handlers, DTOs) -> `src/FFXIV.Infrastructure` (EF Core SQL Server, Identity + JWT, caching, XIVAPI/Universalis/Lodestone clients, Greedy + MCTS solvers) -> `src/FFXIV.Api` (controllers, Swagger, Serilog, Sentry).
 - Frontend: Next.js 16 App Router + React 19 PWA in `frontend/` (Tailwind 4, Recharts, Serwist). Node 22.
-- Rust: `crates/xiv-craft`, a dependency-free port of the crafting engine and of the greedy and MCTS solvers (`solver` module; no bindings yet) that builds for the host and `wasm32-unknown-unknown`. `cargo run --release --example bench` runs the solver benchmarks against the C# numbers. Parity with the C# engine is proven by the JSONL goldens in `tests/FFXIV.Tests/CraftingEngine/TestData/parity/`, written by `ParityGoldenTests` and replayed by the crate's tests. The C# engine is the reference; port changes, never invent them.
+- Rust: `crates/xiv-craft`, a dependency-free port of the crafting engine and of the greedy and MCTS solvers (`solver` module) that builds for the host and `wasm32-unknown-unknown`. `cargo run --release --example bench` runs the solver benchmarks against the C# numbers. Parity with the C# engine is proven by the JSONL goldens in `tests/FFXIV.Tests/CraftingEngine/TestData/parity/`, written by `ParityGoldenTests` and replayed by the crate's tests. The C# engine is the reference; port changes, never invent them.
+- WASM: `crates/xiv-craft-wasm` wraps the crate with wasm-bindgen using the API's DTO shapes. Its output is **committed** at `frontend/src/wasm/` (neither Vercel nor frontend CI has Rust); `npm run wasm:build` in `frontend/` regenerates it and records the `crates/` git tree hash in `BUILD.json`, and `npm run wasm:check` plus the `WasmArtifactTests` xUnit test fail when the artifact is stale. The frontend runs the simulator and solver from it by default (`src/lib/engine-mode.ts`: `localStorage["ffxiv_engine"]` or `NEXT_PUBLIC_ENGINE_MODE`, `api` falls back to the .NET endpoints); recipe parameters still come from `GET /api/recipes/{id}/crafting-parameters`.
 - Deploy: Azure Container Apps + Azure SQL via `infra/` Bicep; frontend on Vercel. See `DEPLOYMENT.md`. End-to-end manual test flows: `TESTING_GUIDE.md`.
 
 ## Commands
@@ -18,6 +19,8 @@ dotnet build FFXIVCraftingCompanion.slnx --configuration Release
 dotnet test FFXIVCraftingCompanion.slnx --configuration Release
 cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm run build
 cd crates/xiv-craft && cargo test && cargo build --target wasm32-unknown-unknown --release
+cd crates/xiv-craft-wasm && cargo test
+cd frontend && npm run wasm:build && npm run wasm:check   # after any change under crates/; commit src/wasm/
 ```
 
 Regenerating the parity goldens after an intended C# engine change (the generator test otherwise fails on the first differing byte):
