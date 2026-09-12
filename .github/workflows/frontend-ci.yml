@@ -33,5 +33,23 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Check the committed wasm artifact
+        run: npm run wasm:check
+
       - name: Build
         run: npm run build
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end (offline simulator and solver)
+        # Rebuilds against the mock API the tests own; see e2e/mock-api.mjs.
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
