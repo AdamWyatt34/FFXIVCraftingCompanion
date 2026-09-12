@@ -140,11 +140,12 @@ pub struct SolverSession {
 
 #[wasm_bindgen]
 impl SolverSession {
-    /// `max_nodes` caps the tree; about 130 bytes per node in practice.
+    /// `max_nodes` caps the tree (about 130 bytes per node in practice). `early_termination`
+    /// is the iterations-without-improvement stop; omit it for the C# default of 5000.
     #[wasm_bindgen(constructor)]
-    pub fn new(max_nodes: u32) -> SolverSession {
+    pub fn new(max_nodes: u32, early_termination: Option<u32>) -> SolverSession {
         SolverSession {
-            inner: engine::Session::new(max_nodes as usize),
+            inner: engine::Session::new(max_nodes as usize, early_termination.map(u64::from)),
         }
     }
 

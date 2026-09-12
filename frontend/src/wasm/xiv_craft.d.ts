@@ -11,9 +11,10 @@ export class SolverSession {
     begin(recipe: any, stats: any, starting_quality: number, constraints: any, settings: any): void;
     finish(): any;
     /**
-     * `max_nodes` caps the tree; about 130 bytes per node in practice.
+     * `max_nodes` caps the tree (about 130 bytes per node in practice). `early_termination`
+     * is the iterations-without-improvement stop; omit it for the C# default of 5000.
      */
-    constructor(max_nodes: number);
+    constructor(max_nodes: number, early_termination?: number | null);
     progress(): any;
     run(max_iterations: number): any;
     tree_memory_bytes(): number;
@@ -52,7 +53,7 @@ export interface InitOutput {
     readonly simulate: (a: any, b: any, c: number, d: number, e: any, f: any) => [number, number, number];
     readonly solversession_begin: (a: number, b: any, c: any, d: number, e: any, f: any) => [number, number];
     readonly solversession_finish: (a: number) => [number, number, number];
-    readonly solversession_new: (a: number) => number;
+    readonly solversession_new: (a: number, b: number) => number;
     readonly solversession_progress: (a: number) => [number, number, number];
     readonly solversession_run: (a: number, b: number) => [number, number, number];
     readonly solversession_tree_memory_bytes: (a: number) => number;

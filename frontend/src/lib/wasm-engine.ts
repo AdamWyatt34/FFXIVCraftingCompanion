@@ -77,7 +77,14 @@ export interface WasmEngine {
     startingQuality: number,
     constraints?: SolverConstraints,
   ): SolverResult;
-  createSolverSession(maxNodes: number): SolverSession;
+  /**
+   * `earlyTermination` is the crate's iterations-without-improvement stop; omitted, it is the
+   * C# default of 5000, which at WASM iteration rates ends a search within tens of milliseconds.
+   */
+  createSolverSession(
+    maxNodes: number,
+    earlyTermination?: number,
+  ): SolverSession;
 }
 
 /** A resumable MCTS search; see `SolverSession` in the crate. */
@@ -141,8 +148,8 @@ function wrap(mod: WasmModule): WasmEngine {
         startingQuality,
         constraints ?? null,
       ) as SolverResult,
-    createSolverSession: (maxNodes) => {
-      const session = new mod.SolverSession(maxNodes);
+    createSolverSession: (maxNodes, earlyTermination) => {
+      const session = new mod.SolverSession(maxNodes, earlyTermination ?? null);
       return {
         begin: (recipe, stats, startingQuality, constraints, settings) =>
           session.begin(recipe, stats, startingQuality, constraints, settings),

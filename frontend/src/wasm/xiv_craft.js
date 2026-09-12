@@ -39,11 +39,13 @@ export class SolverSession {
         return takeFromExternrefTable0(ret[0]);
     }
     /**
-     * `max_nodes` caps the tree; about 130 bytes per node in practice.
+     * `max_nodes` caps the tree (about 130 bytes per node in practice). `early_termination`
+     * is the iterations-without-improvement stop; omit it for the C# default of 5000.
      * @param {number} max_nodes
+     * @param {number | null} [early_termination]
      */
-    constructor(max_nodes) {
-        const ret = wasm.solversession_new(max_nodes);
+    constructor(max_nodes, early_termination) {
+        const ret = wasm.solversession_new(max_nodes, isLikeNone(early_termination) ? Number.MAX_SAFE_INTEGER : (early_termination) >>> 0);
         this.__wbg_ptr = ret;
         SolverSessionFinalization.register(this, this.__wbg_ptr, this);
         return this;

@@ -183,10 +183,16 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(max_nodes: usize) -> Session {
+    /// `early_termination_threshold` is the C# rule (iterations without improvement) when `None`.
+    /// That count was tuned for the C# iteration rate; at WASM rates it stops a search within a
+    /// few tens of milliseconds, so a browser passes a large value and applies its own stall rule.
+    pub fn new(max_nodes: usize, early_termination_threshold: Option<u64>) -> Session {
+        let defaults = MctsConfig::default();
         let config = MctsConfig {
             max_nodes,
-            ..MctsConfig::default()
+            early_termination_threshold: early_termination_threshold
+                .unwrap_or(defaults.early_termination_threshold),
+            ..defaults
         };
         Session {
             solver: MctsSolver::new(config, GreedySolverConfig::default()),

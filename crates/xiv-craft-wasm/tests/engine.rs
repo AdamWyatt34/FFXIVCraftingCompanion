@@ -443,7 +443,7 @@ fn greedy_solve_honours_the_request_constraints() {
 
 #[test]
 fn session_runs_in_slices_and_finishes_with_the_best_rotation() {
-    let mut session = engine::Session::new(100_000);
+    let mut session = engine::Session::new(100_000, None);
     session.begin(
         &recipe(),
         &stats(),
@@ -480,6 +480,39 @@ fn session_runs_in_slices_and_finishes_with_the_best_rotation() {
     );
     assert!(result.metrics.craft_completed);
     assert!(session.tree_memory_bytes() > 0);
+}
+
+#[test]
+fn a_raised_early_termination_threshold_keeps_the_search_running() {
+    let settings = SolverSettingsDto {
+        time_budget_ms: f64::INFINITY,
+        max_iterations: Some(40_000),
+        random_seed: Some(42),
+    };
+    let run = |threshold: Option<u64>| {
+        let mut session = engine::Session::new(100_000, threshold);
+        session.begin(
+            &recipe(),
+            &stats(),
+            0,
+            &SolverConstraintsDto::default(),
+            &settings,
+            &mut frozen(),
+        );
+        session.run(u64::MAX, &mut frozen()).iterations
+    };
+
+    let default_stop = run(None);
+    let raised = run(Some(u64::MAX));
+
+    assert!(
+        default_stop < 40_000.0,
+        "the C# rule stops within the cap: {default_stop}"
+    );
+    assert_eq!(
+        raised, 40_000.0,
+        "without the rule only the cap stops the search"
+    );
 }
 
 #[test]
