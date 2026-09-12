@@ -167,6 +167,12 @@ function classify(
   return "Standard";
 }
 
+/**
+ * `RecipeDifficultyClassifier.GetAdaptiveTimeBudgetMs`. The same table serves the browser as the
+ * ceiling: the worker stops earlier once a search has gone three seconds without improvement, so
+ * only a search that keeps finding better rotations runs the full budget. A shorter table was
+ * tried and cut off recipes whose first improvement lands after two seconds.
+ */
 const ADAPTIVE_BUDGET_MS: Record<RecipeDifficulty, number> = {
   Trivial: 1_000,
   Easy: 3_000,

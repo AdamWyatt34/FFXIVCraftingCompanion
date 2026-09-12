@@ -27,11 +27,13 @@ const MAX_NODES = 600_000;
 /**
  * The crate's early-termination rule counts iterations without improvement, tuned for the C#
  * solver's ~12k iterations per second. At 250k-1M per second here it would stop a search after
- * ~20 ms with the greedy seed, so it is lifted: the search spends its adaptive budget (1-15 s by
- * recipe difficulty) or stops on a perfect reward. Improvements arrive in bursts seconds apart,
- * which is why a shorter wall-clock stall rule was tried and rejected.
+ * ~20 ms with the greedy seed, so it is lifted and replaced by a wall-clock rule: stop once the
+ * best rotation has not improved for STALL_MS. Improvements arrive in bursts seconds apart (1 s and 2 s
+ * stalls were tried and cut searches off just before an improvement), so this is the floor and the
+ * budget (see solver-client.ts) is the ceiling.
  */
 const CRATE_EARLY_TERMINATION_OFF = 0xffff_ffff;
+const STALL_MS = 3_000;
 const SLICE_TARGET_MS = 25;
 const PROGRESS_INTERVAL_MS = 100;
 const MIN_SLICE_ITERATIONS = 200;
@@ -135,6 +137,9 @@ async function runMcts(request: SolveWorkerRequest): Promise<void> {
 
     let iterationsPerSlice = 500;
     let lastProgressAt = 0;
+    let bestQuality = -1;
+    let bestSteps = Number.MAX_SAFE_INTEGER;
+    let lastImprovementAt = performance.now();
     for (;;) {
       const sliceStarted = performance.now();
       const progress = session.run(iterationsPerSlice);
@@ -148,7 +153,21 @@ async function runMcts(request: SolveWorkerRequest): Promise<void> {
       );
 
       const now = performance.now();
-      if (progress.done || now - lastProgressAt >= PROGRESS_INTERVAL_MS) {
+      if (
+        progress.bestQualityPercent > bestQuality ||
+        (progress.bestQualityPercent === bestQuality &&
+          progress.bestSteps < bestSteps)
+      ) {
+        bestQuality = progress.bestQualityPercent;
+        bestSteps = progress.bestSteps;
+        lastImprovementAt = now;
+      }
+      const stalled = now - lastImprovementAt >= STALL_MS;
+      if (
+        progress.done ||
+        stalled ||
+        now - lastProgressAt >= PROGRESS_INTERVAL_MS
+      ) {
         lastProgressAt = now;
         post({
           type: "progress",
@@ -165,7 +184,7 @@ async function runMcts(request: SolveWorkerRequest): Promise<void> {
           },
         });
       }
-      if (progress.done) break;
+      if (progress.done || stalled) break;
 
       await yieldToEventLoop();
       if (search.cancelled) {
