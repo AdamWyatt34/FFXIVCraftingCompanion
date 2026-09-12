@@ -9,6 +9,7 @@ pub mod hq;
 pub mod macro_export;
 pub mod rng;
 pub mod simulator;
+pub mod solver;
 pub mod state;
 
 pub use actions::{Action, ActionAvailability, ActionCategory, ActionId};
@@ -21,5 +22,9 @@ pub use rng::DotNetRandom;
 pub use simulator::{
     action_availability, create_initial, execute_action, legal_actions, simulate, simulate_with,
     SimulationOptions, SimulationResult, StepResult, DEFAULT_SEED,
+};
+pub use solver::{
+    GreedySolverConfig, MctsConfig, MctsSolver, SolverAlgorithm, SolverConstraints, SolverMetrics,
+    SolverResult, SolverSettings, SolverStatus,
 };
 pub use state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};

@@ -6,7 +6,7 @@ Crafting, gathering, gear, and market companion for FFXIV players, with a rotati
 
 - Backend: .NET 10, Clean Architecture. `src/FFXIV.Domain` (crafting engine, formulas, entities; zero dependencies) -> `src/FFXIV.Application` (MediatR 14 handlers, DTOs) -> `src/FFXIV.Infrastructure` (EF Core SQL Server, Identity + JWT, caching, XIVAPI/Universalis/Lodestone clients, Greedy + MCTS solvers) -> `src/FFXIV.Api` (controllers, Swagger, Serilog, Sentry).
 - Frontend: Next.js 16 App Router + React 19 PWA in `frontend/` (Tailwind 4, Recharts, Serwist). Node 22.
-- Rust: `crates/xiv-craft`, a dependency-free port of the crafting engine (no solver, no bindings yet) that builds for the host and `wasm32-unknown-unknown`. Parity with the C# engine is proven by the JSONL goldens in `tests/FFXIV.Tests/CraftingEngine/TestData/parity/`, written by `ParityGoldenTests` and replayed by the crate's tests. The C# engine is the reference; port changes, never invent them.
+- Rust: `crates/xiv-craft`, a dependency-free port of the crafting engine and of the greedy and MCTS solvers (`solver` module; no bindings yet) that builds for the host and `wasm32-unknown-unknown`. `cargo run --release --example bench` runs the solver benchmarks against the C# numbers. Parity with the C# engine is proven by the JSONL goldens in `tests/FFXIV.Tests/CraftingEngine/TestData/parity/`, written by `ParityGoldenTests` and replayed by the crate's tests. The C# engine is the reference; port changes, never invent them.
 - Deploy: Azure Container Apps + Azure SQL via `infra/` Bicep; frontend on Vercel. See `DEPLOYMENT.md`. End-to-end manual test flows: `TESTING_GUIDE.md`.
 
 ## Commands

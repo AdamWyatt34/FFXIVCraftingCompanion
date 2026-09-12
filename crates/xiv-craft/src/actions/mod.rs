@@ -211,6 +211,16 @@ impl Action {
         Action::ALL.iter().copied().find(|a| a.id() == id)
     }
 
+    /// Position in [`Action::ALL`], for per-action tables and bitsets. The enum is declared in
+    /// registry order, so this is the discriminant.
+    pub const fn index(self) -> usize {
+        self as usize
+    }
+
+    pub const fn from_index(index: usize) -> Action {
+        Action::ALL[index]
+    }
+
     /// Case-insensitive lookup by the C# `Name` (the identifier form, e.g. `ByregotsBlessing`).
     pub fn from_name(name: &str) -> Option<Action> {
         Action::ALL
@@ -519,6 +529,14 @@ mod tests {
             );
         }
         assert_eq!(Action::from_id(999999), None);
+    }
+
+    #[test]
+    fn index_is_the_registry_position() {
+        for (position, action) in Action::ALL.iter().enumerate() {
+            assert_eq!(action.index(), position);
+            assert_eq!(Action::from_index(position), *action);
+        }
     }
 
     #[test]
