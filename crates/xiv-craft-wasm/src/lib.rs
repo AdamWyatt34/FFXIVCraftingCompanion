@@ -111,18 +111,22 @@ pub fn action_catalog(level: Option<i32>) -> Result<JsValue, JsError> {
     to_js(&engine::action_catalog(level))
 }
 
+/// The greedy solver; `constraints` may be null for the API's quick-solve defaults.
 #[wasm_bindgen]
-pub fn quick_solve(
+pub fn greedy_solve(
     recipe: JsValue,
     stats: JsValue,
     starting_quality: i32,
+    constraints: JsValue,
 ) -> Result<JsValue, JsError> {
     let recipe: RecipeParametersDto = from_js(recipe)?;
     let stats: CrafterStatsDto = from_js(stats)?;
-    to_js(&engine::quick_solve(
+    let constraints: SolverConstraintsDto = optional(constraints)?;
+    to_js(&engine::greedy_solve(
         &recipe,
         &stats,
         starting_quality,
+        &constraints,
         &mut js_clock(),
     ))
 }

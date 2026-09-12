@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { quickSolve, getBisStats, ApiClientError } from "@/lib/api-client";
+import { getBisStats, ApiClientError } from "@/lib/api-client";
+import { quickSolve } from "@/lib/solver-client";
 import { WHAT_IF_CONSTANTS, WHAT_IF_PRESETS } from "@/lib/constants";
 import type { WhatIfStatSet, WhatIfResult, SolverResult } from "@/types/solver";
 
@@ -32,7 +33,10 @@ function cacheSet(key: string, val: SolverResult): void {
 }
 
 // Module-level cache for BiS stats
-let bisCache: { key: string; stats: { craftsmanship: number; control: number; cp: number } } | null = null;
+let bisCache: {
+  key: string;
+  stats: { craftsmanship: number; control: number; cp: number };
+} | null = null;
 
 export interface UseWhatIfReturn {
   baseStats: WhatIfStatSet | null;
@@ -113,7 +117,8 @@ export function useWhatIf(): UseWhatIfReturn {
         };
       } catch (err) {
         if (signal.aborted) return entry;
-        if (err instanceof DOMException && err.name === "AbortError") return entry;
+        if (err instanceof DOMException && err.name === "AbortError")
+          return entry;
 
         const msg =
           err instanceof ApiClientError
@@ -142,9 +147,7 @@ export function useWhatIf(): UseWhatIfReturn {
 
         solveEntry(entry, controller.signal).then((resolved) => {
           if (controller.signal.aborted) return;
-          setResults((prev) =>
-            prev.map((r, i) => (i === idx ? resolved : r)),
-          );
+          setResults((prev) => prev.map((r, i) => (i === idx ? resolved : r)));
         });
       });
     },

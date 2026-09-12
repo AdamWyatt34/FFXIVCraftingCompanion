@@ -34,8 +34,8 @@ export default function OfflinePage() {
         You&apos;re Offline
       </h1>
       <p className="text-text-secondary mb-8 max-w-md">
-        It looks like you&apos;ve lost your internet connection.
-        Some features are still available from your cache.
+        It looks like you&apos;ve lost your internet connection. Some features
+        are still available from your cache.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md mb-8">
@@ -48,6 +48,7 @@ export default function OfflinePage() {
             <li>Cached item data</li>
             <li>Gear recommendations</li>
             <li>Crafting simulator</li>
+            <li>Rotation solver (cached recipes)</li>
           </ul>
         </div>
         <div className="bg-bg-surface border border-border rounded-lg p-4">
@@ -55,7 +56,6 @@ export default function OfflinePage() {
             Requires Internet
           </h2>
           <ul className="text-sm text-text-secondary space-y-1 text-left">
-            <li>Rotation solver</li>
             <li>Market prices</li>
             <li>New searches</li>
             <li>Account sync</li>

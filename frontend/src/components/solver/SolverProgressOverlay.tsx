@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Eye, X } from "lucide-react";
 import type { SolverJobStatus, SolverResult } from "@/types/solver";
+import type { SolverProgress } from "@/types/solver-worker";
 
 interface SolverProgressOverlayProps {
   solverStatus: SolverJobStatus | "Idle";
@@ -11,6 +12,8 @@ interface SolverProgressOverlayProps {
   quickResult: SolverResult | null;
   elapsedMs: number;
   progressPercent: number;
+  /** Live search statistics from the local solver; absent on the API path. */
+  progress?: SolverProgress | null;
   error: string | null;
   onLoadPreview: () => void;
   onCancelSolve: () => void;
@@ -25,16 +28,17 @@ function OverlayContent({
   quickResult,
   elapsedMs,
   progressPercent,
+  progress,
   error,
   onLoadPreview,
   onCancelSolve,
 }: Omit<SolverProgressOverlayProps, "solverResult">) {
+  const bestHq = progress?.bestHQPercent ?? quickResult?.metrics.finalHQPercent;
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   // Local elapsed timer for smoother updates
   const [displayElapsed, setDisplayElapsed] = useState(elapsedMs);
-  const isSolving =
-    solverStatus === "Queued" || solverStatus === "Running";
+  const isSolving = solverStatus === "Queued" || solverStatus === "Running";
 
   useEffect(() => {
     if (!isSolving) {
@@ -60,7 +64,11 @@ function OverlayContent({
   }, []);
 
   return (
-    <div className="text-center space-y-4" role="dialog" aria-label="Solver progress">
+    <div
+      className="text-center space-y-4"
+      role="dialog"
+      aria-label="Solver progress"
+    >
       {/* Spinner */}
       <Loader2 size={32} className="text-gold animate-spin mx-auto" />
 
@@ -84,8 +92,13 @@ function OverlayContent({
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <div className="text-sm text-text-muted mt-1.5 tabular-nums" aria-live="polite">
+        <div
+          className="text-sm text-text-muted mt-1.5 tabular-nums"
+          aria-live="polite"
+        >
           {formatElapsed(displayElapsed)} elapsed
+          {progress?.iterations !== undefined &&
+            ` · ${progress.iterations.toLocaleString()} iterations`}
         </div>
       </div>
 
@@ -94,15 +107,15 @@ function OverlayContent({
         <div className="bg-bg-elevated rounded-lg p-2">
           <div className="text-text-muted text-xs">Algorithm</div>
           <div className="text-text-primary font-medium">
-            {quickResult?.metrics.algorithmUsed ?? solverStatus}
+            {progress?.algorithm ??
+              quickResult?.metrics.algorithmUsed ??
+              solverStatus}
           </div>
         </div>
         <div className="bg-bg-elevated rounded-lg p-2">
           <div className="text-text-muted text-xs">Best Quality</div>
           <div className="text-text-primary font-medium">
-            {quickResult
-              ? `${quickResult.metrics.finalHQPercent}% HQ`
-              : "--"}
+            {bestHq !== undefined ? `${bestHq}% HQ` : "--"}
           </div>
         </div>
       </div>
@@ -114,7 +127,8 @@ function OverlayContent({
             Quick Preview Available
           </div>
           <div className="text-sm text-text-primary font-medium mb-2">
-            {quickResult.metrics.totalSteps} steps · {quickResult.metrics.finalHQPercent}% HQ
+            {quickResult.metrics.totalSteps} steps ·{" "}
+            {quickResult.metrics.finalHQPercent}% HQ
           </div>
           <button
             onClick={onLoadPreview}
@@ -127,9 +141,7 @@ function OverlayContent({
       )}
 
       {/* Error display */}
-      {error && (
-        <p className="text-sm text-red-400">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       {/* Cancel button */}
       <button

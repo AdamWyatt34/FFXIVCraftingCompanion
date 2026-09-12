@@ -70,11 +70,12 @@ export interface WasmEngine {
   ): Omit<SimulationResult, "recipe"> & { recipe: null };
   exportMacro(actionIds: number[], options?: MacroOptions): ExportMacroResult;
   actionCatalog(level?: number): ActionInfo[];
-  /** The greedy solver with default constraints, as `GET solve/quick`. */
-  quickSolve(
+  /** The greedy solver; no constraints means the API's quick-solve defaults. */
+  greedySolve(
     recipe: RecipeCraftingParametersDto,
     stats: CrafterStatsInput,
     startingQuality: number,
+    constraints?: SolverConstraints,
   ): SolverResult;
   createSolverSession(maxNodes: number): SolverSession;
 }
@@ -133,8 +134,13 @@ function wrap(mod: WasmModule): WasmEngine {
         options ?? null,
       ) as ExportMacroResult,
     actionCatalog: (level) => mod.action_catalog(level ?? null) as ActionInfo[],
-    quickSolve: (recipe, stats, startingQuality) =>
-      mod.quick_solve(recipe, stats, startingQuality) as SolverResult,
+    greedySolve: (recipe, stats, startingQuality, constraints) =>
+      mod.greedy_solve(
+        recipe,
+        stats,
+        startingQuality,
+        constraints ?? null,
+      ) as SolverResult,
     createSolverSession: (maxNodes) => {
       const session = new mod.SolverSession(maxNodes);
       return {

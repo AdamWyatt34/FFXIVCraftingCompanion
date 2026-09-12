@@ -382,8 +382,14 @@ fn action_catalog_sorts_by_category_name_then_level() {
 }
 
 #[test]
-fn quick_solve_is_greedy_with_the_api_metrics() {
-    let result = engine::quick_solve(&recipe(), &stats(), 0, &mut frozen());
+fn greedy_solve_reports_the_api_metrics() {
+    let result = engine::greedy_solve(
+        &recipe(),
+        &stats(),
+        0,
+        &SolverConstraintsDto::default(),
+        &mut frozen(),
+    );
     assert_eq!(result.metrics.algorithm_used, "Greedy");
     assert!(result.metrics.craft_completed);
     assert_eq!(result.action_ids.len() as i32, result.metrics.total_steps);
@@ -399,12 +405,18 @@ fn quick_solve_is_greedy_with_the_api_metrics() {
 }
 
 #[test]
-fn quick_solve_on_an_expert_recipe_fails_like_the_api() {
+fn greedy_solve_on_an_expert_recipe_fails_like_the_api() {
     let expert = RecipeParametersDto {
         is_expert: true,
         ..recipe()
     };
-    let result = engine::quick_solve(&expert, &stats(), 0, &mut frozen());
+    let result = engine::greedy_solve(
+        &expert,
+        &stats(),
+        0,
+        &SolverConstraintsDto::default(),
+        &mut frozen(),
+    );
     assert_eq!(
         result.error_message.as_deref(),
         Some("Expert recipes require the MCTS solver.")
@@ -412,6 +424,21 @@ fn quick_solve_on_an_expert_recipe_fails_like_the_api() {
     assert!(result.action_ids.is_empty());
     assert!(result.simulation.is_none());
     assert_eq!(result.metrics.algorithm_used, "Greedy");
+}
+
+#[test]
+fn greedy_solve_honours_the_request_constraints() {
+    let capped = engine::greedy_solve(
+        &recipe(),
+        &stats(),
+        0,
+        &SolverConstraintsDto {
+            max_steps: Some(5),
+            ..Default::default()
+        },
+        &mut frozen(),
+    );
+    assert_eq!(capped.action_ids.len(), 5);
 }
 
 #[test]

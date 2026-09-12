@@ -136,13 +136,15 @@ export function export_macro(action_ids, options) {
 }
 
 /**
+ * The greedy solver; `constraints` may be null for the API's quick-solve defaults.
  * @param {any} recipe
  * @param {any} stats
  * @param {number} starting_quality
+ * @param {any} constraints
  * @returns {any}
  */
-export function initial_state(recipe, stats, starting_quality) {
-    const ret = wasm.initial_state(recipe, stats, starting_quality);
+export function greedy_solve(recipe, stats, starting_quality, constraints) {
+    const ret = wasm.greedy_solve(recipe, stats, starting_quality, constraints);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
@@ -155,8 +157,8 @@ export function initial_state(recipe, stats, starting_quality) {
  * @param {number} starting_quality
  * @returns {any}
  */
-export function quick_solve(recipe, stats, starting_quality) {
-    const ret = wasm.quick_solve(recipe, stats, starting_quality);
+export function initial_state(recipe, stats, starting_quality) {
+    const ret = wasm.initial_state(recipe, stats, starting_quality);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }

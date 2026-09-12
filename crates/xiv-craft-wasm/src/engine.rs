@@ -2,7 +2,7 @@
 //! host tests can run them; `lib.rs` wraps these for wasm-bindgen with the JS clock.
 
 use xiv_craft::solver::mcts::SearchProgress;
-use xiv_craft::solver::{Clock, GreedySolverConfig, MctsConfig, MctsSolver, SolverConstraints};
+use xiv_craft::solver::{Clock, GreedySolverConfig, MctsConfig, MctsSolver};
 use xiv_craft::{
     action_availability, calculate_starting_quality, execute_action as engine_execute,
     export_to_macro, simulate_with, Action, CraftingState, SolverSettings,
@@ -158,19 +158,19 @@ pub fn action_catalog(level: Option<i32>) -> Vec<ActionInfoDto> {
     catalog
 }
 
-/// `QuickSolveQuery`: the greedy solver with default constraints. Stats and HQ materials are the
-/// caller's; the API's query takes neither a specialist flag nor HQ inputs, so pass the defaults
-/// to match it.
-pub fn quick_solve(
+/// The greedy solver. `QuickSolveQuery` runs it with default constraints and no HQ materials; a
+/// solve job that resolved to Greedy runs it with the request's constraints and starting quality.
+pub fn greedy_solve(
     recipe: &RecipeParametersDto,
     stats: &CrafterStatsDto,
     starting_quality: i32,
+    constraints: &SolverConstraintsDto,
     now_ms: Clock<'_>,
 ) -> SolverResultDto {
     let result = xiv_craft::solver::greedy::solve(
         &recipe.to_recipe(starting_quality),
         &stats.to_stats(),
-        &SolverConstraints::default(),
+        &constraints.to_constraints(),
         &GreedySolverConfig::default(),
         now_ms,
     );

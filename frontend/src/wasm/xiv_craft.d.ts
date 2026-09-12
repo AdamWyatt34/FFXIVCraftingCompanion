@@ -27,9 +27,12 @@ export function execute_action(state: any, action_id: number, stats: any, recipe
 
 export function export_macro(action_ids: Int32Array, options: any): any;
 
-export function initial_state(recipe: any, stats: any, starting_quality: number): any;
+/**
+ * The greedy solver; `constraints` may be null for the API's quick-solve defaults.
+ */
+export function greedy_solve(recipe: any, stats: any, starting_quality: number, constraints: any): any;
 
-export function quick_solve(recipe: any, stats: any, starting_quality: number): any;
+export function initial_state(recipe: any, stats: any, starting_quality: number): any;
 
 export function simulate(recipe: any, stats: any, action_ids: Int32Array, options: any, hq_ingredients: any): any;
 
@@ -44,8 +47,8 @@ export interface InitOutput {
     readonly available_actions: (a: any, b: any, c: any) => [number, number, number];
     readonly execute_action: (a: any, b: number, c: any, d: any) => [number, number, number];
     readonly export_macro: (a: number, b: number, c: any) => [number, number, number];
+    readonly greedy_solve: (a: any, b: any, c: number, d: any) => [number, number, number];
     readonly initial_state: (a: any, b: any, c: number) => [number, number, number];
-    readonly quick_solve: (a: any, b: any, c: number) => [number, number, number];
     readonly simulate: (a: any, b: any, c: number, d: number, e: any, f: any) => [number, number, number];
     readonly solversession_begin: (a: number, b: any, c: any, d: number, e: any, f: any) => [number, number];
     readonly solversession_finish: (a: number) => [number, number, number];
