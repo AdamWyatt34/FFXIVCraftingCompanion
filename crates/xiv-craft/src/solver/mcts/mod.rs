@@ -39,6 +39,11 @@ pub struct MctsConfig {
     /// a faster solver stops sooner on the wall clock.
     pub early_termination_threshold: u64,
     pub perfect_reward_threshold: f64,
+
+    /// Ceiling on tree nodes (about 144 bytes each). Once reached, the search keeps running
+    /// rollouts from the existing leaves instead of expanding. No C# counterpart: the C# tree is
+    /// unbounded, so the default is too; a Web Worker should set one.
+    pub max_nodes: usize,
 }
 
 impl Default for MctsConfig {
@@ -62,16 +67,18 @@ impl Default for MctsConfig {
 
             early_termination_threshold: 5000,
             perfect_reward_threshold: 0.999,
+
+            max_nodes: usize::MAX,
         }
     }
 }
-
-const INITIAL_ARENA_NODES: usize = 1 << 16;
 
 pub struct MctsSolver {
     config: MctsConfig,
     greedy_config: GreedySolverConfig,
     arena: Arena,
+    /// Actions the current crafter and recipe can ever use; see [`ActionSet::eligible`].
+    eligible: ActionSet,
     rollout_actions: Vec<ActionId>,
     candidate: Vec<ActionId>,
     best_sequence: Vec<ActionId>,
@@ -82,7 +89,8 @@ impl MctsSolver {
         MctsSolver {
             config,
             greedy_config,
-            arena: Arena::with_capacity(INITIAL_ARENA_NODES),
+            arena: Arena::default(),
+            eligible: ActionSet::EMPTY,
             rollout_actions: Vec::with_capacity(64),
             candidate: Vec::with_capacity(64),
             best_sequence: Vec::with_capacity(64),
@@ -123,11 +131,11 @@ impl MctsSolver {
             self.best_sequence.extend_from_slice(&seed.action_ids);
         }
 
+        self.eligible = ActionSet::eligible(stats, recipe);
         self.arena.clear();
-        let root = self.arena.push_root(
-            initial,
-            ActionSet::legal(&initial, stats, recipe, constraints.allow_unsafe_actions),
-        );
+        let root = self
+            .arena
+            .push_root(initial, self.legal(&initial, stats, recipe, constraints));
 
         let max_iterations = settings.max_iterations.unwrap_or(u64::MAX);
         let mut without_improvement: u64 = 0;
@@ -202,6 +210,22 @@ impl MctsSolver {
         }
     }
 
+    fn legal(
+        &self,
+        state: &CraftingState,
+        stats: &CrafterStats,
+        recipe: &Recipe,
+        constraints: &SolverConstraints,
+    ) -> ActionSet {
+        ActionSet::legal_from(
+            self.eligible,
+            state,
+            stats,
+            recipe,
+            constraints.allow_unsafe_actions,
+        )
+    }
+
     fn select(&self, root: u32) -> u32 {
         let mut node = root;
         loop {
@@ -210,18 +234,9 @@ impl MctsSolver {
             {
                 return node;
             }
-            let mut best = NONE;
-            let mut best_score = f64::NEG_INFINITY;
-            for child in self.arena.children(node) {
-                let score = self.arena.ucb1(child, self.config.exploration_constant);
-                // `>=`: the child list is in reverse insertion order, so the last maximum seen is
-                // the first inserted, which is what the C# `MaxBy` returns.
-                if score >= best_score {
-                    best = child;
-                    best_score = score;
-                }
-            }
-            node = best;
+            node = self
+                .arena
+                .select_child(node, self.config.exploration_constant);
         }
     }
 
@@ -234,7 +249,10 @@ impl MctsSolver {
         rng: &mut Xoshiro256,
     ) -> u32 {
         let current = *self.arena.get(node);
-        if current.is_terminal() || current.untried.is_empty() {
+        if current.is_terminal()
+            || current.untried.is_empty()
+            || self.arena.len() >= self.config.max_nodes
+        {
             return node;
         }
 
@@ -243,12 +261,7 @@ impl MctsSolver {
 
         let child_state = action.execute(current.state, stats, recipe, true);
         let untried = if child_state.status == CraftStatus::InProgress {
-            ActionSet::legal(
-                &child_state,
-                stats,
-                recipe,
-                constraints.allow_unsafe_actions,
-            )
+            self.legal(&child_state, stats, recipe, constraints)
         } else {
             ActionSet::EMPTY
         };
@@ -270,9 +283,15 @@ impl MctsSolver {
         while state.status == CraftStatus::InProgress
             && self.rollout_actions.len() < constraints.max_steps
         {
-            let Some(action) =
-                select_rollout_action(&state, stats, recipe, constraints, rng, &self.config)
-            else {
+            let Some(action) = select_rollout_action(
+                self.eligible,
+                &state,
+                stats,
+                recipe,
+                constraints,
+                rng,
+                &self.config,
+            ) else {
                 break;
             };
             state = action.execute(state, stats, recipe, true);
@@ -342,6 +361,7 @@ fn is_opener(action: Action) -> bool {
 }
 
 fn select_rollout_action(
+    eligible: ActionSet,
     state: &CraftingState,
     stats: &CrafterStats,
     recipe: &Recipe,
@@ -353,7 +373,7 @@ fn select_rollout_action(
     let mut scores = [0.0f64; 36];
     let mut count = 0;
 
-    for action in Action::ALL {
+    for action in eligible.iter() {
         if action.fail_reason(state, stats, recipe).is_some() {
             continue;
         }

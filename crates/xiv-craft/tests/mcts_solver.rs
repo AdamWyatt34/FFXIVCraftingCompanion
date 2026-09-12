@@ -206,6 +206,33 @@ fn same_seed_same_result() {
     assert!(first.metrics.iterations_completed <= 20_000);
 }
 
+#[test]
+fn max_nodes_caps_the_tree_and_the_search_still_completes() {
+    let config = MctsConfig {
+        max_nodes: 500,
+        early_termination_threshold: u64::MAX,
+        ..MctsConfig::default()
+    };
+    let mut solver = MctsSolver::new(config, GreedySolverConfig::default());
+
+    let result = solver.solve(
+        &default_recipe(),
+        &default_stats(),
+        &SolverConstraints::default(),
+        &SolverSettings {
+            time_budget_ms: f64::INFINITY,
+            max_iterations: Some(5_000),
+            random_seed: Some(42),
+        },
+        &mut frozen_clock(),
+    );
+
+    assert_eq!(result.status, SolverStatus::Completed);
+    assert!(result.simulation.as_ref().expect("simulation").success());
+    assert_eq!(result.metrics.nodes_explored, 500);
+    assert_eq!(result.metrics.iterations_completed, 5_000);
+}
+
 // MCTSNodeTests
 
 #[test]

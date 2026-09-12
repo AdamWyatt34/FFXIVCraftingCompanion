@@ -8,6 +8,7 @@ pub mod mcts;
 pub mod rng;
 
 use crate::actions::{Action, ActionId};
+use crate::fail_reason::FailReason;
 use crate::simulator::SimulationResult;
 use crate::state::{CrafterStats, CraftingState, Recipe};
 
@@ -153,6 +154,11 @@ impl ActionSet {
         self.iter().nth(n).expect("index within the set")
     }
 
+    /// Every action.
+    pub fn all() -> ActionSet {
+        ActionSet((1u64 << Action::ALL.len()) - 1)
+    }
+
     /// Actions that can execute now, dropping unreliable ones unless `allow_unsafe_actions`. This
     /// is the C# `GetLegalActions` filter shared by expansion and rollout.
     pub fn legal(
@@ -161,8 +167,20 @@ impl ActionSet {
         recipe: &Recipe,
         allow_unsafe_actions: bool,
     ) -> ActionSet {
+        ActionSet::legal_from(ActionSet::all(), state, stats, recipe, allow_unsafe_actions)
+    }
+
+    /// [`ActionSet::legal`] over `candidates` only; the result is the same when `candidates`
+    /// contains every action that could be legal, which is what [`ActionSet::eligible`] gives.
+    pub fn legal_from(
+        candidates: ActionSet,
+        state: &CraftingState,
+        stats: &CrafterStats,
+        recipe: &Recipe,
+        allow_unsafe_actions: bool,
+    ) -> ActionSet {
         let mut set = ActionSet::EMPTY;
-        for action in Action::ALL {
+        for action in candidates.iter() {
             if action.fail_reason(state, stats, recipe).is_some() {
                 continue;
             }
@@ -170,6 +188,30 @@ impl ActionSet {
                 continue;
             }
             set.insert(action);
+        }
+        set
+    }
+
+    /// Actions this crafter can ever use on this recipe: everything except those the initial
+    /// state rejects for a reason that depends only on the stats or the recipe. Evaluating the
+    /// rest per step is what the per-step checks are for; this only trims the loop.
+    pub fn eligible(stats: &CrafterStats, recipe: &Recipe) -> ActionSet {
+        let initial = CraftingState::create_initial(recipe, stats);
+        let mut set = ActionSet::EMPTY;
+        for action in Action::ALL {
+            let static_reason = matches!(
+                action.fail_reason(&initial, stats, recipe),
+                Some(
+                    FailReason::RequiresLevel(_)
+                        | FailReason::RequiresSpecialist
+                        | FailReason::NotOnExpert
+                        | FailReason::RecipeLevelUnavailable
+                        | FailReason::RequiresCrafterLevel(_)
+                )
+            );
+            if !static_reason {
+                set.insert(action);
+            }
         }
         set
     }
@@ -198,5 +240,36 @@ mod tests {
         set.remove(Action::Innovation);
         assert!(!set.contains(Action::Innovation));
         assert!(set.contains(Action::BasicSynthesis));
+        assert_eq!(ActionSet::all().len(), Action::ALL.len());
+    }
+
+    #[test]
+    fn eligible_drops_only_static_exclusions() {
+        let recipe = Recipe {
+            class_job_level: 50,
+            ..Recipe::default()
+        };
+        let stats = CrafterStats {
+            level: 50,
+            cp: 0,
+            ..CrafterStats::default()
+        };
+        let eligible = ActionSet::eligible(&stats, &recipe);
+        assert!(!eligible.contains(Action::Groundwork), "level 72");
+        assert!(!eligible.contains(Action::HeartAndSoul), "specialist");
+        assert!(
+            !eligible.contains(Action::TrainedEye),
+            "crafter level 60 needed"
+        );
+        assert!(
+            eligible.contains(Action::ByregotsBlessing),
+            "IQ gate is dynamic"
+        );
+        assert!(eligible.contains(Action::BasicTouch), "CP gate is dynamic");
+
+        let initial = CraftingState::create_initial(&recipe, &stats);
+        let all = ActionSet::legal(&initial, &stats, &recipe, true);
+        let trimmed = ActionSet::legal_from(eligible, &initial, &stats, &recipe, true);
+        assert_eq!(all, trimmed);
     }
 }

@@ -15,6 +15,7 @@ Rust port of the crafting engine in `src/FFXIV.Domain/CraftingEngine`. The C# en
 - `SolverSettings.max_iterations` bounds the search without a clock. With a seed and an iteration budget a run is reproducible; with a time budget it is not (the iteration count depends on the machine).
 - The tree is an arena (`Vec<Node>`, `u32` links, untried actions as a `u64` bitset); a `MctsSolver` kept between calls allocates nothing per iteration after the first solve.
 - `MctsConfig.early_termination_threshold` counts iterations without improvement, as in C#. At Rust iteration rates the default (5000) stops a search within ~50 ms; pass `u64::MAX` to spend the whole budget.
+- `MctsConfig.max_nodes` caps the tree (about 144 bytes per node; a 10 s search grows to 1.5-2 M nodes). Past the cap the search keeps running rollouts from existing leaves. Unbounded by default, as in C#; set it in a worker.
 - Randomness is xoshiro256** seeded from `SolverSettings.random_seed` (a fixed constant when unset); C# MCTS runs are not replayable across languages, only the engine is.
 
 Benchmark over the ten recipes in `tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json`, with the C# numbers alongside:
