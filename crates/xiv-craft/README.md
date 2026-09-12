@@ -7,6 +7,26 @@ Rust port of the crafting engine in `src/FFXIV.Domain/CraftingEngine`. The C# en
 - Action ids equal the C# `ICraftingAction.Id` values, so saved rotations and macros are interchangeable.
 - Randomness is explicit: `SimulationOptions.random_seed` drives a port of seeded `System.Random`, so seeded C# runs replay exactly.
 
+## Solvers
+
+`xiv_craft::solver` ports `FFXIV.Infrastructure/Solver`: `greedy::solve` (one pass, three phases) and `MctsSolver` (UCB1 search seeded with the greedy rotation). Same knobs as the C# `GreedySolverConfig` and `MCTSConfig`, same result shape (`SolverResult`: action ids, replayed simulation, macros, metrics).
+
+- The wall clock is injected: `solve(..., now_ms: &mut dyn FnMut() -> f64)`. Native callers pass an `Instant`-based closure, a Web Worker passes `performance.now()`; the library never touches `std::time`, so it runs on wasm32.
+- `SolverSettings.max_iterations` bounds the search without a clock. With a seed and an iteration budget a run is reproducible; with a time budget it is not (the iteration count depends on the machine).
+- The tree is an arena (`Vec<Node>`, `u32` links, untried actions as a `u64` bitset); a `MctsSolver` kept between calls allocates nothing per iteration after the first solve.
+- `MctsConfig.early_termination_threshold` counts iterations without improvement, as in C#. At Rust iteration rates the default (5000) stops a search within ~50 ms; pass `u64::MAX` to spend the whole budget.
+- Randomness is xoshiro256** seeded from `SolverSettings.random_seed` (a fixed constant when unset); C# MCTS runs are not replayable across languages, only the engine is.
+
+Benchmark over the ten recipes in `tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json`, with the C# numbers alongside:
+
+```powershell
+cargo run --release --example bench            # 10 s budget, seed 42
+cargo run --release --example bench 2000 7     # 2 s budget, seed 7
+cargo run --release --example bench 10000 42 lv100   # only ids containing "lv100"
+```
+
+`cargo test` runs the same theories at a 1 s budget.
+
 ## Parity
 
 `tests/parity.rs` replays `tests/FFXIV.Tests/CraftingEngine/TestData/parity/*.jsonl` from the .NET test tree (this crate is monorepo-only). The C# side writes those files:

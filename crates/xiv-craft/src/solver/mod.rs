@@ -4,6 +4,8 @@
 
 pub mod difficulty;
 pub mod greedy;
+pub mod mcts;
+pub mod rng;
 
 use crate::actions::{Action, ActionId};
 use crate::simulator::SimulationResult;
@@ -11,6 +13,7 @@ use crate::state::{CrafterStats, CraftingState, Recipe};
 
 pub use difficulty::{adaptive_time_budget_ms, classify, RecipeDifficulty};
 pub use greedy::GreedySolverConfig;
+pub use mcts::{MctsConfig, MctsSolver};
 
 /// Milliseconds from an arbitrary origin; only differences are read.
 pub type Clock<'a> = &'a mut dyn FnMut() -> f64;

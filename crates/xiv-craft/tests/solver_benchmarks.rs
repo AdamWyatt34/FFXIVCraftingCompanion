@@ -3,124 +3,35 @@
 //! its quality and step count are asserted against the values the C# suite prints; that is the
 //! solver-level parity check the goldens do not cover.
 
+mod benchmarks;
 mod common;
 
+use benchmarks::load;
 use common::wall_clock;
-use serde::Deserialize;
-use std::path::PathBuf;
 use xiv_craft::solver::greedy;
-use xiv_craft::{simulate, Action, CrafterStats, GreedySolverConfig, Recipe, SolverConstraints};
+use xiv_craft::{
+    simulate, GreedySolverConfig, MctsConfig, MctsSolver, SolverConstraints, SolverResult,
+    SolverSettings,
+};
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Dataset {
-    benchmarks: Vec<Benchmark>,
-}
+/// The C# theories run MCTS at the JSON's 5-10 s budgets; 1 s gives the Rust solver more
+/// iterations than C# completes in 10 s, and the assertions hold at any budget because the search
+/// is seeded with the greedy rotation.
+const MCTS_BUDGET_MS: f64 = 1000.0;
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Benchmark {
-    id: String,
-    recipe: RecipeJson,
-    stats: StatsJson,
-    community_rotation: CommunityRotation,
-    solver_targets: SolverTargets,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RecipeJson {
-    recipe_id: i32,
-    recipe_level: i32,
-    class_job_level: i32,
-    difficulty: i32,
-    quality: i32,
-    durability: i32,
-    stars: i32,
-    progress_divider: i32,
-    progress_modifier: i32,
-    quality_divider: i32,
-    quality_modifier: i32,
-    suggested_craftsmanship: i32,
-    suggested_control: i32,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct StatsJson {
-    level: i32,
-    craftsmanship: i32,
-    control: i32,
-    cp: i32,
-    is_specialist: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct CommunityRotation {
-    actions: Vec<String>,
-    expected_completion: bool,
-    expected_min_quality_percent: i32,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SolverTargets {
-    greedy_must_complete: bool,
-}
-
-impl Benchmark {
-    fn recipe(&self) -> Recipe {
-        let r = &self.recipe;
-        Recipe {
-            recipe_id: r.recipe_id,
-            recipe_level: r.recipe_level,
-            class_job_level: r.class_job_level,
-            difficulty: r.difficulty,
-            quality: r.quality,
-            durability: r.durability,
-            stars: r.stars,
-            progress_divider: r.progress_divider,
-            progress_modifier: r.progress_modifier,
-            quality_divider: r.quality_divider,
-            quality_modifier: r.quality_modifier,
-            suggested_craftsmanship: r.suggested_craftsmanship,
-            suggested_control: r.suggested_control,
-            ..Recipe::default()
-        }
-    }
-
-    fn stats(&self) -> CrafterStats {
-        CrafterStats {
-            level: self.stats.level,
-            craftsmanship: self.stats.craftsmanship,
-            control: self.stats.control,
-            cp: self.stats.cp,
-            is_specialist: self.stats.is_specialist,
-        }
-    }
-
-    fn community_action_ids(&self) -> Vec<i32> {
-        self.community_rotation
-            .actions
-            .iter()
-            .map(|name| {
-                Action::from_name(name)
-                    .unwrap_or_else(|| panic!("unknown action name in benchmark: '{name}'"))
-                    .id()
-            })
-            .collect()
-    }
-}
-
-fn load() -> Vec<Benchmark> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json");
-    let json =
-        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
-    let dataset: Dataset = serde_json::from_str(&json).expect("benchmark json");
-    assert_eq!(dataset.benchmarks.len(), 10);
-    dataset.benchmarks
+fn solve_mcts(entry: &benchmarks::Benchmark) -> SolverResult {
+    let mut solver = MctsSolver::new(MctsConfig::default(), GreedySolverConfig::default());
+    solver.solve(
+        &entry.recipe(),
+        &entry.stats(),
+        &SolverConstraints::default(),
+        &SolverSettings {
+            time_budget_ms: MCTS_BUDGET_MS,
+            max_iterations: None,
+            random_seed: Some(42),
+        },
+        &mut wall_clock(),
+    )
 }
 
 #[test]
@@ -210,6 +121,59 @@ fn greedy_reproduces_the_csharp_rotations() {
             (*expected_quality, *expected_steps),
             "[{}] greedy differs from C#",
             entry.id
+        );
+    }
+}
+
+#[test]
+fn mcts_achieves_target_quality_vs_community() {
+    for entry in load() {
+        let community = simulate(
+            &entry.recipe(),
+            &entry.stats(),
+            &entry.community_action_ids(),
+        )
+        .final_quality_percent();
+        let target =
+            community * entry.solver_targets.mcts_min_quality_percent_of_community as f64 / 100.0;
+
+        let result = solve_mcts(&entry);
+
+        assert!(
+            result.simulation.as_ref().expect("simulation").success(),
+            "[{}] MCTS completes",
+            entry.id
+        );
+        assert!(
+            result.metrics.final_quality_percent >= target,
+            "[{}] MCTS {:.1}% below {:.1}% ({}% of community {:.1}%)",
+            entry.id,
+            result.metrics.final_quality_percent,
+            target,
+            entry.solver_targets.mcts_min_quality_percent_of_community,
+            community
+        );
+    }
+}
+
+#[test]
+fn mcts_improves_over_greedy() {
+    for entry in load() {
+        let greedy = greedy::solve(
+            &entry.recipe(),
+            &entry.stats(),
+            &SolverConstraints::default(),
+            &GreedySolverConfig::default(),
+            &mut wall_clock(),
+        );
+        let mcts = solve_mcts(&entry);
+
+        assert!(
+            mcts.metrics.final_quality_percent >= greedy.metrics.final_quality_percent,
+            "[{}] MCTS {:.1}% below greedy {:.1}%",
+            entry.id,
+            mcts.metrics.final_quality_percent,
+            greedy.metrics.final_quality_percent
         );
     }
 }
