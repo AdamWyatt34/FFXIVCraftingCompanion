@@ -13,7 +13,12 @@ function dataDir(): string {
   return join(process.cwd(), "public", DATA_ROOT, DATA_VERSION);
 }
 
+// Vercel's deployment protection covers every generated deployment URL (VERCEL_URL), production
+// ones included; only the production domain is public. So production reads through that domain,
+// and previews through their own URL with the bypass secret.
 function deploymentOrigin(): string | null {
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return process.env.NEXT_PUBLIC_SITE_URL ?? null;
 }
@@ -31,6 +36,9 @@ async function fetchFromDeployment<T>(relativePath: string): Promise<T | null> {
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Game data ${relativePath} answered ${response.status}`);
+  // A protected deployment answers with its login page after a redirect, not with the file.
+  if (!(response.headers.get("content-type") ?? "").includes("json"))
+    throw new Error(`Game data ${relativePath} from ${origin} is not JSON; is the deployment behind protection?`);
   return (await response.json()) as T;
 }
 
