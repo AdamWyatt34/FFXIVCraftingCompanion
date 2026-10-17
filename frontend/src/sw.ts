@@ -38,6 +38,21 @@ const runtimeCaching = [
       ],
     }),
   },
+  // Exported game data — versioned, immutable: cache-first, 30 day TTL
+  {
+    matcher: ({ request, url }: { request: Request; url: URL }) =>
+      request.destination === "" && url.pathname.startsWith("/data/v/"),
+    handler: new CacheFirst({
+      cacheName: "game-data",
+      plugins: [
+        cacheableResponse,
+        new ExpirationPlugin({
+          maxEntries: 2000,
+          maxAgeSeconds: 30 * 24 * 60 * 60,
+        }),
+      ],
+    }),
+  },
   // Game data APIs — stale-while-revalidate, 7 day TTL
   {
     matcher: ({ request, url }: { request: Request; url: URL }) =>

@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/data-fetch.mjs",
+    "data:fetch": "node scripts/data-fetch.mjs",
     "build": "next build --webpack",
+    "test": "vitest run",
     "start": "next start",
     "lint": "eslint",
     "analyze": "cross-env ANALYZE=true next build --webpack",
     "wasm:build": "node scripts/wasm-build.mjs",
     "wasm:check": "node scripts/wasm-check.mjs",
-    "test:e2e": "cross-env NEXT_PUBLIC_API_URL=http://localhost:3101 next build --webpack && playwright test"
+    "test:e2e": "cross-env NEXT_PUBLIC_API_URL=http://localhost:3101 FFXIV_DATA_DIR=e2e/fixtures/data npm run build && playwright test"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.38.0",
@@ -34,6 +37,7 @@
     "eslint-config-next": "16.1.6",
     "serwist": "^9.5.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

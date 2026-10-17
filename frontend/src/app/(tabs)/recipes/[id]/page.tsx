@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
-import { getRecipeServer } from "@/lib/server-api";
+import { getRecipeExportServer, listRecipeIdsServer } from "@/lib/static-data/server";
 import RecipeDetailClient from "./RecipeDetailClient";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+// Every recipe page is prerendered from the exported data at build time; ids outside the data
+// set are 404s rather than server renders, so the API is never reached for a recipe.
+export const dynamicParams = false;
+
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  const ids = await listRecipeIdsServer();
+  return ids.map((id) => ({ id: String(id) }));
+}
+
+async function getRecipeServer(id: number) {
+  return (await getRecipeExportServer(id))?.recipe ?? null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
