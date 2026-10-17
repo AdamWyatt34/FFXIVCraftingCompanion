@@ -203,7 +203,7 @@ function CostBreakdown({ cost }: { cost: CostEstimateDto }) {
 }
 
 function MaterialRow({ mat }: { mat: MaterialCostDto }) {
-  const staleLabel = staleLabelFor(mat.lastUploadTime);
+  const staleLabel = staleLabelFor(mat.lastUploadTime ?? undefined);
   const isNonTradeable = mat.priceSource === "Unknown" && mat.listingCount === 0;
 
   return (

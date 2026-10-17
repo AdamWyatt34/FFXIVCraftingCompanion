@@ -102,7 +102,7 @@ public sealed class UniversalisClient : IUniversalisClient
         return result;
     }
 
-    private static MarketBoardData MapToMarketBoardData(UniversalisItemResponse response)
+    public static MarketBoardData MapToMarketBoardData(UniversalisItemResponse response)
     {
         return new MarketBoardData
         {

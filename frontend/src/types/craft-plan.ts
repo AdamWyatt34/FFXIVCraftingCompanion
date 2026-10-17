@@ -36,7 +36,7 @@ export interface AggregatedMaterialDto {
   totalQuantity: number;
   primarySource: string;
   sources: import("./api").ItemSourceDto[];
-  sortCategory: string;
+  category: string;
   contributions: MaterialContributionDto[];
 }
 
@@ -47,9 +47,9 @@ export interface AggregatedIntermediateCraftDto {
   totalQuantity: number;
   recipeId: number;
   craftType: string;
+  craftTypeName: string;
   recipeLevel: number;
   yieldPerCraft: number;
-  maxDepth: number;
   craftOrder: number;
 }
 

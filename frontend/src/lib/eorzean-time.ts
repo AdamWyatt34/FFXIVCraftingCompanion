@@ -9,10 +9,11 @@ export function getCurrentEorzeanHour(): number {
 
 /** Get the Eorzean hour for a given Unix timestamp (ms). */
 export function getEorzeanHour(timestampMs: number): number {
-  const epochSeconds = timestampMs / 1000;
+  // Whole seconds, as EorzeanTime.cs reads them from ToUnixTimeSeconds().
+  const epochSeconds = Math.floor(timestampMs / 1000);
   const eorzeanTotalHours =
     (epochSeconds * (3600.0 / EORZEAN_HOUR_IN_SECONDS)) / 3600.0;
-  return Math.floor(eorzeanTotalHours % 24);
+  return Math.trunc(eorzeanTotalHours % 24);
 }
 
 /** Is a timed-node window currently active? */

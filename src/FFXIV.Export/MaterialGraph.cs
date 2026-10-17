@@ -44,7 +44,7 @@ public static class MaterialGraph
         Dictionary<int, ShoppingListItemDto> shopping)
     {
         Collect(root, items, shopping);
-        return Skeleton(root, items);
+        return Skeleton(root, items, perCraft: 1);
     }
 
     private static void Collect(
@@ -68,11 +68,25 @@ public static class MaterialGraph
             Collect(child, items, shopping);
     }
 
-    private static MaterialSkeletonNode Skeleton(MaterialTreeNodeDto node, Dictionary<int, MaterialItemExport> items)
+    private static MaterialSkeletonNode Skeleton(MaterialTreeNodeDto node, Dictionary<int, MaterialItemExport> items, int perCraft)
     {
-        var children = node.Children.Select(c => Skeleton(c, items)).ToList();
+        // The resolver sized each child as ingredient quantity x crafts of this node; divide the
+        // crafts back out so the skeleton holds the recipe's own ingredient quantities.
+        var crafts = node.Recipe is null ? 1 : CraftsNeeded(node.Quantity, node.Recipe.Yield);
+        var children = node.Children.Select(c =>
+        {
+            if (c.Quantity % crafts != 0)
+                throw new InvalidOperationException($"Item {c.ItemId} under {node.ItemId}: quantity {c.Quantity} is not a multiple of {crafts} crafts.");
+            return Skeleton(c, items, c.Quantity / crafts);
+        }).ToList();
         var truncated = !IsCrystal(node.ItemId) && node.Recipe is null && items[node.ItemId].Recipe is not null;
-        return new MaterialSkeletonNode(node.ItemId, node.Quantity, children, truncated);
+        return new MaterialSkeletonNode(node.ItemId, perCraft, children, truncated);
+    }
+
+    public static int CraftsNeeded(int quantity, int yield)
+    {
+        var perCraft = Math.Max(yield, 1);
+        return (quantity + perCraft - 1) / perCraft;
     }
 
     private static bool Same(MaterialItemExport a, MaterialItemExport b) =>

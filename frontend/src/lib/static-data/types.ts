@@ -33,7 +33,8 @@ export interface MaterialGraphExport {
 
 export interface MaterialSkeletonNode {
   itemId: number;
-  quantity: number;
+  /** Ingredient quantity one craft of the parent needs; 1 at the root. */
+  perCraft: number;
   children: MaterialSkeletonNode[];
   truncated: boolean;
 }
@@ -69,6 +70,21 @@ export interface ItemExport {
   context: ItemContextDto;
   gatheringNodes: GatheringNodeExport[];
   equipment: EquipmentDto | null;
+}
+
+export interface GearJobExport {
+  job: string;
+  jobName: string;
+  profiles: StatWeightProfileExport[];
+  /** Per EquipSlot name, in the recommendation query's order (item level desc, id asc). */
+  candidatesBySlot: Record<string, EquipmentDto[]>;
+}
+
+export interface StatWeightProfileExport {
+  name: string;
+  displayName: string;
+  description: string;
+  weights: Record<string, number>;
 }
 
 export interface SearchIndexEntry {

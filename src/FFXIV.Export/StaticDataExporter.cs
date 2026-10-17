@@ -201,55 +201,21 @@ public sealed class StaticDataExporter(
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var equipmentRepo = scope.ServiceProvider.GetRequiredService<IEquipmentRepository>();
+        var itemSourceRepo = scope.ServiceProvider.GetRequiredService<IItemSourceRepository>();
         var gearService = scope.ServiceProvider.GetRequiredService<IGearRecommendationService>();
+
+        await WriteAsync(Path.Combine("gear", "profiles.json"), GearExport.AllProfiles(), ct);
 
         var total = 0;
         foreach (var job in JobClassification.AllJobs)
         {
-            var equipment = await equipmentRepo.GetByJobAndLevelAsync(job, int.MaxValue, ct);
-            var frontier = GearFrontier.Build(equipment);
-            var profiles = gearService.GetAvailableProfiles(job)
-                .Select(p => new StatWeightProfileExport(p.Name, GearMapper.ToDto(p).DisplayName, p.Description, StatWeights(p)))
-                .ToList();
-            var export = new GearJobExport(
-                job,
-                JobClassification.GetJobDisplayName(job),
-                profiles,
-                frontier.ToDictionary(
-                    kv => kv.Key,
-                    kv => (IReadOnlyList<EquipmentDto>)kv.Value.Select(e => GearMapper.ToDto(e, GearMapper.BuildSourceInfo(e), 0)).ToList()));
+            var export = await GearExport.BuildJobAsync(job, equipmentRepo, itemSourceRepo, gearService, ct);
             await WriteAsync(Path.Combine("gear", $"{job}.json"), export, ct);
-            total += frontier.Sum(kv => kv.Value.Count);
+            total += export.CandidatesBySlot.Sum(kv => kv.Value.Count);
         }
 
         return total;
     }
-
-    private static IReadOnlyDictionary<string, double> StatWeights(Domain.Models.StatWeightProfile p) =>
-        new Dictionary<string, double>
-        {
-            ["craftsmanship"] = p.CraftsmanshipWeight,
-            ["control"] = p.ControlWeight,
-            ["cp"] = p.CpWeight,
-            ["gathering"] = p.GatheringWeight,
-            ["perception"] = p.PerceptionWeight,
-            ["gp"] = p.GpWeight,
-            ["vitality"] = p.VitalityWeight,
-            ["strength"] = p.StrengthWeight,
-            ["dexterity"] = p.DexterityWeight,
-            ["intelligence"] = p.IntelligenceWeight,
-            ["mind"] = p.MindWeight,
-            ["piety"] = p.PietyWeight,
-            ["tenacity"] = p.TenacityWeight,
-            ["directHitRate"] = p.DirectHitWeight,
-            ["criticalHit"] = p.CriticalHitWeight,
-            ["determination"] = p.DeterminationWeight,
-            ["skillSpeed"] = p.SkillSpeedWeight,
-            ["spellSpeed"] = p.SpellSpeedWeight,
-            ["physicalDamage"] = p.PhysicalDamageWeight,
-            ["defense"] = p.DefenseWeight,
-            ["magicDefense"] = p.MagicDefenseWeight,
-        };
 
     private async Task ExportSearchIndexAsync(IReadOnlyList<int> itemIds, CancellationToken ct)
     {

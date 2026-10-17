@@ -158,6 +158,8 @@ public static class StatWeightProfiles
             ["MagicDPSBalanced"] = MagicDPSBalanced
         };
 
+    public static IReadOnlyList<StatWeightProfile> All => [.. AllProfiles.Values];
+
     public static StatWeightProfile GetProfile(string name) =>
         AllProfiles.GetValueOrDefault(name, Balanced);
 

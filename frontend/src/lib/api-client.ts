@@ -220,11 +220,7 @@ export function getMaterialTree(
   quantity = 1,
   signal?: AbortSignal,
 ): Promise<MaterialTreeResultDto> {
-  const params = quantity > 1 ? `?quantity=${quantity}` : "";
-  return fetchApi<MaterialTreeResultDto>(
-    `/api/recipes/${recipeId}/materials${params}`,
-    { signal },
-  );
+  return staticData.getMaterialTree(recipeId, quantity, signal);
 }
 
 export function getShoppingList(
@@ -248,15 +244,7 @@ export function getGearRecommendations(
   signal?: AbortSignal,
   craftedOnly?: boolean,
 ): Promise<GearSetDto> {
-  const params = new URLSearchParams({
-    job,
-    level: String(level),
-    profile,
-  });
-  if (craftedOnly) params.set("craftedOnly", "true");
-  return fetchApi<GearSetDto>(`/api/gear/recommendations?${params}`, {
-    signal,
-  });
+  return staticData.getGearRecommendations(job, level, profile, signal, craftedOnly ?? false);
 }
 
 export function getSlotRecommendation(
@@ -280,10 +268,7 @@ export function getStatWeightProfiles(
   job: string,
   signal?: AbortSignal,
 ): Promise<StatWeightProfileDto[]> {
-  const params = new URLSearchParams({ job });
-  return fetchApi<StatWeightProfileDto[]>(`/api/gear/profiles?${params}`, {
-    signal,
-  });
+  return staticData.getStatWeightProfiles(job, signal);
 }
 
 export function calculateGearStats(
@@ -306,13 +291,7 @@ export function searchEquipment(
   maxLevel?: number,
   signal?: AbortSignal,
 ): Promise<EquipmentDto[]> {
-  const params = new URLSearchParams();
-  if (query) params.set("q", query);
-  if (job) params.set("job", job);
-  if (slot) params.set("slot", slot);
-  if (minLevel !== undefined) params.set("minLevel", String(minLevel));
-  if (maxLevel !== undefined) params.set("maxLevel", String(maxLevel));
-  return fetchApi<EquipmentDto[]>(`/api/gear/search?${params}`, { signal });
+  return staticData.searchEquipment(query, job, slot, minLevel, maxLevel, signal);
 }
 
 // --- Auth API ---
@@ -775,7 +754,7 @@ export function getCraftingJourney(
   recipeId: number,
   signal?: AbortSignal,
 ): Promise<import("@/types/journey").CraftingJourneyDto> {
-  return fetchApi(`/api/crafting/journey/${recipeId}`, { signal });
+  return staticData.getCraftingJourney(recipeId, signal);
 }
 
 export function analyzeSufficiency(
@@ -812,10 +791,8 @@ export function getMarketPrices(
   return fetchApi(`/api/market/prices?${params}`, { signal });
 }
 
-export function getWorldList(
-  signal?: AbortSignal,
-): Promise<import("@/types/market").WorldGroupDto[]> {
-  return fetchApi("/api/market/worlds", { signal });
+export function getWorldList(): Promise<import("@/types/market").WorldGroupDto[]> {
+  return staticData.getWorldList();
 }
 
 export function getRecipeCost(
@@ -825,14 +802,7 @@ export function getRecipeCost(
   options?: { useMinPrice?: boolean; includeGatheredItemPrices?: boolean },
   signal?: AbortSignal,
 ): Promise<import("@/types/market").CostEstimateDto> {
-  const params = new URLSearchParams({
-    world,
-    quantity: String(quantity),
-  });
-  if (options?.useMinPrice) params.set("useMinPrice", "true");
-  if (options?.includeGatheredItemPrices === false)
-    params.set("includeGatheredPrices", "false");
-  return fetchApi(`/api/recipes/${recipeId}/cost?${params}`, { signal });
+  return staticData.getRecipeCost(recipeId, world, quantity, options ?? {}, signal);
 }
 
 // --- Gathering API ---
@@ -841,18 +811,11 @@ export function getGatheringGuide(
   items: import("@/types/gathering").GatheringGuideItemInput[],
   signal?: AbortSignal,
 ): Promise<import("@/types/gathering").GatheringGuideDto> {
-  return fetchApi("/api/gathering/guide", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items }),
-    signal,
-  });
+  return staticData.getGatheringGuide(items, signal);
 }
 
-export function getEorzeanTime(
-  signal?: AbortSignal,
-): Promise<import("@/types/gathering").EorzeanTimeResponse> {
-  return fetchApi("/api/gathering/eorzean-time", { signal });
+export function getEorzeanTime(): Promise<import("@/types/gathering").EorzeanTimeResponse> {
+  return staticData.getEorzeanTime();
 }
 
 // --- Craft Plans API ---
@@ -861,12 +824,7 @@ export function resolveCraftPlan(
   items: import("@/types/craft-plan").CraftPlanItemInput[],
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
-  return fetchApi("/api/craft-plans/resolve", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items }),
-    signal,
-  });
+  return staticData.resolveCraftPlan(items, signal);
 }
 
 export function exportCraftPlan(
@@ -874,12 +832,7 @@ export function exportCraftPlan(
   format: string,
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").ExportResultDto> {
-  return fetchApi("/api/craft-plans/export", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items, format }),
-    signal,
-  });
+  return staticData.exportCraftPlan(items, format, signal);
 }
 
 export function createCraftPlan(
@@ -906,13 +859,22 @@ export function getCraftPlanById(
   return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, { signal });
 }
 
-export function getResolvedCraftPlan(
+/** A shared plan's name and items; the only account call a shareable plan link needs. */
+export function getSharedCraftPlan(
+  id: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").CraftPlanDto> {
+  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/items`, { signal });
+}
+
+export async function getResolvedCraftPlan(
   id: string,
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
-  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/resolved`, {
-    signal,
-  });
+  const plan = await getSharedCraftPlan(id, signal);
+  if (plan.items.length === 0)
+    throw new ApiClientError(404, { error: "Craft plan not found." });
+  return staticData.resolveCraftPlan(plan.items, signal);
 }
 
 export function updateCraftPlan(

@@ -103,21 +103,22 @@ public class GatheringGuideService : IGatheringGuideService
         }
 
         // Group by zone, sort within zone by class then level
+        // Ordinal and stable, so the order does not depend on the server's culture (the frontend
+        // port reproduces it).
         var zoneGroups = guideItems
             .GroupBy(g => g.ZoneName)
-            .OrderBy(g => g.Key)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .Select(g => new GatheringZoneGroup
             {
                 ZoneName = g.Key,
                 Items = g.Select(x => x.Item)
-                    .OrderBy(i => i.GatheringClass)
+                    .OrderBy(i => i.GatheringClass, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(i => i.GatheringLevel)
                     .ToList(),
             })
             .ToList();
 
-        // Sort timed nodes by start hour
-        timedNodes.Sort((a, b) => a.StartHour.CompareTo(b.StartHour));
+        timedNodes = timedNodes.OrderBy(t => t.StartHour).ToList();
 
         return new GatheringGuide
         {
@@ -165,8 +166,8 @@ public class GatheringGuideService : IGatheringGuideService
                     Tier = tier,
                 };
             })
-            .OrderBy(c => c.Tier)
-            .ThenBy(c => c.Element)
+            .OrderBy(c => c.Tier, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.Element, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

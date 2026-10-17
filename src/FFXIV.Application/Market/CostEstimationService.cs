@@ -12,15 +12,18 @@ public sealed class CostEstimationService : ICostEstimationService
     private readonly IUniversalisClient _universalis;
     private readonly ICacheService _cache;
     private readonly ILogger<CostEstimationService> _logger;
+    private readonly TimeProvider _clock;
 
     public CostEstimationService(
         IUniversalisClient universalis,
         ICacheService cache,
-        ILogger<CostEstimationService> logger)
+        ILogger<CostEstimationService> logger,
+        TimeProvider? clock = null)
     {
         _universalis = universalis;
         _cache = cache;
         _logger = logger;
+        _clock = clock ?? TimeProvider.System;
     }
 
     public async Task<CostEstimate> EstimateCostAsync(
@@ -30,10 +33,11 @@ public sealed class CostEstimationService : ICostEstimationService
         CostEstimationOptions options,
         CancellationToken ct = default)
     {
+        var now = _clock.GetUtcNow().UtcDateTime;
         var estimate = new CostEstimate
         {
             WorldOrDc = worldOrDc,
-            GeneratedAt = DateTime.UtcNow,
+            GeneratedAt = now,
         };
 
         // Determine which items need market board prices
@@ -54,7 +58,7 @@ public sealed class CostEstimationService : ICostEstimationService
         // Calculate per-material costs
         foreach (var mat in materials)
         {
-            var cost = CalculateMaterialCost(mat, mbPrices, options);
+            var cost = CalculateMaterialCost(mat, mbPrices, options, now);
             estimate.MaterialCosts.Add(cost);
 
             switch (cost.PriceSource)
@@ -143,7 +147,8 @@ public sealed class CostEstimationService : ICostEstimationService
     private MaterialCost CalculateMaterialCost(
         AggregatedMaterial mat,
         Dictionary<int, MarketBoardData> mbPrices,
-        CostEstimationOptions options)
+        CostEstimationOptions options,
+        DateTime now)
     {
         // Check vendor price first
         if (mat.PrimarySourceType == ItemSourceType.Vendor)
@@ -190,7 +195,7 @@ public sealed class CostEstimationService : ICostEstimationService
                 UnitPrice = unitPrice,
                 TotalPrice = (long)(unitPrice * mat.TotalQuantity),
                 PriceSource = PriceSource.MarketBoard,
-                IsStalePrice = mbData.IsStale,
+                IsStalePrice = (now - mbData.LastUploadTime).TotalHours > 24,
                 ListingCount = mbData.CurrentListingCount,
                 LastUploadTime = mbData.LastUploadTime,
             };

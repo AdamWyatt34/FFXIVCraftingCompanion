@@ -16,6 +16,7 @@ public class GatheringInfoRepository : IGatheringInfoRepository
         return await _db.GatheringInfos
             .AsNoTracking()
             .Where(g => g.ItemId == itemId)
+            .OrderBy(g => g.GatheringInfoId)
             .ToListAsync(cancellationToken);
     }
 
@@ -26,6 +27,7 @@ public class GatheringInfoRepository : IGatheringInfoRepository
         var infos = await _db.GatheringInfos
             .AsNoTracking()
             .Where(g => idList.Contains(g.ItemId))
+            .OrderBy(g => g.GatheringInfoId)
             .ToListAsync(cancellationToken);
 
         return infos.GroupBy(g => g.ItemId)

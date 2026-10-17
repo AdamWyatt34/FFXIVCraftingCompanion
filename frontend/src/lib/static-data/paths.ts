@@ -27,6 +27,8 @@ export const SEARCH_INDEX_PATH = "search/items.json";
 export const CRYSTALS_PATH = "materials/crystals.json";
 export const MANIFEST_PATH = "manifest.json";
 
+export const GEAR_PROFILES_PATH = "gear/profiles.json";
+
 export function gearJobPath(job: string): string {
   return `gear/${job.toUpperCase()}.json`;
 }

@@ -19,7 +19,7 @@ public class GearRecommendationServiceTests
         // Default: batch slot load returns empty
         _equipmentRepo.GetBestForSlotsAsync(
             Arg.Any<IEnumerable<EquipSlot>>(), Arg.Any<string>(), Arg.Any<int>(),
-            Arg.Any<int>(), Arg.Any<CancellationToken>())
+            Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<Equipment>().AsReadOnly());
 
         // Default: batch ID load returns empty
@@ -84,7 +84,7 @@ public class GearRecommendationServiceTests
             11, "Second Ring", EquipSlot.Ring, craftsmanship: 75, control: 75, cp: 5);
 
         _equipmentRepo.GetBestForSlotsAsync(
-            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { bestRing, secondRing }.AsReadOnly());
 
         // Act
@@ -129,7 +129,7 @@ public class GearRecommendationServiceTests
             20, "Miner Pickaxe", EquipSlot.MainHand, gathering: 100, perception: 50, gp: 10);
 
         _equipmentRepo.GetBestForSlotsAsync(
-            Arg.Any<IEnumerable<EquipSlot>>(), "MIN", 90, 10, Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<EquipSlot>>(), "MIN", 90, 10, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { pickaxe }.AsReadOnly());
 
         // Act — request "Balanced" (a DoH profile) for a DoL job
@@ -163,7 +163,7 @@ public class GearRecommendationServiceTests
             2, "Coat", EquipSlot.Body, craftsmanship: 60, control: 40, cp: 8);
 
         _equipmentRepo.GetBestForSlotsAsync(
-            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { head, body }.AsReadOnly());
 
         // Act
@@ -209,7 +209,7 @@ public class GearRecommendationServiceTests
             1, "Hat", EquipSlot.Head, craftsmanship: 50);
 
         _equipmentRepo.GetBestForSlotsAsync(
-            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { head }.AsReadOnly());
 
         // Act
