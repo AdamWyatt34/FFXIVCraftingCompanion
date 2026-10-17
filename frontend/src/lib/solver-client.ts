@@ -1,24 +1,17 @@
 /**
- * The solver calls, with one signature for both engines. In `wasm` mode a solve runs in the
- * solver worker (`src/workers/solver.worker.ts`) and reports progress; in `api` mode it is the
- * .NET job: submit, poll, cancel. Both resolve to today's `SolverJob` shape.
+ * The solver calls, with the signatures the .NET solver job endpoints had. A solve runs in the
+ * solver worker (`src/workers/solver.worker.ts`) and reports progress, resolving to the same
+ * `SolverJob` shape.
  *
- * The API's policy is replicated here for the local path so the two can be compared side by
- * side: `SolverFactory.ResolveAlgorithm` (auto is MCTS when quality is maximised or a target is
- * set, else greedy), `AdaptSettings` (the default 10 s budget is scaled by recipe difficulty),
- * and `StartSolveCommand`'s validation, including the 422 stat-minimum check.
+ * The API's policy is replicated here: `SolverFactory.ResolveAlgorithm` (auto is MCTS when
+ * quality is maximised or a target is set, else greedy), `AdaptSettings` (the default 10 s
+ * budget is scaled by recipe difficulty), and `StartSolveCommand`'s validation, including the
+ * 422 stat-minimum check.
  */
 
-import {
-  ApiClientError,
-  cancelSolveJob,
-  getSolveJob,
-  quickSolve as apiQuickSolve,
-  submitSolveJob,
-} from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
 import { SOLVER_CONSTANTS } from "@/lib/constants";
 import { getRecipeParameters } from "@/lib/crafting-engine";
-import { getEngineMode } from "@/lib/engine-mode";
 import type { RecipeCraftingParametersDto } from "@/types/api";
 import type { CrafterStatsInput } from "@/types/simulator";
 import type {
@@ -28,7 +21,6 @@ import type {
   SolverJob,
   SolverResult,
 } from "@/types/solver";
-import { isSolverJob } from "@/types/solver";
 import type {
   SolveWorkerRequest,
   SolverProgress,
@@ -237,62 +229,13 @@ function checkRecipeMinimums(
 
 // ── API path ──
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, rejectPromise) => {
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    const onAbort = () => {
-      clearTimeout(timer);
-      rejectPromise(abortError());
-    };
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
-}
-
-async function solveThroughApi(
-  request: SolveRequest,
-  options: SolveOptions,
-): Promise<SolverJob> {
-  const { signal, onProgress } = options;
-  const response = await submitSolveJob(request, signal);
-  if (isSolverJob(response) && response.result) {
-    onProgress?.({ status: "Completed", elapsedMs: response.elapsedMs });
-    return response;
-  }
-
-  const jobId = response.jobId;
-  onProgress?.({ status: "Queued", elapsedMs: 0 });
-  try {
-    for (;;) {
-      await sleep(SOLVER_CONSTANTS.POLL_INTERVAL_MS, signal);
-      const job = await getSolveJob(jobId, signal);
-      onProgress?.({ status: job.status, elapsedMs: job.elapsedMs });
-      if (
-        job.status === "Completed" ||
-        job.status === "Failed" ||
-        job.status === "TimedOut"
-      ) {
-        return job;
-      }
-    }
-  } catch (err) {
-    if (signal?.aborted) cancelSolveJob(jobId).catch(() => {});
-    throw err;
-  }
-}
-
 // ── Public API ──
 
 export async function startSolve(
   request: SolveRequest,
   options: SolveOptions = {},
 ): Promise<SolverJob> {
-  // Profile-backed stats are resolved server-side only; that path stays on the API.
-  if (getEngineMode() === "api" || request.useProfileStats || !request.stats) {
-    return solveThroughApi(request, options);
-  }
+  if (!request.stats) throw reject(400, "Stats are required.");
   const { signal } = options;
   const stats = request.stats;
   const timeBudgetMs = request.settings?.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
@@ -340,7 +283,6 @@ export async function quickSolve(
   params: QuickSolveParams,
   signal?: AbortSignal,
 ): Promise<SolverResult> {
-  if (getEngineMode() === "api") return apiQuickSolve(params, signal);
   const stats: CrafterStatsInput = {
     level: params.level,
     craftsmanship: params.craftsmanship,

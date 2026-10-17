@@ -15,7 +15,8 @@ import {
   FlaskConical,
   Map,
 } from "lucide-react";
-import { getRecipe, trackAnalyticsEvent } from "@/lib/api-client";
+import { getRecipe, } from "@/lib/api-client";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import {

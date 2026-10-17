@@ -8,8 +8,8 @@ import {
   deleteCraftPlan as apiDeletePlan,
   exportCraftPlan,
   ApiClientError,
-  trackAnalyticsEvent,
-} from "@/lib/api-client";
+  } from "@/lib/api-client";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import type { CraftPlanItemInput, CraftPlanResultDto, CraftPlanDto, ExportResultDto } from "@/types/craft-plan";
 
 interface UseCraftPlanReturn {
