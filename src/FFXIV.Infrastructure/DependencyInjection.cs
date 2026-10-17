@@ -53,7 +53,6 @@ public static class DependencyInjection
         services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
         services.AddScoped<ISharedRotationRepository, SharedRotationRepository>();
         services.AddScoped<ICraftPlanRepository, CraftPlanRepository>();
-        services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 
         // Data Sync
@@ -290,8 +289,6 @@ public static class DependencyInjection
         services.AddSingleton(GreedySolverConfig.Default);
         services.AddSingleton(MCTSConfig.Default);
         services.AddSingleton<ISolverFactory, SolverFactory>();
-        services.AddSingleton<ISolverCacheService, SolverCacheService>();
-        services.AddSingleton<ISolverJobService, SolverJobService>();
     }
 
     private static void AddLodestoneServices(IServiceCollection services)

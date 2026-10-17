@@ -100,10 +100,6 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartitions.SlidingWindow(context, rateLimits.PublicReadPerMinute, TimeSpan.FromMinutes(1)));
     options.AddPolicy("feedback", context =>
         RateLimitPartitions.FixedWindow(context, rateLimits.FeedbackPerHour, TimeSpan.FromHours(1)));
-    options.AddPolicy("solver", context =>
-        RateLimitPartitions.FixedWindow(context, rateLimits.SolverPerMinute, TimeSpan.FromMinutes(1)));
-    options.AddPolicy("analytics", context =>
-        RateLimitPartitions.FixedWindow(context, rateLimits.AnalyticsPerMinute, TimeSpan.FromMinutes(1)));
 
     options.OnRejected = async (context, ct) =>
     {

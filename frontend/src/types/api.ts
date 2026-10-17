@@ -186,13 +186,6 @@ export interface MaterialTreeResultDto {
   summary: TreeSummaryDto;
 }
 
-export interface ShoppingListResultDto {
-  shoppingList: ShoppingListItemDto[];
-  crystalRequirements: ShoppingListItemDto[];
-  intermediateCrafts: IntermediateCraftDto[];
-  summary: TreeSummaryDto;
-}
-
 export interface MaterialSummaryDto {
   rawMaterialCount: number;
   intermediateCraftCount: number;

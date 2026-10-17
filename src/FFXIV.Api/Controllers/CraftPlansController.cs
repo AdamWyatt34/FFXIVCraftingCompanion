@@ -1,14 +1,7 @@
 using FFXIV.Application.CraftPlans.Commands;
 using FFXIV.Application.CraftPlans.DTOs;
 using FFXIV.Application.CraftPlans.Queries;
-using FFXIV.Application.Gathering;
-using FFXIV.Application.Gathering.DTOs;
-using FFXIV.Application.Market.DTOs;
-using FFXIV.Application.Market.Queries;
-using FFXIV.Domain.Constants;
-using FFXIV.Domain.Enums;
 using FFXIV.Domain.Interfaces;
-using FFXIV.Domain.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace FFXIV.Api.Controllers;
 
 /// <summary>
-/// Provides endpoints for creating and resolving multi-item craft plans.
+/// Saved craft plans for signed-in users, plus the shareable read of a plan's items. Resolving a
+/// plan into materials, exporting it and estimating its cost happen in the browser from the
+/// static game-data export.
 /// </summary>
 [ApiController]
 [Route("api/craft-plans")]
@@ -25,72 +20,11 @@ public class CraftPlansController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ICurrentUserService _currentUser;
-    private readonly IGatheringGuideService _gatheringGuide;
 
-    public CraftPlansController(IMediator mediator, ICurrentUserService currentUser, IGatheringGuideService gatheringGuide)
+    public CraftPlansController(IMediator mediator, ICurrentUserService currentUser)
     {
         _mediator = mediator;
         _currentUser = currentUser;
-        _gatheringGuide = gatheringGuide;
-    }
-
-    /// <summary>
-    /// Resolve a craft plan into aggregated materials without saving.
-    /// </summary>
-    /// <param name="request">The list of recipe IDs and quantities to resolve.</param>
-    /// <param name="includeGathering">When true, includes a gathering guide with zone grouping and timed nodes.</param>
-    /// <response code="200">Returns the resolved craft plan with aggregated materials.</response>
-    /// <response code="400">Invalid request.</response>
-    /// <response code="404">One or more recipes not found.</response>
-    [HttpPost("resolve")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(CraftPlanResultDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Resolve([FromBody] ResolveCraftPlanRequest request, [FromQuery] bool includeGathering = false)
-    {
-        var error = ValidateItems(request.Items);
-        if (error is not null)
-            return BadRequest(new { error });
-
-        var result = await _mediator.Send(new ResolveCraftPlanQuery(request.Items));
-        if (result is null)
-            return NotFound(new { error = "One or more recipes not found." });
-
-        if (!includeGathering)
-            return Ok(result);
-
-        var guide = await GenerateGatheringGuideFromPlan(result);
-        return Ok(new CraftPlanWithGatheringDto(result, guide));
-    }
-
-    /// <summary>
-    /// Export a craft plan as text, JSON, or Teamcraft format.
-    /// </summary>
-    /// <param name="request">The items to export and desired format.</param>
-    /// <response code="200">Returns the exported content.</response>
-    /// <response code="400">Invalid request or format.</response>
-    /// <response code="404">One or more recipes not found.</response>
-    [HttpPost("export")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(ExportResultDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Export([FromBody] ExportCraftPlanRequest request)
-    {
-        var error = ValidateItems(request.Items);
-        if (error is not null)
-            return BadRequest(new { error });
-
-        var validFormats = new[] { "text", "json", "teamcraft" };
-        if (!validFormats.Contains(request.Format.ToLowerInvariant()))
-            return BadRequest(new { error = "Format must be one of: text, json, teamcraft." });
-
-        var result = await _mediator.Send(new ExportCraftPlanQuery(request.Items, request.Format));
-        if (result is null)
-            return NotFound(new { error = "One or more recipes not found." });
-
-        return Ok(result);
     }
 
     /// <summary>
@@ -170,7 +104,8 @@ public class CraftPlansController : ControllerBase
     }
 
     /// <summary>
-    /// Get a craft plan's name and items by ID (public, for shareable links).
+    /// Get a craft plan's name and items by ID (public, for shareable links; the ID is the
+    /// 128-bit share capability).
     /// </summary>
     /// <param name="id">The craft plan ID.</param>
     /// <response code="200">Returns the plan's name and items.</response>
@@ -186,30 +121,6 @@ public class CraftPlansController : ControllerBase
             return NotFound(new { error = "Craft plan not found." });
 
         return Ok(result);
-    }
-
-    /// <summary>
-    /// Get a resolved craft plan by ID (public, for shareable links).
-    /// </summary>
-    /// <param name="id">The craft plan ID.</param>
-    /// <param name="includeGathering">When true, includes a gathering guide with zone grouping and timed nodes.</param>
-    /// <response code="200">Returns the resolved craft plan with aggregated materials.</response>
-    /// <response code="404">Plan not found.</response>
-    [HttpGet("{id}/resolved")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(CraftPlanResultDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetResolved(string id, [FromQuery] bool includeGathering = false)
-    {
-        var result = await _mediator.Send(new GetCraftPlanResolvedQuery(id));
-        if (result is null)
-            return NotFound(new { error = "Craft plan not found." });
-
-        if (!includeGathering)
-            return Ok(result);
-
-        var guide = await GenerateGatheringGuideFromPlan(result);
-        return Ok(new CraftPlanWithGatheringDto(result, guide));
     }
 
     /// <summary>
@@ -273,54 +184,6 @@ public class CraftPlansController : ControllerBase
             return NotFound(new { error = "Craft plan not found." });
 
         return NoContent();
-    }
-
-    /// <summary>
-    /// Get a cost estimate for all materials in a saved craft plan.
-    /// </summary>
-    /// <param name="id">The craft plan ID.</param>
-    /// <param name="world">The world or data center name (e.g., "Adamantoise" or "Aether").</param>
-    /// <param name="options">Cost estimation options.</param>
-    /// <response code="200">Returns the cost estimate.</response>
-    /// <response code="400">Invalid world/DC name.</response>
-    /// <response code="404">Plan not found.</response>
-    [HttpPost("{id}/cost")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(CostEstimateDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCostEstimate(
-        string id,
-        [FromQuery] string world,
-        [FromBody] CostEstimationOptions? options = null)
-    {
-        if (string.IsNullOrWhiteSpace(world) || !FfxivServers.IsValidWorldOrDc(world))
-            return BadRequest(new { error = "Invalid or missing world/data center name." });
-
-        options ??= new CostEstimationOptions();
-
-        var result = await _mediator.Send(new GetCraftPlanCostQuery(id, world, options));
-        if (result is null)
-            return NotFound(new { error = "Craft plan not found." });
-
-        return Ok(result);
-    }
-
-    private async Task<GatheringGuideDto> GenerateGatheringGuideFromPlan(CraftPlanResultDto plan)
-    {
-        var materials = new List<GatheredMaterialInput>();
-
-        foreach (var mat in plan.RawMaterials)
-        {
-            if (mat.PrimarySource == nameof(ItemSourceType.Gathered))
-                materials.Add(new GatheredMaterialInput(mat.ItemId, mat.TotalQuantity));
-        }
-
-        foreach (var crystal in plan.Crystals)
-            materials.Add(new GatheredMaterialInput(crystal.ItemId, crystal.TotalQuantity));
-
-        var guide = await _gatheringGuide.GenerateGuideAsync(materials);
-        return GatheringGuideMapper.ToDto(guide);
     }
 
     private static string? ValidateItems(List<CraftPlanItemInput>? items)
