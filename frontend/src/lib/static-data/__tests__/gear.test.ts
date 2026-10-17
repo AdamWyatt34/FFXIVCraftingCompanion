@@ -39,7 +39,7 @@ describe("equipment search", () => {
     itemLevel: item.itemLevel,
     category: item.category,
     canBeHQ: item.canBeHQ,
-    recipes: context.recipes.map((r) => ({ recipeId: r.recipeId, craftType: r.craftType })),
+    recipes: context.recipes.map((r) => ({ recipeId: r.recipeId, craftType: r.craftType, level: 0 })),
     equipment: equipment
       ? { slot: context.equipmentInfo!.equipSlot, equipLevel: equipment.equipLevel, classJobCategory: equipment.classJobCategory }
       : null,

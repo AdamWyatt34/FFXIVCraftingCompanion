@@ -3,6 +3,7 @@ import { useDebounce } from "./useDebounce";
 import { searchItems, ApiClientError, } from "@/lib/api-client";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { DEFAULT_PAGE_SIZE, MIN_SEARCH_LENGTH } from "@/lib/constants";
+import type { QuickFilter } from "@/lib/static-data/search";
 import type { ItemDto } from "@/types/api";
 
 interface UseItemSearchReturn {
@@ -10,6 +11,8 @@ interface UseItemSearchReturn {
   setQuery: (q: string) => void;
   craftType: string | null;
   setCraftType: (ct: string | null) => void;
+  quickFilter: QuickFilter | null;
+  setQuickFilter: (filter: QuickFilter | null) => void;
   items: ItemDto[];
   totalCount: number;
   isLoading: boolean;
@@ -23,6 +26,7 @@ interface UseItemSearchReturn {
 export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
   const [query, setQueryRaw] = useState(initialQuery);
   const [craftType, setCraftTypeRaw] = useState<string | null>(null);
+  const [quickFilter, setQuickFilterRaw] = useState<QuickFilter | null>(null);
   const debouncedQuery = useDebounce(query, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [page, setPage] = useState(1);
@@ -35,26 +39,35 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
     error: string | null;
     forQuery: string;
     forCraftType: string | null;
+    forQuickFilter: QuickFilter | null;
     forPage: number;
-  }>({ items: [], totalCount: 0, error: null, forQuery: "", forCraftType: null, forPage: 0 });
+  }>({ items: [], totalCount: 0, error: null, forQuery: "", forCraftType: null, forQuickFilter: null, forPage: 0 });
 
-  // When setting craft type, clear the text query
+  // The text query, the craft type and the quick filter are exclusive: setting one clears the others.
   const setCraftType = useCallback((ct: string | null) => {
     setCraftTypeRaw(ct);
     setQueryRaw("");
+    setQuickFilterRaw(null);
     setPage(1);
   }, []);
 
-  // When setting query, clear the craft type filter
   const setQuery = useCallback((q: string) => {
     setQueryRaw(q);
+    setCraftTypeRaw(null);
+    setQuickFilterRaw(null);
+    setPage(1);
+  }, []);
+
+  const setQuickFilter = useCallback((filter: QuickFilter | null) => {
+    setQuickFilterRaw(filter);
+    setQueryRaw("");
     setCraftTypeRaw(null);
     setPage(1);
   }, []);
 
-  // Reset page when debounced query or craft type changes (render-time)
-  const [prevKey, setPrevKey] = useState(`${debouncedQuery}|${craftType}`);
-  const currentKey = `${debouncedQuery}|${craftType}`;
+  // Reset page when the debounced query or a filter changes (render-time)
+  const [prevKey, setPrevKey] = useState(`${debouncedQuery}|${craftType}|${quickFilter}`);
+  const currentKey = `${debouncedQuery}|${craftType}|${quickFilter}`;
   if (prevKey !== currentKey) {
     setPrevKey(currentKey);
     setPage(1);
@@ -62,13 +75,14 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
 
   // Determine if we have an active search/filter
   const hasTextQuery = debouncedQuery.length >= MIN_SEARCH_LENGTH;
-  const hasFilter = craftType !== null;
+  const hasFilter = craftType !== null || quickFilter !== null;
   const isActive = hasTextQuery || hasFilter;
 
   // Derive display state from fetchResult vs current params
   const resultMatchesCurrent =
     fetchResult.forQuery === debouncedQuery &&
-    fetchResult.forCraftType === craftType;
+    fetchResult.forCraftType === craftType &&
+    fetchResult.forQuickFilter === quickFilter;
   const items = resultMatchesCurrent ? fetchResult.items : [];
   const totalCount = resultMatchesCurrent ? fetchResult.totalCount : 0;
   const error = resultMatchesCurrent ? fetchResult.error : null;
@@ -91,11 +105,12 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
       DEFAULT_PAGE_SIZE,
       controller.signal,
       craftType ?? undefined,
+      quickFilter,
     )
       .then((result) => {
         if (controller.signal.aborted) return;
         if (isFirstPage) {
-          trackAnalyticsEvent("recipe_search", { query: debouncedQuery, craftType, totalCount: result.totalCount });
+          trackAnalyticsEvent("recipe_search", { query: debouncedQuery, craftType, quickFilter, totalCount: result.totalCount });
         }
         setFetchResult((prev) => ({
           items: isFirstPage
@@ -105,6 +120,7 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
           error: null,
           forQuery: debouncedQuery,
           forCraftType: craftType,
+          forQuickFilter: quickFilter,
           forPage: page,
         }));
       })
@@ -120,12 +136,13 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
           error: msg,
           forQuery: debouncedQuery,
           forCraftType: craftType,
+          forQuickFilter: quickFilter,
           forPage: page,
         }));
       });
 
     return () => controller.abort();
-  }, [debouncedQuery, craftType, page, retryCount, isActive, hasTextQuery]);
+  }, [debouncedQuery, craftType, quickFilter, page, retryCount, isActive, hasTextQuery]);
 
   const hasMore = items.length < totalCount;
 
@@ -136,7 +153,7 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
   }, [isLoadingMore, hasMore]);
 
   const retry = useCallback(() => {
-    setFetchResult((prev) => ({ ...prev, forQuery: "", forCraftType: null, forPage: 0 }));
+    setFetchResult((prev) => ({ ...prev, forQuery: "", forCraftType: null, forQuickFilter: null, forPage: 0 }));
     setRetryCount((c) => c + 1);
   }, []);
 
@@ -150,6 +167,8 @@ export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
     setQuery,
     craftType,
     setCraftType,
+    quickFilter,
+    setQuickFilter,
     items,
     totalCount,
     isLoading: showLoading,

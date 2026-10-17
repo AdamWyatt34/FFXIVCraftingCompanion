@@ -12,7 +12,7 @@ import type { EquipmentDto, GearSetDto, StatWeightProfileDto } from "@/types/gea
 import type { EorzeanTimeResponse, GatheringGuideDto, GatheringGuideItemInput } from "@/types/gathering";
 import type { CostEstimateDto, WorldGroupDto } from "@/types/market";
 import { CRYSTALS_PATH, dataBasePath, GEAR_PROFILES_PATH, gearJobPath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
-import { searchIndex } from "./search";
+import { searchIndex, type QuickFilter } from "./search";
 import { toRecipeDto } from "./recipes";
 import { expandMaterialTree, type CrystalTable } from "./materials";
 import { aggregateCraftPlan, exportCraftPlanContent, validatePlanItems, type ExportFormat, type PlanEntry } from "./craft-plans";
@@ -307,8 +307,9 @@ export async function searchItems(
   pageSize = 20,
   signal?: AbortSignal,
   craftType?: string,
+  quickFilter?: QuickFilter | null,
 ): Promise<ItemSearchResultDto> {
   const index = await getSearchIndex(signal);
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  return searchIndex(index, query, page, pageSize, craftType ?? null);
+  return searchIndex(index, query, page, pageSize, craftType ?? null, quickFilter ?? null);
 }

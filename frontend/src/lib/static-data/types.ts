@@ -94,7 +94,8 @@ export interface SearchIndexEntry {
   itemLevel: number;
   category: string;
   canBeHQ: boolean;
-  recipes: { recipeId: number; craftType: string }[];
+  /** `level` is the class job level (not the rlvl). */
+  recipes: { recipeId: number; craftType: string; level: number }[];
   equipment: { slot: string; equipLevel: number; classJobCategory: string } | null;
 }
 

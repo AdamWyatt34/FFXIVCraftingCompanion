@@ -175,8 +175,9 @@ export function searchItems(
   pageSize = 20,
   signal?: AbortSignal,
   craftType?: string,
+  quickFilter?: import("@/lib/static-data/search").QuickFilter | null,
 ): Promise<ItemSearchResultDto> {
-  return staticData.searchItems(query, page, pageSize, signal, craftType);
+  return staticData.searchItems(query, page, pageSize, signal, craftType, quickFilter);
 }
 
 export function getItem(id: number): Promise<ItemDto> {
