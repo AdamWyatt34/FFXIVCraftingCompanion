@@ -34,7 +34,7 @@ public class ExportShapeTests
             for (var k = 0; k < 3; k++)
                 equipment.Add(new Equipment { EquipmentId = id++, EquipSlot = EquipSlot.Head, EquipLevel = level, ItemLevel = level * 10 + k });
 
-        var frontier = GearFrontier.Build(equipment, limit: 2)["Head"];
+        var frontier = GearFrontier.Build(equipment, limit: 2, craftedLimit: 2)["Head"];
 
         // At level 10 the top two are ids 3 and 2; at 20 they are 6 and 5; at 30, 9 and 8.
         // Every other piece is beaten by two higher pieces already equippable at its own level.
@@ -48,7 +48,22 @@ public class ExportShapeTests
             .Select(i => new Equipment { EquipmentId = 5 - i, EquipSlot = EquipSlot.Ring, EquipLevel = 1, ItemLevel = 100 })
             .ToList();
 
-        GearFrontier.Build(equipment, limit: 3)["Ring"].Select(e => e.EquipmentId).Should().Equal(1, 2, 3);
+        GearFrontier.Build(equipment, limit: 3, craftedLimit: 3)["Ring"].Select(e => e.EquipmentId).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public void Gear_frontier_keeps_crafted_pieces_up_to_the_crafted_only_limit()
+    {
+        // Five pieces at one level, item level descending with id; the fourth is crafted.
+        var equipment = Enumerable.Range(1, 5)
+            .Select(i => new Equipment
+            {
+                EquipmentId = i, EquipSlot = EquipSlot.Body, EquipLevel = 50, ItemLevel = 100 - i,
+                SourceType = i == 4 ? ItemSourceType.Crafted : ItemSourceType.Vendor,
+            })
+            .ToList();
+
+        GearFrontier.Build(equipment, limit: 2, craftedLimit: 4)["Body"].Select(e => e.EquipmentId).Should().Equal(1, 2, 4);
     }
 
     [Fact]
