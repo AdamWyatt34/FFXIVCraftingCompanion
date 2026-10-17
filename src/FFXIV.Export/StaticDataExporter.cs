@@ -78,7 +78,7 @@ public sealed class StaticDataExporter(
         await ExportBucketsAsync("items", itemIds, ExportItemBucketAsync, ct);
         Directory.CreateDirectory(Path.Combine(options.OutDir, "materials"));
         await WriteAsync(Path.Combine("materials", "crystals.json"), new SortedDictionary<int, MaterialItemExport>(_crystals), ct);
-        var equipmentCount = options.OnlyRecipeIds.Count > 0 ? 0 : await ExportGearAsync(ct);
+        var equipmentCount = await ExportGearAsync(options.OnlyRecipeIds.Count > 0 ? options.OnlyJobs : JobClassification.AllJobs, ct);
         await ExportSearchIndexAsync(itemIds, ct);
 
         var manifest = new Manifest(
@@ -195,7 +195,7 @@ public sealed class StaticDataExporter(
         return JsonSerializer.Serialize(bucket, Json);
     }
 
-    private async Task<int> ExportGearAsync(CancellationToken ct)
+    private async Task<int> ExportGearAsync(IReadOnlyList<string> jobs, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.Combine(options.OutDir, "gear"));
 
@@ -207,7 +207,7 @@ public sealed class StaticDataExporter(
         await WriteAsync(Path.Combine("gear", "profiles.json"), GearExport.AllProfiles(), ct);
 
         var total = 0;
-        foreach (var job in JobClassification.AllJobs)
+        foreach (var job in jobs)
         {
             var export = await GearExport.BuildJobAsync(job, equipmentRepo, itemSourceRepo, gearService, ct);
             await WriteAsync(Path.Combine("gear", $"{job}.json"), export, ct);

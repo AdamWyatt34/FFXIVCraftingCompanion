@@ -12,7 +12,10 @@ using FFXIV.Application.Gear.Queries;
 using FFXIV.Application.CraftPlans.DTOs;
 using FFXIV.Application.CraftPlans.Queries;
 using FFXIV.Application.DTOs;
+using FFXIV.Application.Journey;
 using FFXIV.Application.Journey.DTOs;
+using FFXIV.Domain.CraftingEngine.Models;
+using FFXIV.Domain.Entities;
 using FFXIV.Application.Items.Queries;
 using FFXIV.Domain.Enums;
 using FFXIV.Application.Journey.Queries;
@@ -349,6 +352,53 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     }
 
     [Fact]
+    public async Task Sufficiency_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IStatSufficiencyService>();
+        var text = new StringBuilder();
+
+        // A CRP profile wearing a few fixture pieces, some of which the recommendation beats.
+        var crpGear = _db.Fixture.Equipment.Where(e => e.ClassJobCategory.Contains("CRP")).OrderBy(e => e.ItemLevel).ToList();
+        var worn = new Dictionary<string, int>
+        {
+            ["MainHand"] = crpGear.First(e => e.EquipSlot == EquipSlot.MainHand).EquipmentId,
+            ["Head"] = crpGear.First(e => e.EquipSlot == EquipSlot.Head).EquipmentId,
+            ["Body"] = crpGear.Last(e => e.EquipSlot == EquipSlot.Body).EquipmentId,
+            ["Ring1"] = crpGear.First(e => e.EquipSlot == EquipSlot.Ring).EquipmentId,
+        };
+        var profiles = new (string Name, CharacterProfile? Profile)[]
+        {
+            ("none", null),
+            ("crp-100-geared", new CharacterProfile { ActiveJob = "CRP", ActiveJobLevel = 100, CurrentGear = worn }),
+            ("crp-90-bare", new CharacterProfile { ActiveJob = "CRP", ActiveJobLevel = 90, CurrentGear = new Dictionary<string, int>() }),
+            ("crp-no-gear", new CharacterProfile { ActiveJob = "CRP", ActiveJobLevel = 100, CurrentGear = null }),
+        };
+        var statSets = new (int Level, int Craftsmanship, int Control, int CP)[]
+        {
+            (100, 5000, 5000, 700),
+            (100, 3000, 2800, 500),
+            (80, 1200, 1100, 400),
+            (50, 400, 300, 250),
+        };
+
+        foreach (var recipeId in _db.Fixture.RootRecipeIds)
+            foreach (var (level, craftsmanship, control, cp) in statSets)
+                foreach (var (name, profile) in profiles)
+                {
+                    var stats = new CrafterStats { Level = level, Craftsmanship = craftsmanship, Control = control, CP = cp };
+                    var result = await service.AnalyzeAsync(recipeId, stats, profile);
+                    text.Append(JsonSerializer.Serialize(
+                        new SufficiencyGolden(recipeId, level, craftsmanship, control, cp, name,
+                            profile is null ? null : new SufficiencyProfileGolden(profile.ActiveJob, profile.ActiveJobLevel, profile.CurrentGear),
+                            JourneyMapper.ToDto(result)),
+                        StaticDataExporter.Json)).Append('\n');
+                }
+
+        AssertOrWrite("sufficiency.jsonl", text.ToString());
+    }
+
+    [Fact]
     public async Task Material_tree_quantities_golden_is_current()
     {
         using var scope = _db.CreateScope();
@@ -427,4 +477,8 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     private sealed record GatheringGuideGolden(string Name, List<GatheredMaterialInput> Items, int CurrentHour, GatheringGuideDto Result);
 
     private sealed record CostGolden(int RecipeId, int Quantity, bool UseMinPrice, bool IncludeGatheredItemPrices, CostEstimateDto Result);
+
+    private sealed record SufficiencyGolden(int RecipeId, int Level, int Craftsmanship, int Control, int CP, string ProfileName, SufficiencyProfileGolden? Profile, StatSufficiencyResultDto Result);
+
+    private sealed record SufficiencyProfileGolden(string ActiveJob, int ActiveJobLevel, Dictionary<string, int>? CurrentGear);
 }

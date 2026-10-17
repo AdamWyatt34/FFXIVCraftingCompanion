@@ -46,11 +46,24 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
         CharacterProfile? profile = null,
         CancellationToken ct = default)
     {
+        // The cached part depends on the stats only; the gear suggestions depend on the profile
+        // and are computed per call (a signed-out result must not hide a signed-in user's upgrades).
         var cacheKey = $"sufficiency:{recipeId}:{stats.Craftsmanship}:{stats.Control}:{stats.CP}:{stats.Level}";
-        var cached = await _cache.GetAsync<StatSufficiencyResult>(cacheKey, ct);
-        if (cached is not null)
-            return cached;
+        var result = await _cache.GetAsync<StatSufficiencyResult>(cacheKey, ct)
+            ?? await AnalyzeStatsAsync(recipeId, stats, cacheKey, ct);
 
+        if (profile?.CurrentGear != null && profile.ActiveJob is not null)
+            return result with { SuggestedGearUpgrades = await GetGearUpgradeSuggestionsAsync(profile, stats, ct) };
+
+        return result;
+    }
+
+    private async Task<StatSufficiencyResult> AnalyzeStatsAsync(
+        int recipeId,
+        CrafterStats stats,
+        string cacheKey,
+        CancellationToken ct)
+    {
         var recipe = await _recipeRepo.GetByIdAsync(recipeId, ct);
         if (recipe is null)
             throw new ArgumentException($"Recipe {recipeId} not found.");
@@ -97,12 +110,6 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
 
         var recommendation = DetermineRecommendation(meetsMinimums, hqPercent, canComplete);
 
-        var gearUpgrades = new List<GearUpgradeSuggestion>();
-        if (profile?.CurrentGear != null && profile.ActiveJob is not null)
-        {
-            gearUpgrades = await GetGearUpgradeSuggestionsAsync(profile, stats, ct);
-        }
-
         var result = new StatSufficiencyResult
         {
             RecipeId = recipeId,
@@ -118,7 +125,6 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
             EstimatedSteps = estimatedSteps,
             CanComplete = canComplete,
             Recommendation = recommendation,
-            SuggestedGearUpgrades = gearUpgrades,
         };
 
         await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(4), ct);
@@ -149,9 +155,10 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
             profile.ActiveJob, profile.ActiveJobLevel, "balanced", craftedOnly: false, ct: ct);
 
         // Batch-load all current equipment IDs in a single query
+        // Profiles store gear under the slot keys ("MainHand", "Ring1"), not the labels.
         var currentEquipIds = recommended.Slots
             .Where(s => s.RecommendedItem is not null)
-            .Select(s => profile.CurrentGear?.GetValueOrDefault(s.SlotLabel))
+            .Select(s => profile.CurrentGear?.GetValueOrDefault(GearMapper.MapSlotToProfileKey(s.Slot.ToString(), s.SlotLabel)))
             .Where(id => id is not null and not 0)
             .Select(id => id!.Value)
             .Distinct()
@@ -165,7 +172,7 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
             if (slotRec.RecommendedItem is null)
                 continue;
 
-            var currentEquipmentId = profile.CurrentGear?.GetValueOrDefault(slotRec.SlotLabel);
+            var currentEquipmentId = profile.CurrentGear?.GetValueOrDefault(GearMapper.MapSlotToProfileKey(slotRec.Slot.ToString(), slotRec.SlotLabel));
             if (currentEquipmentId is null or 0)
             {
                 suggestions.Add(new GearUpgradeSuggestion
