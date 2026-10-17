@@ -83,7 +83,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               type: 'Liveness'
               httpGet: {
-                path: '/health'
+                path: '/health/live'
                 port: 8080
               }
               periodSeconds: 30
