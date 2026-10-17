@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FFXIV.Application.Gear;
 using FFXIV.Application.Items.Queries;
 using FFXIV.Application.Journey.Queries;
 using FFXIV.Application.Recipes.DTOs;
@@ -44,7 +45,7 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
             recipe.Should().NotBeNull();
             parameters.Should().NotBeNull();
             materials.Should().NotBeNull();
-            text.Append(JsonSerializer.Serialize(new RecipeExport(recipe!, parameters!, materials!), StaticDataExporter.Json)).Append('\n');
+            text.Append(JsonSerializer.Serialize(new RecipeExport(recipe!, parameters!, MaterialGraph.Build(materials!)), StaticDataExporter.Json)).Append('\n');
         }
 
         AssertOrWrite("recipe-export.jsonl", text.ToString());
@@ -56,10 +57,12 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
         using var scope = _db.CreateScope();
         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
         var gatheringRepo = scope.ServiceProvider.GetRequiredService<IGatheringInfoRepository>();
+        var equipmentRepo = scope.ServiceProvider.GetRequiredService<IEquipmentRepository>();
         var text = new StringBuilder();
 
         var itemIds = _db.Fixture.Items.Select(i => i.ItemId).OrderBy(id => id).ToList();
         var gathering = await gatheringRepo.GetByItemIdsAsync(itemIds);
+        var equipment = (await equipmentRepo.GetByIdsAsync(itemIds)).ToDictionary(e => e.EquipmentId);
         foreach (var itemId in itemIds)
         {
             var item = await mediator.Send(new GetItemByIdQuery(itemId));
@@ -71,7 +74,8 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
                     g.GatheringType, g.ClassJob, g.Level, g.Stars, g.ZoneName, g.AreaName,
                     g.CoordinateX, g.CoordinateY, g.IsTimed, g.SpawnTimes, g.IsHidden, g.NodeType)).ToList()
                 : [];
-            text.Append(JsonSerializer.Serialize(new ItemExport(item!, context!, nodes), StaticDataExporter.Json)).Append('\n');
+            var gear = equipment.TryGetValue(itemId, out var piece) ? GearMapper.ToDto(piece, GearMapper.BuildSourceInfo(piece), 0) : null;
+            text.Append(JsonSerializer.Serialize(new ItemExport(item!, context!, nodes, gear), StaticDataExporter.Json)).Append('\n');
         }
 
         AssertOrWrite("item-export.jsonl", text.ToString());

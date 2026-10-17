@@ -3,6 +3,7 @@ namespace FFXIV.Export;
 public sealed record ExportOptions(
     string OutDir,
     bool SkipSync,
+    bool FixtureOnly,
     int BucketSize,
     int Parallelism,
     IReadOnlyList<int> FixtureRecipeIds,
@@ -15,6 +16,7 @@ public sealed record ExportOptions(
 
           --out              Directory that receives the static data set (created if missing).
           --skip-sync        Export from the database as it is instead of running the XIVAPI sync first.
+          --fixture-only     Write only the fixture (needs --fixture-recipes); skips the data set.
           --bucket-size      Ids per recipe/item file; 1 gives one file per entity.
           --parallelism      Concurrent buckets (each on its own DbContext).
           --fixture-recipes  Also write the entity closure of these recipes for the parity tests.
@@ -26,6 +28,7 @@ public sealed record ExportOptions(
     {
         string? outDir = null;
         var skipSync = false;
+        var fixtureOnly = false;
         var bucketSize = 100;
         var parallelism = Math.Clamp(Environment.ProcessorCount, 2, 8);
         var fixtureRecipes = new List<int>();
@@ -45,6 +48,7 @@ public sealed record ExportOptions(
             {
                 case "--out": outDir = Next(); break;
                 case "--skip-sync": skipSync = true; break;
+                case "--fixture-only": fixtureOnly = true; break;
                 case "--bucket-size": bucketSize = int.Parse(Next()); break;
                 case "--parallelism": parallelism = int.Parse(Next()); break;
                 case "--fixture-recipes":
@@ -66,7 +70,9 @@ public sealed record ExportOptions(
             throw new ArgumentException("--parallelism must be at least 1.");
         if (fixtureRecipes.Count > 0 != (fixtureOut is not null))
             throw new ArgumentException("--fixture-recipes and --fixture-out go together.");
+        if (fixtureOnly && fixtureOut is null)
+            throw new ArgumentException("--fixture-only needs --fixture-recipes and --fixture-out.");
 
-        return new ExportOptions(outDir, skipSync, bucketSize, parallelism, fixtureRecipes, fixtureJobs, fixtureOut);
+        return new ExportOptions(outDir, skipSync, fixtureOnly, bucketSize, parallelism, fixtureRecipes, fixtureJobs, fixtureOut);
     }
 }

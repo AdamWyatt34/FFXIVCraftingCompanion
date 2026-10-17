@@ -2,6 +2,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Gear;
+using FFXIV.Application.Gear.DTOs;
 using FFXIV.Application.Items.Queries;
 using FFXIV.Application.Journey.Queries;
 using FFXIV.Application.Recipes.Queries;
@@ -28,6 +29,8 @@ public sealed class StaticDataExporter(
 {
     public const int SchemaVersion = 1;
 
+    private readonly Dictionary<int, MaterialItemExport> _crystals = new();
+
     // Matches ASP.NET Core's controller serialization (web defaults) so the files carry the
     // same JSON the API would have sent.
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -45,6 +48,12 @@ public sealed class StaticDataExporter(
             await sync.RunFullSyncAsync(ct);
         }
 
+        if (options.FixtureOnly)
+        {
+            await fixtureWriter.WriteAsync(options.FixtureRecipeIds, options.FixtureJobs, options.FixtureOut!, ct);
+            return;
+        }
+
         var (versionKey, versionName) = await ResolveGameVersionAsync(ct);
         var exportedAt = DateTimeOffset.UtcNow;
         var version = $"{SanitizeForPath(versionName)}-{exportedAt:yyyyMMdd-HHmm}";
@@ -57,6 +66,8 @@ public sealed class StaticDataExporter(
 
         await ExportBucketsAsync("recipes", recipeIds, ExportRecipeBucketAsync, ct);
         await ExportBucketsAsync("items", itemIds, ExportItemBucketAsync, ct);
+        Directory.CreateDirectory(Path.Combine(options.OutDir, "materials"));
+        await WriteAsync(Path.Combine("materials", "crystals.json"), new SortedDictionary<int, MaterialItemExport>(_crystals), ct);
         var equipmentCount = await ExportGearAsync(ct);
         await ExportSearchIndexAsync(ct);
 
@@ -124,7 +135,7 @@ public sealed class StaticDataExporter(
             });
     }
 
-    private static async Task<string> ExportRecipeBucketAsync(IServiceProvider services, IReadOnlyList<int> ids, CancellationToken ct)
+    private async Task<string> ExportRecipeBucketAsync(IServiceProvider services, IReadOnlyList<int> ids, CancellationToken ct)
     {
         var mediator = services.GetRequiredService<IMediator>();
         var bucket = new SortedDictionary<int, RecipeExport>();
@@ -136,7 +147,7 @@ public sealed class StaticDataExporter(
                 ?? throw new InvalidOperationException($"Recipe {id} has no crafting parameters.");
             var materials = await mediator.Send(new GetMaterialTreeQuery(id, Quantity: 1), ct)
                 ?? throw new InvalidOperationException($"Recipe {id} has no material tree.");
-            bucket[id] = new RecipeExport(recipe, parameters, materials);
+            bucket[id] = new RecipeExport(recipe, parameters, MaterialGraph.Build(materials, _crystals));
         }
         return JsonSerializer.Serialize(bucket, Json);
     }
@@ -145,7 +156,9 @@ public sealed class StaticDataExporter(
     {
         var mediator = services.GetRequiredService<IMediator>();
         var gatheringRepo = services.GetRequiredService<IGatheringInfoRepository>();
+        var equipmentRepo = services.GetRequiredService<IEquipmentRepository>();
         var gathering = await gatheringRepo.GetByItemIdsAsync(ids, ct);
+        var equipment = (await equipmentRepo.GetByIdsAsync(ids, ct)).ToDictionary(e => e.EquipmentId);
 
         var bucket = new SortedDictionary<int, ItemExport>();
         foreach (var id in ids)
@@ -159,7 +172,8 @@ public sealed class StaticDataExporter(
                     g.GatheringType, g.ClassJob, g.Level, g.Stars, g.ZoneName, g.AreaName,
                     g.CoordinateX, g.CoordinateY, g.IsTimed, g.SpawnTimes, g.IsHidden, g.NodeType)).ToList()
                 : [];
-            bucket[id] = new ItemExport(item, context, nodes);
+            var gear = equipment.TryGetValue(id, out var piece) ? GearMapper.ToDto(piece, GearMapper.BuildSourceInfo(piece), 0) : null;
+            bucket[id] = new ItemExport(item, context, nodes, gear);
         }
         return JsonSerializer.Serialize(bucket, Json);
     }
@@ -176,6 +190,7 @@ public sealed class StaticDataExporter(
         foreach (var job in JobClassification.AllJobs)
         {
             var equipment = await equipmentRepo.GetByJobAndLevelAsync(job, int.MaxValue, ct);
+            var frontier = GearFrontier.Build(equipment);
             var profiles = gearService.GetAvailableProfiles(job)
                 .Select(p => new StatWeightProfileExport(p.Name, GearMapper.ToDto(p).DisplayName, p.Description, StatWeights(p)))
                 .ToList();
@@ -183,9 +198,11 @@ public sealed class StaticDataExporter(
                 job,
                 JobClassification.GetJobDisplayName(job),
                 profiles,
-                equipment.Select(e => GearMapper.ToDto(e, GearMapper.BuildSourceInfo(e), 0)).ToList());
+                frontier.ToDictionary(
+                    kv => kv.Key,
+                    kv => (IReadOnlyList<EquipmentDto>)kv.Value.Select(e => GearMapper.ToDto(e, GearMapper.BuildSourceInfo(e), 0)).ToList()));
             await WriteAsync(Path.Combine("gear", $"{job}.json"), export, ct);
-            total += equipment.Count;
+            total += frontier.Sum(kv => kv.Value.Count);
         }
 
         return total;
@@ -221,7 +238,9 @@ public sealed class StaticDataExporter(
     {
         Directory.CreateDirectory(Path.Combine(options.OutDir, "search"));
 
-        var equipmentIds = (await db.Equipment.AsNoTracking().Select(e => e.EquipmentId).ToListAsync(ct)).ToHashSet();
+        var equipment = await db.Equipment.AsNoTracking()
+            .Select(e => new { e.EquipmentId, e.EquipSlot, e.EquipLevel, e.ClassJobCategory })
+            .ToDictionaryAsync(e => e.EquipmentId, e => new SearchIndexEquipment(e.EquipSlot.ToString(), e.EquipLevel, e.ClassJobCategory), ct);
         var recipesByItem = (await db.Recipes.AsNoTracking()
                 .Select(r => new { r.ResultItemId, r.RecipeId, r.CraftType })
                 .OrderBy(r => r.RecipeId)
@@ -234,9 +253,9 @@ public sealed class StaticDataExporter(
         {
             var dto = Application.Mapping.Mapper.ToDto(item);
             entries.Add(new SearchIndexEntry(
-                dto.ItemId, dto.Name, dto.IconUrl, dto.ItemLevel, dto.Category, dto.CanBeHQ,
-                equipmentIds.Contains(item.ItemId),
-                recipesByItem.GetValueOrDefault(item.ItemId) ?? []));
+                dto.ItemId, dto.Name, IconUrl.ToId(dto.IconUrl), dto.ItemLevel, dto.Category, dto.CanBeHQ,
+                recipesByItem.GetValueOrDefault(item.ItemId) ?? [],
+                equipment.GetValueOrDefault(item.ItemId)));
         }
 
         await WriteAsync(Path.Combine("search", "items.json"), entries, ct);
