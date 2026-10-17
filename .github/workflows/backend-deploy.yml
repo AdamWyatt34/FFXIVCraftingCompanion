@@ -103,6 +103,7 @@ jobs:
       - name: Apply EF Core migrations
         run: |
           dotnet tool install --global dotnet-ef
+          dotnet restore src/FFXIV.Infrastructure
           dotnet ef database update --project src/FFXIV.Infrastructure
 
       - name: Close the SQL firewall

@@ -3,7 +3,11 @@
 //   FFXIV_DATA_DIR   a local export (e.g. e2e/fixtures/data, or `dotnet run --project
 //                    src/FFXIV.Export`); used as is
 //   data.lock.json   the commit of the `data` branch pinned by the Data Export workflow,
-//                    downloaded as a tarball from codeload.github.com
+//                    downloaded as a tarball. The repository is private, so the download needs a
+//                    token with read access to its contents in GITHUB_TOKEN (GitHub Actions passes
+//                    its own; Vercel needs a fine-grained PAT in the project's environment).
+//                    Without one the public codeload URL is tried, which works only for a public
+//                    repository.
 // With neither, the build proceeds without game data (no recipe pages, no search) and says so.
 
 import { execFileSync } from "node:child_process";
@@ -47,9 +51,15 @@ function download(lock) {
   const work = mkdtempSync(join(tmpdir(), "ffxiv-data-"));
   try {
     const tarball = join(work, "data.tar.gz");
-    const url = `https://codeload.github.com/${repo}/tar.gz/${lock.dataSha}`;
-    log(`downloading ${url}`);
-    execFileSync("curl", ["-fsSL", "--retry", "3", "-o", tarball, url], { stdio: "inherit" });
+    const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+    // The API endpoint answers with a redirect to a signed codeload URL; curl drops the
+    // Authorization header on that cross-host redirect, which is fine, the signed URL needs none.
+    const url = token
+      ? `https://api.github.com/repos/${repo}/tarball/${lock.dataSha}`
+      : `https://codeload.github.com/${repo}/tar.gz/${lock.dataSha}`;
+    const auth = token ? ["-H", `Authorization: Bearer ${token}`] : [];
+    log(`downloading ${url}${token ? " (authenticated)" : ""}`);
+    execFileSync("curl", ["-fsSL", "--retry", "3", ...auth, "-o", tarball, url], { stdio: "inherit" });
     const extracted = join(work, "x");
     mkdirSync(extracted);
     execFileSync("tar", ["-xzf", tarball, "-C", extracted, "--strip-components=1"], { stdio: "inherit" });
