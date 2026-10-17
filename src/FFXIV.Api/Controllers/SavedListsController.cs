@@ -65,18 +65,7 @@ public class SavedListsController : ControllerBase
     public async Task<IActionResult> SaveShoppingList(
         [FromBody] SaveShoppingListRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Name is required." });
-
-        if (request.Name.Length > 256)
-            return BadRequest(new { error = "Name must be 256 characters or fewer." });
-
-        if (request.RecipeId <= 0)
-            return BadRequest(new { error = "RecipeId must be a positive integer." });
-
-        if (request.Quantity < 1)
-            return BadRequest(new { error = "Quantity must be at least 1." });
-
+        // Name, recipe id and quantity bounds are DataAnnotations on the request type.
         var result = await _mediator.Send(
             new CreateShoppingListCommand(
                 _currentUser.UserId!,
@@ -101,21 +90,21 @@ public class SavedListsController : ControllerBase
     public async Task<IActionResult> SaveGearSet(
         [FromBody] SaveGearSetRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Name is required." });
-
-        if (request.Name.Length > 256)
-            return BadRequest(new { error = "Name must be 256 characters or fewer." });
-
-        if (string.IsNullOrWhiteSpace(request.Job))
-            return BadRequest(new { error = "Job is required." });
-
         var normalizedJob = request.Job.ToUpperInvariant();
         if (!JobClassification.IsDoH(normalizedJob) && !JobClassification.IsDoL(normalizedJob))
             return BadRequest(new { error = $"'{request.Job}' is not a valid DoH/DoL job." });
 
         if (request.Slots.Count == 0)
             return BadRequest(new { error = "At least one equipment slot is required." });
+
+        foreach (var (slotKey, equipmentId) in request.Slots)
+        {
+            if (!GearSlotKeys.IsValid(slotKey))
+                return BadRequest(new { error = $"'{slotKey}' is not a valid gear slot. Valid slots: {GearSlotKeys.Describe()}" });
+
+            if (equipmentId <= 0)
+                return BadRequest(new { error = $"Equipment id for '{slotKey}' must be a positive integer." });
+        }
 
         var result = await _mediator.Send(
             new CreateGearSetCommand(
@@ -140,27 +129,7 @@ public class SavedListsController : ControllerBase
     public async Task<IActionResult> SaveCraftingPlan(
         [FromBody] SaveCraftingPlanRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest(new { error = "Name is required." });
-
-        if (request.Name.Length > 256)
-            return BadRequest(new { error = "Name must be 256 characters or fewer." });
-
-        if (request.Items.Count == 0)
-            return BadRequest(new { error = "At least one item is required." });
-
-        if (request.Items.Count > 20)
-            return BadRequest(new { error = "Crafting plan can have at most 20 items." });
-
-        foreach (var item in request.Items)
-        {
-            if (item.RecipeId <= 0)
-                return BadRequest(new { error = $"Invalid RecipeId: {item.RecipeId}" });
-
-            if (item.Quantity < 1)
-                return BadRequest(new { error = $"Quantity must be at least 1 for recipe {item.RecipeId}." });
-        }
-
+        // Name, item count and per-item bounds are DataAnnotations on the request type.
         var planItems = request.Items
             .Select(i => new CraftingPlanItem(i.RecipeId, i.Quantity))
             .ToList();
@@ -187,15 +156,8 @@ public class SavedListsController : ControllerBase
     public async Task<IActionResult> AddItem(
         int id, [FromBody] AddItemToSavedListRequest request, CancellationToken ct)
     {
-        if (request.ItemId <= 0)
-            return BadRequest(new { error = "ItemId must be a positive integer." });
-
-        if (string.IsNullOrWhiteSpace(request.ItemName))
-            return BadRequest(new { error = "ItemName is required." });
-
-        if (request.Quantity < 1)
-            return BadRequest(new { error = "Quantity must be at least 1." });
-
+        // Item id, name and quantity bounds are DataAnnotations on the request type; the handler
+        // enforces the per-list material cap.
         var result = await _mediator.Send(
             new AddItemToSavedListCommand(
                 _currentUser.UserId!,
@@ -237,8 +199,8 @@ public class SavedListsController : ControllerBase
     public async Task<IActionResult> Update(
         int id, [FromBody] UpdateSavedListRequest request, CancellationToken ct)
     {
-        if (request.Name is not null && request.Name.Length > 256)
-            return BadRequest(new { error = "Name must be 256 characters or fewer." });
+        if (request.Name is not null && string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { error = "Name must not be blank." });
 
         var result = await _mediator.Send(
             new UpdateSavedListCommand(

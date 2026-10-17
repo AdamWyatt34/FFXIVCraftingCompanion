@@ -23,6 +23,11 @@ public class RecipeRepository : IRecipeRepository
             .FirstOrDefaultAsync(r => r.RecipeId == id, cancellationToken);
     }
 
+    public async Task<bool> ExistsAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _db.Recipes.AnyAsync(r => r.RecipeId == id, cancellationToken);
+    }
+
     public async Task<Recipe?> GetByResultItemIdAsync(int itemId, CancellationToken cancellationToken = default)
     {
         return await _db.Recipes

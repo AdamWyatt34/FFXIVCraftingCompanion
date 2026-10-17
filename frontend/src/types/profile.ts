@@ -57,8 +57,6 @@ export interface CreateProfileRequest {
   characterName: string;
   serverName?: string;
   dataCenter?: string;
-  lodestoneId?: string;
-  avatarUrl?: string;
   activeJob: string;
   activeJobLevel: number;
   jobLevels?: Record<string, number>;

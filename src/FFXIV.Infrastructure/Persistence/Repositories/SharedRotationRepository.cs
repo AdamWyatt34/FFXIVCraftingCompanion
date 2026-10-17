@@ -7,6 +7,9 @@ namespace FFXIV.Infrastructure.Persistence.Repositories;
 
 public class SharedRotationRepository : ISharedRotationRepository
 {
+    /// <summary>Shown for authors who never chose a display name; the account email is never used.</summary>
+    public const string AnonymousAuthorName = "Anonymous";
+
     private readonly AppDbContext _db;
 
     public SharedRotationRepository(AppDbContext db) => _db = db;
@@ -17,6 +20,11 @@ public class SharedRotationRepository : ISharedRotationRepository
             .Include(r => r.Recipe)
                 .ThenInclude(r => r.ResultItem)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+    }
+
+    public async Task<bool> ExistsAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _db.SharedRotations.AnyAsync(r => r.Id == id, cancellationToken);
     }
 
     public async Task<(IReadOnlyList<SharedRotation> Items, int TotalCount)> SearchAsync(
@@ -95,44 +103,58 @@ public class SharedRotationRepository : ISharedRotationRepository
             .AnyAsync(v => v.UserId == userId && v.RotationId == rotationId, cancellationToken);
     }
 
-    public async Task AddVoteAsync(RotationVote vote, CancellationToken cancellationToken = default)
+    public async Task<bool> AddVoteAsync(RotationVote vote, CancellationToken cancellationToken = default)
     {
         _db.RotationVotes.Add(vote);
-        await _db.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task RemoveVoteAsync(string userId, int rotationId, CancellationToken cancellationToken = default)
-    {
-        var vote = await _db.RotationVotes
-            .FirstOrDefaultAsync(v => v.UserId == userId && v.RotationId == rotationId, cancellationToken);
-
-        if (vote is not null)
+        try
         {
-            _db.RotationVotes.Remove(vote);
             await _db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // The (UserId, RotationId) index is unique: two requests from the same user raced and
+            // the other one won. The vote exists either way, so this is not an error.
+            _db.Entry(vote).State = EntityState.Detached;
+            if (await HasVotedAsync(vote.UserId, vote.RotationId, cancellationToken))
+                return false;
+            throw;
         }
     }
 
-    public async Task IncrementUpvotesAsync(int rotationId, int delta, CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveVoteAsync(string userId, int rotationId, CancellationToken cancellationToken = default)
     {
-        var rotation = await _db.SharedRotations
-            .FirstOrDefaultAsync(r => r.Id == rotationId, cancellationToken);
-
-        if (rotation is not null)
-        {
-            rotation.Upvotes = Math.Max(0, rotation.Upvotes + delta);
-            await _db.SaveChangesAsync(cancellationToken);
-        }
+        var removed = await _db.RotationVotes
+            .Where(v => v.UserId == userId && v.RotationId == rotationId)
+            .ExecuteDeleteAsync(cancellationToken);
+        return removed > 0;
     }
 
-    // Author name lookup
+    public async Task<int> RecountUpvotesAsync(int rotationId, CancellationToken cancellationToken = default)
+    {
+        await _db.SharedRotations
+            .Where(r => r.Id == rotationId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(
+                r => r.Upvotes,
+                r => _db.RotationVotes.Count(v => v.RotationId == r.Id)), cancellationToken);
+
+        return await _db.SharedRotations
+            .AsNoTracking()
+            .Where(r => r.Id == rotationId)
+            .Select(r => r.Upvotes)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    // Author name lookup. UserName is the sign-in email, so only the chosen display name is shown.
 
     public async Task<string?> GetAuthorNameAsync(string userId, CancellationToken cancellationToken = default)
     {
-        return await _db.Users
+        var author = await _db.Users
             .Where(u => u.Id == userId)
-            .Select(u => u.DisplayName ?? u.UserName)
+            .Select(u => new { u.DisplayName })
             .FirstOrDefaultAsync(cancellationToken);
+
+        return author is null ? null : author.DisplayName ?? AnonymousAuthorName;
     }
 
     public async Task<Dictionary<string, string>> GetAuthorNamesAsync(
@@ -145,7 +167,7 @@ public class SharedRotationRepository : ISharedRotationRepository
             .Where(u => ids.Contains(u.Id))
             .ToDictionaryAsync(
                 u => u.Id,
-                u => u.DisplayName ?? u.UserName ?? "Unknown",
+                u => u.DisplayName ?? AnonymousAuthorName,
                 cancellationToken);
     }
 }

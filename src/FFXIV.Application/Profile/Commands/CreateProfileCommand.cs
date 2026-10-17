@@ -8,8 +8,6 @@ public sealed record CreateProfileCommand(
     string CharacterName,
     string? ServerName,
     string? DataCenter,
-    string? LodestoneId,
-    string? AvatarUrl,
     string ActiveJob,
     int ActiveJobLevel,
     Dictionary<string, int>? JobLevels,

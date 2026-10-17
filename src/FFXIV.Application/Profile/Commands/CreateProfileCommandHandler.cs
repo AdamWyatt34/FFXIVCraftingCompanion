@@ -29,8 +29,6 @@ public sealed class CreateProfileCommandHandler
             CharacterName = request.CharacterName,
             ServerName = request.ServerName,
             DataCenter = request.DataCenter,
-            LodestoneId = request.LodestoneId,
-            AvatarUrl = request.AvatarUrl,
             ActiveJob = request.ActiveJob,
             ActiveJobLevel = request.ActiveJobLevel,
             JobLevels = request.JobLevels ?? new Dictionary<string, int>(),

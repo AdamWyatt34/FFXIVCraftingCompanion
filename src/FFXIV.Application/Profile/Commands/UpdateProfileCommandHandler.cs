@@ -31,12 +31,6 @@ public sealed class UpdateProfileCommandHandler
         if (request.DataCenter is not null)
             profile.DataCenter = request.DataCenter;
 
-        if (request.LodestoneId is not null)
-            profile.LodestoneId = request.LodestoneId;
-
-        if (request.AvatarUrl is not null)
-            profile.AvatarUrl = request.AvatarUrl;
-
         if (request.ActiveJob is not null)
             profile.ActiveJob = request.ActiveJob;
 

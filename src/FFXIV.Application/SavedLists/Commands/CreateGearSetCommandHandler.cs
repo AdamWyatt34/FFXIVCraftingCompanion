@@ -38,10 +38,12 @@ public sealed class CreateGearSetCommandHandler
         int gathering = 0, perception = 0, gp = 0;
         int maxLevel = 0;
 
+        var equipmentById = (await _equipmentRepo.GetByIdsAsync(request.Slots.Values, cancellationToken))
+            .ToDictionary(e => e.EquipmentId);
+
         foreach (var (slotKey, equipmentId) in request.Slots)
         {
-            var equipment = await _equipmentRepo.GetByIdAsync(equipmentId, cancellationToken);
-            if (equipment is null) continue;
+            if (!equipmentById.TryGetValue(equipmentId, out var equipment)) continue;
 
             slots[slotKey] = new
             {

@@ -49,6 +49,7 @@ public class FavoritesController : ControllerBase
     /// </summary>
     [HttpPost("recipes/{recipeId:int}")]
     [ProducesResponseType(typeof(FavoriteStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ToggleFavorite(
         int recipeId, [FromBody] ToggleFavoriteRequest? request, CancellationToken ct)
@@ -62,10 +63,12 @@ public class FavoritesController : ControllerBase
                 recipeId,
                 request?.Note?.Trim()), ct);
 
-        if (result is null)
-            return Conflict(new { error = "Favorites quota exceeded (max 100)." });
-
-        return Ok(result);
+        return result.Outcome switch
+        {
+            ToggleFavoriteOutcome.RecipeNotFound => NotFound(new { error = "Recipe not found." }),
+            ToggleFavoriteOutcome.QuotaExceeded => Conflict(new { error = $"Favorites quota exceeded (max {ToggleFavoriteRecipeCommandHandler.MaxFavorites})." }),
+            _ => Ok(result.Status),
+        };
     }
 
     /// <summary>
