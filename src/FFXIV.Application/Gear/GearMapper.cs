@@ -125,6 +125,15 @@ public static class GearMapper
         _ => "Unknown"
     };
 
+    // A piece the sync could not classify takes its first recorded item source.
+    public static void EnrichFromItemSources(EquipmentSourceInfo info, Equipment equipment, List<ItemSource>? sources)
+    {
+        if (equipment.SourceType is not null || sources is null || sources.Count == 0)
+            return;
+        info.SourceType = sources[0].SourceType;
+        info.Description = sources[0].SourceType.ToString();
+    }
+
     public static EquipmentSourceInfo BuildSourceInfo(Equipment equipment)
     {
         var info = new EquipmentSourceInfo

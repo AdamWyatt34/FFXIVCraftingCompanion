@@ -8,13 +8,16 @@ import type {
 } from "@/types/api";
 import type { CraftPlanItemInput, CraftPlanResultDto, ExportResultDto } from "@/types/craft-plan";
 import type { CraftingJourneyDto, ItemContextDto } from "@/types/journey";
-import { CRYSTALS_PATH, dataBasePath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
+import type { EquipmentDto, GearSetDto, StatWeightProfileDto } from "@/types/gear";
+import { CRYSTALS_PATH, dataBasePath, GEAR_PROFILES_PATH, gearJobPath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
 import { searchIndex } from "./search";
 import { toRecipeDto } from "./recipes";
 import { expandMaterialTree, type CrystalTable } from "./materials";
 import { aggregateCraftPlan, exportCraftPlanContent, validatePlanItems, type ExportFormat, type PlanEntry } from "./craft-plans";
 import { composeJourney } from "./journey";
-import type { Bucket, ItemExport, RecipeExport, SearchIndexEntry } from "./types";
+import { availableProfiles, isEquipSlot, recommendGear, searchGearIndex, toSearchResultDto } from "./gear";
+import { ALL_JOBS, isKnownJob } from "./jobs";
+import type { Bucket, GearJobExport, ItemExport, RecipeExport, SearchIndexEntry, StatWeightProfileExport } from "./types";
 
 // Browser-side reads of the exported game data. Buckets are fetched once per page load and kept;
 // the service worker keeps them across loads.
@@ -141,6 +144,57 @@ export async function getCraftingJourney(recipeId: number, signal?: AbortSignal)
   const [data, crystals] = await Promise.all([getRecipeExport(recipeId, signal), getCrystals(signal)]);
   const context = await getItemContext(data.recipe.resultItem.itemId, signal);
   return composeJourney(data, context, crystals);
+}
+
+export function getGearProfilesTable(signal?: AbortSignal): Promise<StatWeightProfileExport[]> {
+  return loadJson<StatWeightProfileExport[]>(GEAR_PROFILES_PATH, signal);
+}
+
+export function getGearJob(job: string, signal?: AbortSignal): Promise<GearJobExport> {
+  return loadJson<GearJobExport>(gearJobPath(job), signal);
+}
+
+function badRequest(error: string): ApiClientError {
+  return new ApiClientError(400, { error });
+}
+
+export async function getGearRecommendations(
+  job: string,
+  level: number,
+  profile: string,
+  signal?: AbortSignal,
+  craftedOnly = false,
+): Promise<GearSetDto> {
+  if (!job || job.trim() === "") throw badRequest("Job is required.");
+  const normalized = job.toUpperCase();
+  if (!isKnownJob(normalized))
+    throw badRequest(`'${job}' is not a valid job. Valid jobs: ${ALL_JOBS.join(", ")}.`);
+  if (level < 1 || level > 100) throw badRequest("Level must be between 1 and 100.");
+  const [jobFile, profiles] = await Promise.all([getGearJob(normalized, signal), getGearProfilesTable(signal)]);
+  return recommendGear(jobFile, profiles, level, profile.toLowerCase(), craftedOnly);
+}
+
+export async function getStatWeightProfiles(job?: string | null, signal?: AbortSignal): Promise<StatWeightProfileDto[]> {
+  if (job && job.trim() !== "" && !isKnownJob(job)) throw badRequest(`'${job}' is not a valid job.`);
+  const profiles = await getGearProfilesTable(signal);
+  return availableProfiles(profiles, job?.toUpperCase() ?? "CRP");
+}
+
+export async function searchEquipment(
+  query: string,
+  job?: string,
+  slot?: string,
+  minLevel?: number,
+  maxLevel?: number,
+  signal?: AbortSignal,
+): Promise<EquipmentDto[]> {
+  if ((query.trim() === "" || query.length < 2) && !job && !slot)
+    throw badRequest("Provide a search query (min 2 characters) or a filter.");
+  if (slot && !isEquipSlot(slot)) throw badRequest(`'${slot}' is not a valid equipment slot.`);
+  const index = await getSearchIndex(signal);
+  const matches = searchGearIndex(index, { query, job, slot, minLevel, maxLevel });
+  const exports = await Promise.all(matches.map((m) => getItemExport(m.itemId, signal)));
+  return exports.flatMap((e) => (e.equipment ? [toSearchResultDto(e.equipment)] : []));
 }
 
 export function getSearchIndex(signal?: AbortSignal): Promise<SearchIndexEntry[]> {

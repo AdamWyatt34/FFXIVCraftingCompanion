@@ -72,6 +72,21 @@ export interface ItemExport {
   equipment: EquipmentDto | null;
 }
 
+export interface GearJobExport {
+  job: string;
+  jobName: string;
+  profiles: StatWeightProfileExport[];
+  /** Per EquipSlot name, in the recommendation query's order (item level desc, id asc). */
+  candidatesBySlot: Record<string, EquipmentDto[]>;
+}
+
+export interface StatWeightProfileExport {
+  name: string;
+  displayName: string;
+  description: string;
+  weights: Record<string, number>;
+}
+
 export interface SearchIndexEntry {
   itemId: number;
   name: string;
