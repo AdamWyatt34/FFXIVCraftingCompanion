@@ -70,9 +70,10 @@ public class ExportShapeTests
     public void Material_graph_factors_items_out_of_the_tree_and_flags_truncated_occurrences()
     {
         var sources = new List<ItemSourceDto> { new("Gathered", "Mined somewhere", "Zone", null, null, null, 10, "MIN") };
+        // Ingot yields 3 per craft; a quantity of 1 is one craft, so child quantities are per craft.
         var ore = new MaterialTreeNodeDto(100, "Ore", "icon", 4, true, "Gathered", sources, null, [], 1);
         var crystal = new MaterialTreeNodeDto(2, "Fire Shard", "icon", 2, true, "Gathered", [], null, [], 1);
-        var ingotRecipe = new RecipeSummaryDto(7, "BSM", "Blacksmith", 10, 0, 0, 1);
+        var ingotRecipe = new RecipeSummaryDto(7, "BSM", "Blacksmith", 10, 0, 0, 3);
         // The same ingot appears again deeper as a cycle-cut raw leaf.
         var ingotCut = new MaterialTreeNodeDto(200, "Ingot", "icon", 1, true, "Gathered", [], null, [], 2);
         var ingot = new MaterialTreeNodeDto(200, "Ingot", "icon", 1, false, "Crafted", [], ingotRecipe, [ore, crystal, ingotCut], 0);
@@ -91,10 +92,29 @@ public class ExportShapeTests
         graph.Items[200].Category.Should().Be("Crafted");
         graph.Items[100].Category.Should().Be("Gathered");
         graph.Tree.Children.Select(c => c.ItemId).Should().Equal(100, 2, 200);
+        graph.Tree.Children.Select(c => c.PerCraft).Should().Equal(4, 2, 1);
+        graph.Tree.PerCraft.Should().Be(1);
         graph.Tree.Children[2].Truncated.Should().BeTrue();
         graph.Tree.Truncated.Should().BeFalse();
         crystals.Should().ContainKey(2);
         crystals[2].Category.Should().Be("Crystal");
+    }
+
+    [Fact]
+    public void Material_graph_divides_the_parent_crafts_out_of_child_quantities()
+    {
+        // Root needs 5 planks; planks yield 2, so 3 crafts; each craft needs 4 logs: 12 logs.
+        var log = new MaterialTreeNodeDto(10, "Log", "icon", 12, true, "Gathered", [], null, [], 2);
+        var plank = new MaterialTreeNodeDto(20, "Plank", "icon", 5, false, "Crafted", [], new RecipeSummaryDto(2, "CRP", "Carpenter", 5, 0, 0, 2), [log], 1);
+        var root = new MaterialTreeNodeDto(30, "Chair", "icon", 1, false, "Crafted", [], new RecipeSummaryDto(3, "CRP", "Carpenter", 10, 0, 0, 1), [plank], 0);
+        var tree = new MaterialTreeResultDto(root, [], [], [], new TreeSummaryDto(1, 0, 1, 2, 1));
+
+        var graph = MaterialGraph.Build(tree);
+
+        graph.Tree.Children[0].PerCraft.Should().Be(5);
+        graph.Tree.Children[0].Children[0].PerCraft.Should().Be(4);
+        MaterialGraph.CraftsNeeded(5, 2).Should().Be(3);
+        MaterialGraph.CraftsNeeded(1, 0).Should().Be(1);
     }
 
     [Fact]

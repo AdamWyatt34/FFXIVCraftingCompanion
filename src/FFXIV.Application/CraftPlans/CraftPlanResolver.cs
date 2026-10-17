@@ -107,9 +107,11 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
         }
 
         // 8. Sort intermediates by depth descending (deepest first), assign craft order
+        // Ordinal, so the order does not depend on the server's culture (the frontend port
+        // reproduces it).
         var sortedIntermediates = intermediates.Values
             .OrderByDescending(i => i.MaxDepth)
-            .ThenBy(i => i.ItemName)
+            .ThenBy(i => i.ItemName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         for (var i = 0; i < sortedIntermediates.Count; i++)
@@ -119,13 +121,13 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
 
         // Sort raw materials by category then name
         var sortedRaw = rawMaterials.Values
-            .OrderBy(m => m.SortCategory)
-            .ThenBy(m => m.ItemName)
+            .OrderBy(m => m.SortCategory, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(m => m.ItemName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         // Sort crystals by name
         var sortedCrystals = crystals.Values
-            .OrderBy(m => m.ItemName)
+            .OrderBy(m => m.ItemName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var maxDepth = trees.Max(t => t.Tree.TreeDepth);

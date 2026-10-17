@@ -170,6 +170,25 @@ public class CraftPlansController : ControllerBase
     }
 
     /// <summary>
+    /// Get a craft plan's name and items by ID (public, for shareable links).
+    /// </summary>
+    /// <param name="id">The craft plan ID.</param>
+    /// <response code="200">Returns the plan's name and items.</response>
+    /// <response code="404">Plan not found.</response>
+    [HttpGet("{id}/items")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(CraftPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetItems(string id)
+    {
+        var result = await _mediator.Send(new GetSharedCraftPlanQuery(id));
+        if (result is null)
+            return NotFound(new { error = "Craft plan not found." });
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Get a resolved craft plan by ID (public, for shareable links).
     /// </summary>
     /// <param name="id">The craft plan ID.</param>

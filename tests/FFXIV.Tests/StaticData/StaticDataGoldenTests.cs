@@ -1,7 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using FFXIV.Application.Gear;
+using FFXIV.Application.CraftPlans.DTOs;
+using FFXIV.Application.CraftPlans.Queries;
 using FFXIV.Application.DTOs;
+using FFXIV.Application.Journey.DTOs;
 using FFXIV.Application.Items.Queries;
 using FFXIV.Domain.Enums;
 using FFXIV.Application.Journey.Queries;
@@ -118,6 +121,71 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
         AssertOrWrite("item-search.jsonl", text.ToString());
     }
 
+    private static readonly (int RecipeId, int Quantity)[][] Plans =
+    [
+        [(35423, 1)],
+        [(35423, 3), (35585, 2)],
+        [(34065, 999)],
+        [(2240, 7), (35423, 1), (35585, 1), (34065, 2)],
+    ];
+
+    [Fact]
+    public async Task Crystals_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var crystals = new Dictionary<int, MaterialItemExport>();
+
+        foreach (var recipeId in _db.Fixture.RootRecipeIds)
+        {
+            var materials = await mediator.Send(new GetMaterialTreeQuery(recipeId, Quantity: 1));
+            MaterialGraph.Build(materials!, crystals);
+        }
+
+        AssertOrWrite("crystals.json", JsonSerializer.Serialize(new SortedDictionary<int, MaterialItemExport>(crystals), StaticDataExporter.Json) + "\n");
+    }
+
+    [Fact]
+    public async Task Craft_plan_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var text = new StringBuilder();
+
+        foreach (var plan in Plans)
+        {
+            var items = plan.Select(p => new CraftPlanItemInput { RecipeId = p.RecipeId, Quantity = p.Quantity }).ToList();
+            var result = await mediator.Send(new ResolveCraftPlanQuery(items));
+            result.Should().NotBeNull();
+            var exports = new Dictionary<string, string>();
+            foreach (var format in new[] { "text", "json", "teamcraft" })
+            {
+                var export = await mediator.Send(new ExportCraftPlanQuery(items, format));
+                exports[format] = export!.Content;
+            }
+            text.Append(JsonSerializer.Serialize(new CraftPlanGolden(items, result!, exports), StaticDataExporter.Json)).Append('\n');
+        }
+
+        AssertOrWrite("craft-plan.jsonl", text.ToString());
+    }
+
+    [Fact]
+    public async Task Journey_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var text = new StringBuilder();
+
+        foreach (var recipeId in _db.Fixture.RootRecipeIds)
+        {
+            var (result, error) = await mediator.Send(new GetCraftingJourneyQuery(recipeId, UserId: null));
+            error.Should().BeNull();
+            text.Append(JsonSerializer.Serialize(new JourneyGolden(recipeId, result!), StaticDataExporter.Json)).Append('\n');
+        }
+
+        AssertOrWrite("journey.jsonl", text.ToString());
+    }
+
     [Fact]
     public async Task Material_tree_quantities_golden_is_current()
     {
@@ -177,4 +245,8 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     private sealed record MaterialTreeGolden(int RecipeId, int Quantity, MaterialTreeResultDto Result);
 
     private sealed record ItemSearchGolden(string? Query, string? CraftType, int Page, int PageSize, ItemSearchResultDto Result);
+
+    private sealed record CraftPlanGolden(List<CraftPlanItemInput> Items, CraftPlanResultDto Result, Dictionary<string, string> Exports);
+
+    private sealed record JourneyGolden(int RecipeId, CraftingJourneyDto Result);
 }

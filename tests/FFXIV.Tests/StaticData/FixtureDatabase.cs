@@ -49,6 +49,9 @@ public sealed class FixtureDatabase : IDisposable
         services.AddScoped<IVendorInfoRepository, VendorInfoRepository>();
         services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
         services.AddApplication();
+        // The journey handler asks for these; signed-out journeys never touch them.
+        services.AddScoped(_ => Substitute.For<Application.Journey.IStatSufficiencyService>());
+        services.AddScoped(_ => Substitute.For<ICharacterProfileRepository>());
         _services = services.BuildServiceProvider();
 
         using var scope = _services.CreateScope();

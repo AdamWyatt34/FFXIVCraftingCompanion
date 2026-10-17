@@ -27,16 +27,17 @@ public sealed record RecipeExport(
     RecipeCraftingParametersDto CraftingParameters,
     MaterialGraphExport Materials);
 
-// The resolved tree at quantity 1 with per-item data factored out: node payloads repeat across
-// occurrences and across recipes, the skeleton does not. Crystals (ids 2-19) are omitted from
-// Items and live once in materials/crystals.json.
+// The resolved tree with per-item data factored out: node payloads repeat across occurrences
+// and across recipes, the skeleton does not. PerCraft is the ingredient quantity one craft of
+// the parent needs (1 at the root), so the tree expands for any requested quantity. Crystals
+// (ids 2-19) are omitted from Items and live once in materials/crystals.json.
 public sealed record MaterialGraphExport(
     MaterialSkeletonNode Tree,
     IReadOnlyDictionary<int, MaterialItemExport> Items);
 
 public sealed record MaterialSkeletonNode(
     int ItemId,
-    int Quantity,
+    int PerCraft,
     IReadOnlyList<MaterialSkeletonNode> Children,
     bool Truncated = false);
 
