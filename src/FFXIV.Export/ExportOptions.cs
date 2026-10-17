@@ -6,6 +6,7 @@ public sealed record ExportOptions(
     bool FixtureOnly,
     int BucketSize,
     int Parallelism,
+    IReadOnlyList<int> OnlyRecipeIds,
     IReadOnlyList<int> FixtureRecipeIds,
     IReadOnlyList<string> FixtureJobs,
     string? FixtureOut)
@@ -19,6 +20,8 @@ public sealed record ExportOptions(
           --fixture-only     Write only the fixture (needs --fixture-recipes); skips the data set.
           --bucket-size      Ids per recipe/item file; 1 gives one file per entity.
           --parallelism      Concurrent buckets (each on its own DbContext).
+          --recipes          Export only these recipes, the items they reach, and the gear of no job
+                             (a small data set for end-to-end tests and local development).
           --fixture-recipes  Also write the entity closure of these recipes for the parity tests.
           --fixture-jobs     Jobs whose equipment the fixture includes.
           --fixture-out      Path of the fixture JSON file.
@@ -31,6 +34,7 @@ public sealed record ExportOptions(
         var fixtureOnly = false;
         var bucketSize = 100;
         var parallelism = Math.Clamp(Environment.ProcessorCount, 2, 8);
+        var onlyRecipes = new List<int>();
         var fixtureRecipes = new List<int>();
         var fixtureJobs = new List<string>();
         string? fixtureOut = null;
@@ -51,6 +55,9 @@ public sealed record ExportOptions(
                 case "--fixture-only": fixtureOnly = true; break;
                 case "--bucket-size": bucketSize = int.Parse(Next()); break;
                 case "--parallelism": parallelism = int.Parse(Next()); break;
+                case "--recipes":
+                    onlyRecipes.AddRange(Next().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
+                    break;
                 case "--fixture-recipes":
                     fixtureRecipes.AddRange(Next().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                     break;
@@ -73,6 +80,6 @@ public sealed record ExportOptions(
         if (fixtureOnly && fixtureOut is null)
             throw new ArgumentException("--fixture-only needs --fixture-recipes and --fixture-out.");
 
-        return new ExportOptions(outDir, skipSync, fixtureOnly, bucketSize, parallelism, fixtureRecipes, fixtureJobs, fixtureOut);
+        return new ExportOptions(outDir, skipSync, fixtureOnly, bucketSize, parallelism, onlyRecipes, fixtureRecipes, fixtureJobs, fixtureOut);
     }
 }
