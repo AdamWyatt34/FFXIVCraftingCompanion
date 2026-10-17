@@ -16,6 +16,7 @@ public class ItemSourceRepository : IItemSourceRepository
         return await _db.ItemSources
             .AsNoTracking()
             .Where(s => s.ItemId == itemId)
+            .OrderBy(s => s.ItemSourceId)
             .ToListAsync(cancellationToken);
     }
 
@@ -26,6 +27,7 @@ public class ItemSourceRepository : IItemSourceRepository
         var sources = await _db.ItemSources
             .AsNoTracking()
             .Where(s => idList.Contains(s.ItemId))
+            .OrderBy(s => s.ItemSourceId)
             .ToListAsync(cancellationToken);
 
         return sources.GroupBy(s => s.ItemId)

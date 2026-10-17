@@ -10,7 +10,7 @@ public interface IEquipmentRepository
     Task<IReadOnlyList<Equipment>> GetByJobAndLevelAsync(string job, int level, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Equipment>> GetBySlotJobAndLevelAsync(EquipSlot slot, string job, int level, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Equipment>> GetBestBySlotAsync(EquipSlot slot, string job, int level, int limit = 5, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Equipment>> GetBestForSlotsAsync(IEnumerable<EquipSlot> slots, string job, int level, int limitPerSlot = 10, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Equipment>> GetBestForSlotsAsync(IEnumerable<EquipSlot> slots, string job, int level, int limitPerSlot = 10, bool craftedOnly = false, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Equipment>> SearchEquipmentAsync(string query, string? job = null, EquipSlot? slot = null, int? minLevel = null, int? maxLevel = null, int limit = 50, CancellationToken cancellationToken = default);
     Task<HashSet<int>> GetExistingItemIdsAsync(IEnumerable<int> itemIds, CancellationToken cancellationToken = default);
     Task<Equipment?> GetByRecipeIdAsync(int recipeId, CancellationToken cancellationToken = default);

@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using FFXIV.Application.Gear;
+using FFXIV.Application.Gear.DTOs;
+using FFXIV.Application.Gear.Queries;
 using FFXIV.Application.CraftPlans.DTOs;
 using FFXIV.Application.CraftPlans.Queries;
 using FFXIV.Application.DTOs;
@@ -186,6 +188,83 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
         AssertOrWrite("journey.jsonl", text.ToString());
     }
 
+    private static readonly (string Job, int Level, string Profile, bool CraftedOnly)[] GearSets =
+    [
+        ("CRP", 100, "balanced", false),
+        ("CRP", 100, "Balanced", true),
+        ("CRP", 90, "progressfocused", false),
+        ("CRP", 100, "cpfocused", true),
+        ("CRP", 100, "gatheringbalanced", false),
+        ("CRP", 100, "nonsense", false),
+        ("CRP", 1, "balanced", false),
+        ("MIN", 100, "gatheringbalanced", false),
+        ("MIN", 100, "perceptionfocused", false),
+        ("MIN", 50, "balanced", false),
+        ("MIN", 100, "balanced", true),
+    ];
+
+    private static readonly (string Query, string? Job, string? Slot, int? MinLevel, int? MaxLevel)[] GearSearches =
+    [
+        ("saw", null, null, null, null),
+        ("of Crafting", "CRP", null, null, null),
+        ("of crafting", "CRP", "Head", null, null),
+        ("", "MIN", "MainHand", null, null),
+        ("", "MIN", null, 80, 99),
+        ("ING", null, null, 100, null),
+        ("zzzz", null, null, null, null),
+        ("", "CRP", null, null, null),
+    ];
+
+    [Fact]
+    public async Task Gear_export_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var equipmentRepo = scope.ServiceProvider.GetRequiredService<IEquipmentRepository>();
+        var itemSourceRepo = scope.ServiceProvider.GetRequiredService<IItemSourceRepository>();
+        var gearService = scope.ServiceProvider.GetRequiredService<IGearRecommendationService>();
+        var text = new StringBuilder();
+
+        foreach (var job in _db.Fixture.Jobs)
+        {
+            var export = await GearExport.BuildJobAsync(job, equipmentRepo, itemSourceRepo, gearService, CancellationToken.None);
+            text.Append(JsonSerializer.Serialize(export, StaticDataExporter.Json)).Append('\n');
+        }
+
+        AssertOrWrite("gear-export.jsonl", text.ToString());
+        AssertOrWrite("gear-profiles.json", JsonSerializer.Serialize(GearExport.AllProfiles(), StaticDataExporter.Json) + "\n");
+    }
+
+    [Fact]
+    public async Task Gear_sets_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var text = new StringBuilder();
+
+        foreach (var (job, level, profile, craftedOnly) in GearSets)
+        {
+            var result = await mediator.Send(new GetGearRecommendationsQuery(job, level, profile, craftedOnly));
+            text.Append(JsonSerializer.Serialize(new GearSetGolden(job, level, profile, craftedOnly, result), StaticDataExporter.Json)).Append('\n');
+        }
+        AssertOrWrite("gear-sets.jsonl", text.ToString());
+
+        var lists = new StringBuilder();
+        foreach (var job in new string?[] { null, "CRP", "MIN", "pld", "WHM", "NIN", "BRD", "BLM" })
+        {
+            var result = await mediator.Send(new GetStatWeightProfilesQuery(job));
+            lists.Append(JsonSerializer.Serialize(new ProfileListGolden(job, result), StaticDataExporter.Json)).Append('\n');
+        }
+        AssertOrWrite("gear-profile-lists.jsonl", lists.ToString());
+
+        var searches = new StringBuilder();
+        foreach (var (query, job, slot, minLevel, maxLevel) in GearSearches)
+        {
+            var result = await mediator.Send(new SearchEquipmentQuery(query, job, slot, minLevel, maxLevel));
+            searches.Append(JsonSerializer.Serialize(new GearSearchGolden(query, job, slot, minLevel, maxLevel, result), StaticDataExporter.Json)).Append('\n');
+        }
+        AssertOrWrite("gear-search.jsonl", searches.ToString());
+    }
+
     [Fact]
     public async Task Material_tree_quantities_golden_is_current()
     {
@@ -249,4 +328,10 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     private sealed record CraftPlanGolden(List<CraftPlanItemInput> Items, CraftPlanResultDto Result, Dictionary<string, string> Exports);
 
     private sealed record JourneyGolden(int RecipeId, CraftingJourneyDto Result);
+
+    private sealed record GearSetGolden(string Job, int Level, string Profile, bool CraftedOnly, GearSetDto Result);
+
+    private sealed record ProfileListGolden(string? Job, List<StatWeightProfileDto> Result);
+
+    private sealed record GearSearchGolden(string Query, string? Job, string? Slot, int? MinLevel, int? MaxLevel, List<EquipmentDto> Result);
 }

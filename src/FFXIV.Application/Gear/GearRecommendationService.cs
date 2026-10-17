@@ -27,15 +27,11 @@ public sealed class GearRecommendationService : IGearRecommendationService
         var weightProfile = ResolveProfile(job, profile);
         var slots = GetSlotsForJob(job);
 
-        // Batch-load candidates for all slots in a single query
+        // Batch-load candidates for all slots in a single query. Crafted-only narrows the pool
+        // before the top-N cut, so the best crafted pieces are always offered.
         var distinctSlots = slots.Select(s => s.Slot).Distinct();
         var allCandidates = await _equipmentRepo.GetBestForSlotsAsync(
-            distinctSlots, job, level, craftedOnly ? 50 : 10, ct);
-
-        if (craftedOnly)
-            allCandidates = allCandidates
-                .Where(e => e.SourceType == ItemSourceType.Crafted)
-                .ToList();
+            distinctSlots, job, level, 10, craftedOnly, ct);
 
         var candidatesBySlot = allCandidates
             .GroupBy(e => e.EquipSlot)
@@ -283,15 +279,7 @@ public sealed class GearRecommendationService : IGearRecommendationService
         foreach (var rec in recommendations)
         {
             if (rec.RecommendedItem is null) continue;
-
-            if (sourcesByItem.TryGetValue(rec.RecommendedItem.EquipmentId, out var sources)
-                && sources.Count > 0
-                && rec.RecommendedItem.SourceType is null)
-            {
-                var primarySource = sources[0];
-                rec.Source.SourceType = primarySource.SourceType;
-                rec.Source.Description = primarySource.SourceType.ToString();
-            }
+            GearMapper.EnrichFromItemSources(rec.Source, rec.RecommendedItem, sourcesByItem.GetValueOrDefault(rec.RecommendedItem.EquipmentId));
         }
     }
 

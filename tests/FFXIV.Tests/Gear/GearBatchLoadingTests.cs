@@ -66,7 +66,7 @@ public class GearBatchLoadingTests
             12, "Ring", EquipSlot.Ring, craftsmanship: 20, control: 15, cp: 3);
 
         _equipmentRepo.GetBestForSlotsAsync(
-            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new List<Equipment> { mainHand, head, ring }.AsReadOnly());
 
         // Act
@@ -74,7 +74,7 @@ public class GearBatchLoadingTests
 
         // Assert — batch method called once, individual GetBestBySlotAsync never called
         await _equipmentRepo.Received(1).GetBestForSlotsAsync(
-            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<EquipSlot>>(), "BSM", 90, 10, Arg.Any<bool>(), Arg.Any<CancellationToken>());
         await _equipmentRepo.DidNotReceive().GetBestBySlotAsync(
             Arg.Any<EquipSlot>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
 

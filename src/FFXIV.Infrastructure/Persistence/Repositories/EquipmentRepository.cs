@@ -69,16 +69,20 @@ public class EquipmentRepository : IEquipmentRepository
 
     public async Task<IReadOnlyList<Equipment>> GetBestForSlotsAsync(
         IEnumerable<EquipSlot> slots, string job, int level, int limitPerSlot = 10,
-        CancellationToken cancellationToken = default)
+        bool craftedOnly = false, CancellationToken cancellationToken = default)
     {
         var slotList = slots.ToList();
         if (slotList.Count == 0) return [];
 
-        var all = await _db.Equipment
+        var query = _db.Equipment
             .AsNoTracking()
             .Where(e => slotList.Contains(e.EquipSlot)
                         && e.ClassJobCategory.Contains(job)
-                        && e.EquipLevel <= level)
+                        && e.EquipLevel <= level);
+        if (craftedOnly)
+            query = query.Where(e => e.SourceType == ItemSourceType.Crafted);
+
+        var all = await query
             .OrderByDescending(e => e.ItemLevel)
             .ThenBy(e => e.EquipmentId)
             .ToListAsync(cancellationToken);
