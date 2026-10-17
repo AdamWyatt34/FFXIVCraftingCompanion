@@ -40,6 +40,10 @@ jobs:
         run: npm test
 
       - name: Build
+        # data-fetch.mjs downloads the data set pinned in data.lock.json; the repository is
+        # private, so the download is authenticated with the workflow token.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run build
 
       - name: Install Playwright
