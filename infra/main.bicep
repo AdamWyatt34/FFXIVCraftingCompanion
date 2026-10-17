@@ -20,6 +20,10 @@ param sqlAdminPassword string
 @description('Secret key used for JWT token signing.')
 param jwtSecretKey string
 
+@secure()
+@description('Key that gates /api/admin/*; empty keeps the admin endpoints closed.')
+param adminApiKey string = ''
+
 @description('Container image to deploy.')
 param containerImage string = 'ghcr.io/adamwyatt34/ffxiv-crafting-api:latest'
 
@@ -89,6 +93,10 @@ module containerApps 'modules/container-apps.bicep' = {
       {
         name: 'Jwt__SecretKey'
         value: jwtSecretKey
+      }
+      {
+        name: 'Admin__ApiKey'
+        value: adminApiKey
       }
       {
         name: 'Cors__AllowedOrigins__0'

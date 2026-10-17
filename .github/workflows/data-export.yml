@@ -1,0 +1,106 @@
+name: Data Export
+
+# Produces the static game-data set the frontend serves: syncs XIVAPI into a throwaway SQL
+# Server, exports JSON, publishes it to the orphan `data` branch, and pins that commit in
+# frontend/data.lock.json on main (which is what makes Vercel rebuild).
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Publish even if the game version is unchanged
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-export
+  cancel-in-progress: false
+
+env:
+  SA_PASSWORD: Export!Passw0rd-${{ github.run_id }}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Export!Passw0rd-${{ github.run_id }}
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Export!Passw0rd-${{ github.run_id }}' -C -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Sync and export
+        env:
+          ConnectionStrings__DefaultConnection: Server=localhost,1433;Database=ffxiv_export;User Id=sa;Password=${{ env.SA_PASSWORD }};TrustServerCertificate=true;Encrypt=false
+        run: dotnet run --project src/FFXIV.Export --configuration Release -- --out "$RUNNER_TEMP/data"
+
+      - name: Compare with the published game version
+        id: compare
+        run: |
+          new=$(jq -r .gameVersionKey "$RUNNER_TEMP/data/manifest.json")
+          current=$(git fetch --depth 1 origin data 2>/dev/null && git show origin/data:manifest.json | jq -r .gameVersionKey || echo none)
+          echo "new=$new current=$current"
+          if [ "$new" != "$current" ] || [ "${{ inputs.force }}" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "changed=$([ "$new" != "$current" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # The branch is always a single commit: history for data lives in the lock file on main.
+      - name: Publish the data branch
+        if: steps.compare.outputs.publish == 'true'
+        id: publish
+        run: |
+          version=$(jq -r .version "$RUNNER_TEMP/data/manifest.json")
+          cd "$RUNNER_TEMP/data"
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "data: $version"
+          git push --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Pin the data commit on main
+        if: steps.compare.outputs.publish == 'true'
+        run: |
+          jq -n --arg version "${{ steps.publish.outputs.version }}" \
+                --arg gameVersion "$(jq -r .gameVersion "$RUNNER_TEMP/data/manifest.json")" \
+                --arg dataSha "${{ steps.publish.outputs.sha }}" \
+                '{version: $version, gameVersion: $gameVersion, dataSha: $dataSha}' > frontend/data.lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/data.lock.json
+          git commit -q -m "chore(data): pin game data ${{ steps.publish.outputs.version }}"
+          git push origin HEAD:main
+
+      # The account database keeps its game tables (Lodestone import matches gear by name);
+      # one wake per game patch keeps them current.
+      - name: Resync the production database
+        if: steps.compare.outputs.changed == 'true' && vars.API_BASE_URL != ''
+        run: |
+          curl -fsS -X POST "${{ vars.API_BASE_URL }}/api/admin/sync" \
+            -H "X-Admin-Key: ${{ secrets.ADMIN_API_KEY }}" \
+            -H "Content-Length: 0"

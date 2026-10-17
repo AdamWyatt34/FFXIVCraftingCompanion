@@ -40,6 +40,7 @@ public class EquipmentRepository : IEquipmentRepository
             .AsNoTracking()
             .Where(e => e.ClassJobCategory.Contains(job) && e.EquipLevel <= level)
             .OrderByDescending(e => e.ItemLevel)
+            .ThenBy(e => e.EquipmentId)
             .ToListAsync(cancellationToken);
     }
 
@@ -50,6 +51,7 @@ public class EquipmentRepository : IEquipmentRepository
             .AsNoTracking()
             .Where(e => e.EquipSlot == slot && e.ClassJobCategory.Contains(job) && e.EquipLevel <= level)
             .OrderByDescending(e => e.ItemLevel)
+            .ThenBy(e => e.EquipmentId)
             .ToListAsync(cancellationToken);
     }
 
@@ -60,6 +62,7 @@ public class EquipmentRepository : IEquipmentRepository
             .AsNoTracking()
             .Where(e => e.EquipSlot == slot && e.ClassJobCategory.Contains(job) && e.EquipLevel <= level)
             .OrderByDescending(e => e.ItemLevel)
+            .ThenBy(e => e.EquipmentId)
             .Take(limit)
             .ToListAsync(cancellationToken);
     }
@@ -77,6 +80,7 @@ public class EquipmentRepository : IEquipmentRepository
                         && e.ClassJobCategory.Contains(job)
                         && e.EquipLevel <= level)
             .OrderByDescending(e => e.ItemLevel)
+            .ThenBy(e => e.EquipmentId)
             .ToListAsync(cancellationToken);
 
         return all
@@ -108,6 +112,7 @@ public class EquipmentRepository : IEquipmentRepository
 
         return await q
             .OrderByDescending(e => e.ItemLevel)
+            .ThenBy(e => e.EquipmentId)
             .Take(limit)
             .ToListAsync(cancellationToken);
     }

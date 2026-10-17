@@ -98,8 +98,8 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
         });
 
         // Sort intermediate crafts deepest-first (reverse topological order)
-        intermediateCrafts.Sort((a, b) => b.Depth.CompareTo(a.Depth));
-        var intermediates = intermediateCrafts.Select(x => x.Item).ToList();
+        // OrderBy is stable, so equal depths keep first-occurrence order (List.Sort would not).
+        var intermediates = intermediateCrafts.OrderByDescending(x => x.Depth).Select(x => x.Item).ToList();
 
         return new MaterialTreeResult
         {

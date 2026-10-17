@@ -3,6 +3,7 @@
     <Project Path="src/FFXIV.Api/FFXIV.Api.csproj" />
     <Project Path="src/FFXIV.Application/FFXIV.Application.csproj" />
     <Project Path="src/FFXIV.Domain/FFXIV.Domain.csproj" />
+    <Project Path="src/FFXIV.Export/FFXIV.Export.csproj" />
     <Project Path="src/FFXIV.Infrastructure/FFXIV.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
