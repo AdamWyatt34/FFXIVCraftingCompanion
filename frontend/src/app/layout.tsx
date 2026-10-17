@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Header, BottomTabNav, Footer } from "@/components/layout";
 import { ToastProvider, Breadcrumbs, InstallBanner } from "@/components/ui";
 import { FeedbackButton } from "@/components/feedback";
-import { EngineModeFromUrl } from "@/components/EngineModeFromUrl";
+import Script from "next/script";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CraftPlanProvider } from "@/contexts/CraftPlanContext";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
@@ -76,7 +76,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased">
-        <EngineModeFromUrl />
+        <Script id="vercel-analytics-queue" strategy="beforeInteractive">
+          {"window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };"}
+        </Script>
+        <Script src="/_vercel/insights/script.js" strategy="afterInteractive" />
         <AuthProvider>
           <BreadcrumbProvider>
             <Header />

@@ -21,10 +21,6 @@ test("simulator and solver run offline from the WASM engine", async ({
   context,
   request,
 }) => {
-  await context.addInitScript(() => {
-    window.localStorage.setItem("ffxiv_engine", "wasm");
-  });
-
   // Online: install the service worker (it precaches the WASM engine and the worker chunk), then
   // reload once under its control so the page and the recipe responses land in its caches.
   await page.goto(SIMULATOR_URL);
@@ -89,28 +85,4 @@ test("simulator and solver run offline from the WASM engine", async ({
     seen.filter((r) => r.includes("/api/crafting")),
     "no request reached /api/crafting",
   ).toEqual([]);
-});
-
-test("engine mode api sends the solve to the API", async ({
-  page,
-  context,
-  request,
-}) => {
-  await context.addInitScript(() => {
-    window.localStorage.setItem("ffxiv_engine", "api");
-  });
-
-  await page.goto(SIMULATOR_URL);
-  await expect(
-    page.getByRole("heading", { name: RECIPE_NAME }).first(),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /^Quick Solve/ }).click();
-  await expect(page.getByText("api path exercised")).toBeVisible();
-
-  const seen: string[] = await (
-    await request.get(`${MOCK_API}/__requests`)
-  ).json();
-  expect(
-    seen.filter((r) => r.includes("/api/crafting/solve/quick")),
-  ).toHaveLength(1);
 });

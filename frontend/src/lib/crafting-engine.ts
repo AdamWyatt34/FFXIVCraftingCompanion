@@ -1,22 +1,14 @@
 /**
- * The simulator's crafting calls, with the same signatures as `api-client` and the same result
- * shapes. Each call runs in the browser through the WASM engine, or against the .NET crafting
- * endpoints when the engine mode is `api` (see `engine-mode.ts`). Recipe parameters come from
- * the API either way; they are memoized here per recipe id.
+ * The simulator's crafting calls, with the signatures and result shapes the .NET crafting
+ * endpoints had. Every call runs in the browser through the WASM engine; recipe parameters come
+ * from the static game data and are memoized here per recipe id.
  */
 
 import {
   ApiClientError,
   getRecipe,
   getRecipeCraftingParameters,
-  exportCraftingMacro as apiExportCraftingMacro,
-  executeCraftingAction as apiExecuteCraftingAction,
-  getAvailableActions as apiGetAvailableActions,
-  getCraftingActions as apiGetCraftingActions,
-  getInitialCraftingState as apiGetInitialCraftingState,
-  simulateCraft as apiSimulateCraft,
 } from "@/lib/api-client";
-import { getEngineMode } from "@/lib/engine-mode";
 import { loadWasmEngine } from "@/lib/wasm-engine";
 import type {
   RecipeCraftingParametersDto,
@@ -56,10 +48,9 @@ export function getRecipeParameters(
 /**
  * Warms the parameter cache (memory and, through the service worker, disk) as soon as a recipe is
  * selected, so a recipe opened online can be crafted and solved offline even if no engine call
- * was made while online. A no-op on the API path.
+ * was made while online.
  */
 export function prefetchRecipeParameters(recipeId: number): void {
-  if (getEngineMode() === "api") return;
   getRecipeParameters(recipeId).catch(() => {
     // The next engine call reports the failure with the API's message.
   });
@@ -116,18 +107,6 @@ export async function getInitialCraftingState(
   signal?: AbortSignal,
   startingQuality = 0,
 ): Promise<CraftingState> {
-  if (getEngineMode() === "api") {
-    return apiGetInitialCraftingState(
-      recipeId,
-      level,
-      craftsmanship,
-      control,
-      cp,
-      isSpecialist,
-      signal,
-      startingQuality,
-    );
-  }
   validateLevel(level);
   if (craftsmanship < 0 || control < 0 || cp < 0)
     throw badRequest("Stats must be non-negative.");
@@ -153,8 +132,6 @@ export async function executeCraftingAction(
   request: ExecuteActionRequest,
   signal?: AbortSignal,
 ): Promise<StepResult> {
-  if (getEngineMode() === "api")
-    return apiExecuteCraftingAction(request, signal);
   validateLevel(request.stats.level);
 
   const [engine, recipe] = await Promise.all([
@@ -176,7 +153,6 @@ export async function getAvailableActions(
   request: AvailableActionsRequest,
   signal?: AbortSignal,
 ): Promise<ActionAvailability[]> {
-  if (getEngineMode() === "api") return apiGetAvailableActions(request, signal);
   validateLevel(request.stats.level);
 
   const [engine, recipe] = await Promise.all([
@@ -193,10 +169,7 @@ export async function simulateCraft(
   request: SimulateRequest,
   signal?: AbortSignal,
 ): Promise<SimulationResult> {
-  // Profile-backed stats are resolved server-side only; that path stays on the API.
-  if (getEngineMode() === "api" || request.useProfileStats || !request.stats) {
-    return apiSimulateCraft(request, signal);
-  }
+  if (!request.stats) throw badRequest("Stats are required.");
   const stats = request.stats;
   validateLevel(stats.level);
   if (stats.craftsmanship < 0 || stats.control < 0 || stats.cp < 0) {
@@ -225,7 +198,6 @@ export async function exportCraftingMacro(
   request: ExportMacroRequest,
   signal?: AbortSignal,
 ): Promise<ExportMacroResult> {
-  if (getEngineMode() === "api") return apiExportCraftingMacro(request, signal);
   const engine = await loadWasmEngine();
   throwIfAborted(signal);
   return local(() => engine.exportMacro(request.actionIds, request.options));
@@ -235,7 +207,6 @@ export async function getCraftingActions(
   level?: number,
   signal?: AbortSignal,
 ): Promise<ActionInfo[]> {
-  if (getEngineMode() === "api") return apiGetCraftingActions(level, signal);
   const engine = await loadWasmEngine();
   throwIfAborted(signal);
   return local(() => engine.actionCatalog(level));

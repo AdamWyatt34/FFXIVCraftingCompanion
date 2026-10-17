@@ -9,8 +9,8 @@ import type {
 } from "@/types/solver";
 import type { SolverProgress } from "@/types/solver-worker";
 import * as Sentry from "@sentry/nextjs";
-import { ApiClientError, trackAnalyticsEvent } from "@/lib/api-client";
-import { getEngineMode } from "@/lib/engine-mode";
+import { ApiClientError, } from "@/lib/api-client";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { startSolve as runSolve, quickSolve } from "@/lib/solver-client";
 import { SOLVER_CONSTANTS } from "@/lib/constants";
 
@@ -138,7 +138,6 @@ export function useSolver(): UseSolverReturn {
             recipeId: request.recipeId,
             algorithm: request.settings?.algorithm,
             cached: job.jobId === "cached",
-            engine: getEngineMode(),
           });
         } else {
           setError(job.errorMessage ?? `Solve ${job.status.toLowerCase()}`);
@@ -155,7 +154,6 @@ export function useSolver(): UseSolverReturn {
           scope.setContext("solver", {
             recipeId: request.recipeId,
             algorithm: request.settings?.algorithm,
-            engine: getEngineMode(),
           });
           Sentry.captureException(err);
         });

@@ -6,7 +6,8 @@ import { User, RefreshCw } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { JOB_INFO, getJobIconUrl, type GearJob } from "@/lib/gear-constants";
-import { refreshLodestone, ApiClientError, trackAnalyticsEvent } from "@/lib/api-client";
+import { refreshLodestone, ApiClientError, } from "@/lib/api-client";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import type { CharacterProfileDto } from "@/types/profile";
 
 interface ProfileHeaderProps {

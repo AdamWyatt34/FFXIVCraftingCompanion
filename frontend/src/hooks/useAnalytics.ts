@@ -1,13 +1,9 @@
 import { useCallback } from "react";
-import { trackAnalyticsEvent } from "@/lib/api-client";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 export function useAnalytics() {
   const track = useCallback(
-    (event: string, metadata?: Record<string, unknown>) => {
-      const pageUrl =
-        typeof window !== "undefined" ? window.location.pathname : undefined;
-      trackAnalyticsEvent(event, metadata, pageUrl);
-    },
+    (event: string, metadata?: Record<string, unknown>) => trackAnalyticsEvent(event, metadata),
     [],
   );
 

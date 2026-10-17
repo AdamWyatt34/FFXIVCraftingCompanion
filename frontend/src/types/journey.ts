@@ -93,11 +93,3 @@ export interface VendorLinkDto {
   cost: number;
   currency: string;
 }
-
-export interface SufficiencyRequestDto {
-  craftsmanship?: number;
-  control?: number;
-  cp?: number;
-  level?: number;
-  useProfileStats?: boolean;
-}

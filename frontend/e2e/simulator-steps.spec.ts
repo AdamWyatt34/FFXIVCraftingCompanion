@@ -14,14 +14,9 @@ const MOCK_API = process.env.MOCK_API_URL ?? "http://localhost:3101";
 
 test("a second action continues from the first one's state", async ({
   page,
-  context,
   request,
 }) => {
   await request.get(`${MOCK_API}/__reset`);
-  await context.addInitScript(() => {
-    window.localStorage.setItem("ffxiv_engine", "wasm");
-  });
-
   await page.goto(SIMULATOR_URL);
   await expect(
     page.getByRole("heading", { name: RECIPE_NAME }).first(),

@@ -7,7 +7,7 @@ import type {
   RecipeDto,
 } from "@/types/api";
 import type { CraftPlanItemInput, CraftPlanResultDto, ExportResultDto } from "@/types/craft-plan";
-import type { CraftingJourneyDto, ItemContextDto } from "@/types/journey";
+import type { CraftingJourneyDto, ItemContextDto, StatSufficiencyResultDto } from "@/types/journey";
 import type { EquipmentDto, GearSetDto, StatWeightProfileDto } from "@/types/gear";
 import type { EorzeanTimeResponse, GatheringGuideDto, GatheringGuideItemInput } from "@/types/gathering";
 import type { CostEstimateDto, WorldGroupDto } from "@/types/market";
@@ -17,6 +17,7 @@ import { toRecipeDto } from "./recipes";
 import { expandMaterialTree, type CrystalTable } from "./materials";
 import { aggregateCraftPlan, exportCraftPlanContent, validatePlanItems, type ExportFormat, type PlanEntry } from "./craft-plans";
 import { composeJourney } from "./journey";
+import { analyzeSufficiency, type GearSource, type JourneyViewer } from "./sufficiency";
 import { availableProfiles, isEquipSlot, recommendGear, searchGearIndex, toSearchResultDto } from "./gear";
 import { ALL_JOBS, isKnownJob } from "./jobs";
 import { buildGatheringGuide, validateGuideItems, type GatheringItemData } from "./gathering";
@@ -145,10 +146,52 @@ export async function exportCraftPlan(
   return { format: normalized, content: exportCraftPlanContent(result, normalized as ExportFormat) };
 }
 
-export async function getCraftingJourney(recipeId: number, signal?: AbortSignal): Promise<CraftingJourneyDto> {
+export async function getCraftingJourney(
+  recipeId: number,
+  signal?: AbortSignal,
+  viewer: JourneyViewer | null = null,
+): Promise<CraftingJourneyDto> {
   const [data, crystals] = await Promise.all([getRecipeExport(recipeId, signal), getCrystals(signal)]);
   const context = await getItemContext(data.recipe.resultItem.itemId, signal);
-  return composeJourney(data, context, crystals);
+  const sufficiency = viewer ? await resolveSufficiency(data, viewer, signal) : null;
+  return composeJourney(data, context, crystals, sufficiency);
+}
+
+// GetCraftingJourneyQuery.ResolveSufficiencyAsync: a failed stat check leaves the journey without one.
+async function resolveSufficiency(
+  data: RecipeExport,
+  viewer: JourneyViewer,
+  signal?: AbortSignal,
+): Promise<StatSufficiencyResultDto | null> {
+  try {
+    return await analyzeSufficiency(data.recipe, data.craftingParameters, viewer.stats, viewer.profile, viewer.engine, gearSource(signal));
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    console.warn(`Sufficiency analysis failed for recipe ${data.recipe.recipeId}`, err);
+    return null;
+  }
+}
+
+function gearSource(signal?: AbortSignal): GearSource {
+  return {
+    async recommend(job, level) {
+      const [jobFile, profiles] = await Promise.all([getGearJob(job, signal), getGearProfilesTable(signal)]);
+      return recommendGear(jobFile, profiles, level, "balanced", false);
+    },
+    async equipment(ids) {
+      const found = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            return (await getItemExport(id, signal)).equipment;
+          } catch (err) {
+            if (err instanceof ApiClientError && err.status === 404) return null;
+            throw err;
+          }
+        }),
+      );
+      return new Map(found.filter((e): e is EquipmentDto => e !== null).map((e) => [e.equipmentId, e]));
+    },
+  };
 }
 
 export function getGearProfilesTable(signal?: AbortSignal): Promise<StatWeightProfileExport[]> {

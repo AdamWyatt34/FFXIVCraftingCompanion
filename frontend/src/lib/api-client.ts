@@ -38,22 +38,6 @@ import type {
   FavoriteStatusDto,
 } from "@/types/saved-lists";
 import type {
-  SimulateRequest,
-  SimulationResult,
-  ExecuteActionRequest,
-  StepResult,
-  ActionInfo,
-  AvailableActionsRequest,
-  ActionAvailability,
-  ExportMacroRequest,
-  ExportMacroResult,
-  CraftingState,
-} from "@/types/simulator";
-import type {
-  SolveRequest,
-  SolverJob,
-  SolverResult,
-  QuickSolveParams,
   SubmitRotationRequest,
   RotationDetail,
   RotationListResult,
@@ -574,135 +558,6 @@ export function saveCraftingPlan(req: {
   });
 }
 
-// --- Crafting / Simulator API ---
-
-export function simulateCraft(
-  request: SimulateRequest,
-  signal?: AbortSignal,
-): Promise<SimulationResult> {
-  return authFetchApi<SimulationResult>("/api/crafting/simulate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
-}
-
-export function executeCraftingAction(
-  request: ExecuteActionRequest,
-  signal?: AbortSignal,
-): Promise<StepResult> {
-  return fetchApi<StepResult>("/api/crafting/execute-action", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
-}
-
-export function getCraftingActions(
-  level?: number,
-  signal?: AbortSignal,
-): Promise<ActionInfo[]> {
-  const params = level !== undefined ? `?level=${level}` : "";
-  return fetchApi<ActionInfo[]>(`/api/crafting/actions${params}`, { signal });
-}
-
-export function getAvailableActions(
-  request: AvailableActionsRequest,
-  signal?: AbortSignal,
-): Promise<ActionAvailability[]> {
-  return fetchApi<ActionAvailability[]>("/api/crafting/available-actions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
-}
-
-export function exportCraftingMacro(
-  request: ExportMacroRequest,
-  signal?: AbortSignal,
-): Promise<ExportMacroResult> {
-  return fetchApi<ExportMacroResult>("/api/crafting/export-macro", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
-}
-
-export function getInitialCraftingState(
-  recipeId: number,
-  level: number,
-  craftsmanship: number,
-  control: number,
-  cp: number,
-  isSpecialist = false,
-  signal?: AbortSignal,
-  startingQuality = 0,
-): Promise<CraftingState> {
-  const params = new URLSearchParams({
-    recipeId: String(recipeId),
-    level: String(level),
-    craftsmanship: String(craftsmanship),
-    control: String(control),
-    cp: String(cp),
-    isSpecialist: String(isSpecialist),
-  });
-  if (startingQuality > 0)
-    params.set("startingQuality", String(startingQuality));
-  return fetchApi<CraftingState>(`/api/crafting/initial-state?${params}`, {
-    signal,
-  });
-}
-
-// --- Solver API ---
-
-export function submitSolveJob(
-  request: SolveRequest,
-  signal?: AbortSignal,
-): Promise<SolverJob> {
-  return authFetchApi<SolverJob>("/api/crafting/solve", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
-}
-
-export function getSolveJob(
-  jobId: string,
-  signal?: AbortSignal,
-): Promise<SolverJob> {
-  return fetchApi<SolverJob>(
-    `/api/crafting/solve/${encodeURIComponent(jobId)}`,
-    { signal },
-  );
-}
-
-export function cancelSolveJob(jobId: string): Promise<void> {
-  return fetchApi<void>(`/api/crafting/solve/${encodeURIComponent(jobId)}`, {
-    method: "DELETE",
-  });
-}
-
-export function quickSolve(
-  params: QuickSolveParams,
-  signal?: AbortSignal,
-): Promise<SolverResult> {
-  const search = new URLSearchParams({
-    recipeId: String(params.recipeId),
-    craftsmanship: String(params.craftsmanship),
-    control: String(params.control),
-    cp: String(params.cp),
-    level: String(params.level),
-  });
-  return fetchApi<SolverResult>(`/api/crafting/solve/quick?${search}`, {
-    signal,
-  });
-}
-
 // --- Rotation Library API ---
 
 export function submitRotation(
@@ -750,24 +605,13 @@ export function deleteRotation(id: number): Promise<void> {
 
 // --- Journey API ---
 
+/** The journey; with a viewer (a signed-in profile and the engine) it carries the stat check. */
 export function getCraftingJourney(
   recipeId: number,
   signal?: AbortSignal,
+  viewer: import("@/lib/static-data/sufficiency").JourneyViewer | null = null,
 ): Promise<import("@/types/journey").CraftingJourneyDto> {
-  return staticData.getCraftingJourney(recipeId, signal);
-}
-
-export function analyzeSufficiency(
-  recipeId: number,
-  request: import("@/types/journey").SufficiencyRequestDto,
-  signal?: AbortSignal,
-): Promise<import("@/types/journey").StatSufficiencyResultDto> {
-  return authFetchApi(`/api/recipes/${recipeId}/sufficiency`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
+  return staticData.getCraftingJourney(recipeId, signal, viewer);
 }
 
 export function getItemContext(
@@ -960,29 +804,4 @@ export function submitFeedback(request: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   });
-}
-
-// --- Analytics API ---
-
-export function trackAnalyticsEvent(
-  event: string,
-  metadata?: Record<string, unknown>,
-  pageUrl?: string,
-) {
-  try {
-    const url = `${getBaseUrl()}/api/analytics/event`;
-    const body: Record<string, unknown> = { event };
-    if (metadata) body.metadata = JSON.stringify(metadata);
-    if (pageUrl) body.pageUrl = pageUrl;
-    if (typeof document !== "undefined")
-      body.referrer = document.referrer || undefined;
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      keepalive: true,
-    }).catch(() => {});
-  } catch {
-    // fire-and-forget — never throw
-  }
 }
