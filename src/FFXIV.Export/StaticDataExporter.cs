@@ -225,12 +225,16 @@ public sealed class StaticDataExporter(
         var equipment = await db.Equipment.AsNoTracking()
             .Select(e => new { e.EquipmentId, e.EquipSlot, e.EquipLevel, e.ClassJobCategory })
             .ToDictionaryAsync(e => e.EquipmentId, e => new SearchIndexEquipment(e.EquipSlot.ToString(), e.EquipLevel, e.ClassJobCategory), ct);
+        var classJobLevels = await db.RecipeLevelEntries.AsNoTracking()
+            .ToDictionaryAsync(l => l.RecipeLevel, l => l.ClassJobLevel, ct);
         var recipesByItem = (await db.Recipes.AsNoTracking()
-                .Select(r => new { r.ResultItemId, r.RecipeId, r.CraftType })
+                .Select(r => new { r.ResultItemId, r.RecipeId, r.CraftType, r.RecipeLevel })
                 .OrderBy(r => r.RecipeId)
                 .ToListAsync(ct))
             .GroupBy(r => r.ResultItemId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<SearchIndexRecipe>)g.Select(r => new SearchIndexRecipe(r.RecipeId, r.CraftType.ToString())).ToList());
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<SearchIndexRecipe>)g
+                .Select(r => new SearchIndexRecipe(r.RecipeId, r.CraftType.ToString(), classJobLevels.GetValueOrDefault(r.RecipeLevel)))
+                .ToList());
 
         var entries = new List<SearchIndexEntry>();
         await foreach (var item in db.Items.AsNoTracking().Where(i => i.Name != "").OrderBy(i => i.ItemId).AsAsyncEnumerable().WithCancellation(ct))

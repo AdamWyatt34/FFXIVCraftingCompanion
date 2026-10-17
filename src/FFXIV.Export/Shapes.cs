@@ -96,6 +96,8 @@ public sealed record SearchIndexEntry(
     IReadOnlyList<SearchIndexRecipe> Recipes,
     SearchIndexEquipment? Equipment);
 
-public sealed record SearchIndexRecipe(int RecipeId, string CraftType);
+/// <param name="Level">The class job level from the recipe level table (not the rlvl), so the
+/// frontend's quick filters can cut by expansion.</param>
+public sealed record SearchIndexRecipe(int RecipeId, string CraftType, int Level);
 
 public sealed record SearchIndexEquipment(string Slot, int EquipLevel, string ClassJobCategory);

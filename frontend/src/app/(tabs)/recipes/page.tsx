@@ -18,6 +18,7 @@ import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useCraftPlanContext } from "@/contexts/CraftPlanContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { MIN_SEARCH_LENGTH, CRAFT_TYPE_INFO } from "@/lib/constants";
+import { QUICK_FILTERS, type QuickFilter } from "@/lib/static-data/search";
 import type { CraftType } from "@/types/api";
 
 function RecipesPageContent() {
@@ -37,6 +38,8 @@ function RecipesPageContent() {
     setQuery,
     craftType,
     setCraftType,
+    quickFilter,
+    setQuickFilter,
     items,
     totalCount,
     isLoading,
@@ -54,7 +57,7 @@ function RecipesPageContent() {
   });
 
   const hasQuery = query.length >= MIN_SEARCH_LENGTH;
-  const hasFilter = craftType !== null;
+  const hasFilter = craftType !== null || quickFilter !== null;
   const isActive = hasQuery || hasFilter;
   const showWelcome = !isActive && !isLoading;
   const showResults = isActive && items.length > 0;
@@ -65,6 +68,7 @@ function RecipesPageContent() {
   const activeCraftInfo = craftType
     ? CRAFT_TYPE_INFO[craftType as CraftType]
     : null;
+  const activeFilterLabel = activeCraftInfo?.fullName ?? (quickFilter ? QUICK_FILTERS[quickFilter].label : null);
 
   return (
     <div className="flex flex-col h-full">
@@ -92,15 +96,15 @@ function RecipesPageContent() {
             )}
           </Link>
         </div>
-        {/* Active craft type filter chip */}
-        {activeCraftInfo && (
+        {/* Active filter chip (craft type or quick filter) */}
+        {activeFilterLabel && (
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs text-text-muted">Filtered by:</span>
             <button
-              onClick={() => setCraftType(null)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-sm rounded-full bg-bg-surface border border-border-focus ${activeCraftInfo.colorClass}`}
+              onClick={() => (activeCraftInfo ? setCraftType(null) : setQuickFilter(null))}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-sm rounded-full bg-bg-surface border border-border-focus ${activeCraftInfo?.colorClass ?? "text-text-primary"}`}
             >
-              {activeCraftInfo.fullName}
+              {activeFilterLabel}
               <X size={14} />
             </button>
           </div>
@@ -142,14 +146,14 @@ function RecipesPageContent() {
             ))}
           </div>
           <div className="flex flex-wrap justify-center gap-2 mt-2">
-            {["Dawntrail Recipes", "Level 100 Gear", "Common Materials"].map(
-              (suggestion) => (
+            {(Object.entries(QUICK_FILTERS) as [QuickFilter, { label: string }][]).map(
+              ([key, { label }]) => (
                 <button
-                  key={suggestion}
-                  onClick={() => setQuery(suggestion)}
+                  key={key}
+                  onClick={() => setQuickFilter(key)}
                   className="px-3 py-1.5 text-sm rounded-full bg-bg-elevated text-text-secondary border border-border hover:border-border-focus hover:text-text-primary transition-colors"
                 >
-                  {suggestion}
+                  {label}
                 </button>
               ),
             )}
@@ -164,7 +168,7 @@ function RecipesPageContent() {
       {showError && <ErrorState message={error!} onRetry={retry} />}
 
       {/* Empty state */}
-      {showEmpty && <EmptyState query={craftType ? `${activeCraftInfo?.fullName} recipes` : query} />}
+      {showEmpty && <EmptyState query={activeFilterLabel ?? query} />}
 
       {/* Results grid */}
       {showResults && (
