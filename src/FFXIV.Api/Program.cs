@@ -3,10 +3,13 @@ using System.Threading.RateLimiting;
 using FFXIV.Api.Filters;
 using FFXIV.Api.Health;
 using FFXIV.Api.Middleware;
+using FFXIV.Api.RateLimiting;
 using FFXIV.Application;
 using FFXIV.Infrastructure;
 using FFXIV.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -43,8 +46,33 @@ if (builder.Configuration.GetValue<bool>("Sentry:Enabled"))
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Request DTOs carry DataAnnotations; a failed one answers with the same { error } shape
+        // the hand-written checks use, so clients deal with one error format.
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var message = context.ModelState.Values
+                .SelectMany(entry => entry.Errors)
+                .Select(error => error.ErrorMessage)
+                .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? "The request is invalid.";
+            return new BadRequestObjectResult(new { error = message });
+        };
+    });
 builder.Services.AddScoped<AdminApiKeyFilter>();
+
+// Azure Container Apps terminates TLS and appends the client address to X-Forwarded-For; only
+// the rightmost entry is the ingress's own, so exactly one hop is trusted and no proxy list is
+// needed. Without this every client shares the ingress address, and per-client rate limits,
+// request logs and the HTTPS scheme are all wrong.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Response Compression
 builder.Services.AddResponseCompression(options =>
@@ -56,37 +84,35 @@ builder.Services.AddResponseCompression(options =>
 builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     options.Level = CompressionLevel.Fastest);
 
-// Rate Limiting
+// Rate limiting. Every policy is partitioned per client (the signed-in user, else the address
+// the ingress forwarded), so one caller cannot exhaust a budget for the whole site.
+var rateLimits = builder.Configuration.GetSection(RateLimitSettings.SectionName).Get<RateLimitSettings>()
+    ?? new RateLimitSettings();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddFixedWindowLimiter("solver", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 20;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("analytics", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 60;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("feedback", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 5;
-        limiterOptions.Window = TimeSpan.FromHours(1);
-        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 0;
-    });
+    options.AddPolicy("auth", context =>
+        RateLimitPartitions.SlidingWindow(context, rateLimits.AuthPerFiveMinutes, TimeSpan.FromMinutes(5)));
+    options.AddPolicy("register", context =>
+        RateLimitPartitions.FixedWindow(context, rateLimits.RegisterPerHour, TimeSpan.FromHours(1)));
+    options.AddPolicy("public-read", context =>
+        RateLimitPartitions.SlidingWindow(context, rateLimits.PublicReadPerMinute, TimeSpan.FromMinutes(1)));
+    options.AddPolicy("feedback", context =>
+        RateLimitPartitions.FixedWindow(context, rateLimits.FeedbackPerHour, TimeSpan.FromHours(1)));
+    options.AddPolicy("solver", context =>
+        RateLimitPartitions.FixedWindow(context, rateLimits.SolverPerMinute, TimeSpan.FromMinutes(1)));
+    options.AddPolicy("analytics", context =>
+        RateLimitPartitions.FixedWindow(context, rateLimits.AnalyticsPerMinute, TimeSpan.FromMinutes(1)));
 
     options.OnRejected = async (context, ct) =>
     {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        }
+
         context.HttpContext.Response.ContentType = "application/json";
         await context.HttpContext.Response.WriteAsJsonAsync(
             new { error = "Rate limit exceeded. Try again later." }, ct);
@@ -160,6 +186,7 @@ if (app.Configuration.GetValue<bool>("ApplyMigrationsOnStartup"))
 }
 
 // Configure the HTTP request pipeline
+app.UseForwardedHeaders();
 app.UseResponseCompression();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ApiVersionHeaderMiddleware>();
@@ -179,10 +206,11 @@ app.UseHttpsRedirection();
 
 app.UseCors("DefaultPolicy");
 
-app.UseRateLimiter();
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After authentication, so the policies can partition by the signed-in user.
+app.UseRateLimiter();
 
 app.MapControllers();
 
