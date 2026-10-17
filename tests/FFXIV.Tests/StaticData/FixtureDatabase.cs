@@ -21,6 +21,12 @@ public sealed class FixtureDatabase : IDisposable
     public static readonly string FixturePath =
         Path.Combine(AppContext.BaseDirectory, "StaticData", "TestData", "fixture.json");
 
+    public static readonly string UniversalisSamplePath =
+        Path.Combine(AppContext.BaseDirectory, "StaticData", "TestData", "universalis-sample.json");
+
+    /// The clock every time-dependent golden runs on (cost staleness, generated-at).
+    public static readonly DateTimeOffset Now = new(2026, 10, 18, 12, 0, 0, TimeSpan.Zero);
+
     private readonly SqliteConnection _connection;
     private readonly ServiceProvider _services;
 
@@ -52,6 +58,8 @@ public sealed class FixtureDatabase : IDisposable
         // The journey handler asks for these; signed-out journeys never touch them.
         services.AddScoped(_ => Substitute.For<Application.Journey.IStatSufficiencyService>());
         services.AddScoped(_ => Substitute.For<ICharacterProfileRepository>());
+        services.AddSingleton<TimeProvider>(new FixedClock(Now));
+        services.AddSingleton(_ => UniversalisFromSample());
         _services = services.BuildServiceProvider();
 
         using var scope = _services.CreateScope();
@@ -69,6 +77,33 @@ public sealed class FixtureDatabase : IDisposable
     }
 
     public IServiceScope CreateScope() => _services.CreateScope();
+
+    // A recorded Universalis batch response for the fixture's materials (world Gilgamesh),
+    // answered through the real response mapping.
+    public static Dictionary<int, Domain.Models.MarketBoardData> UniversalisSample()
+    {
+        var raw = JsonSerializer.Deserialize<Infrastructure.ExternalApis.Models.UniversalisBatchResponse>(
+            File.ReadAllText(UniversalisSamplePath))!;
+        return raw.Items.ToDictionary(
+            kv => int.Parse(kv.Key),
+            kv => Infrastructure.ExternalApis.UniversalisClient.MapToMarketBoardData(kv.Value));
+    }
+
+    private static Domain.Interfaces.IUniversalisClient UniversalisFromSample()
+    {
+        var sample = UniversalisSample();
+        var client = Substitute.For<Domain.Interfaces.IUniversalisClient>();
+        client.GetItemPricesBatchAsync(Arg.Any<string>(), Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<int>>()
+                .Where(sample.ContainsKey)
+                .ToDictionary(id => id, id => sample[id]));
+        return client;
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
 
     // Production orders names under SQL Server's case-insensitive collation; SQLite's default is
     // binary. NOCASE (ASCII case folding) is the order the frontend port reproduces.
