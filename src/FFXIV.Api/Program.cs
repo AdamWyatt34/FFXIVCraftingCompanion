@@ -189,6 +189,10 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     ResponseWriter = HealthCheckResponseWriter.WriteResponse
 });
 
+// Liveness must not depend on the database or XIVAPI: a paused free-tier DB would otherwise
+// fail the probe and restart the container forever. /health stays the full readiness check.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+
 try
 {
     Log.Information("Starting FFXIV Crafting Companion API");

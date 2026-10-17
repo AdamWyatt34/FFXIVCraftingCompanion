@@ -64,8 +64,57 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  deploy:
+  migrate:
     needs: push-image
+    runs-on: ubuntu-latest
+    env:
+      ConnectionStrings__DefaultConnection: ${{ secrets.SQL_CONNECTION_STRING }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # The SQL server only admits Azure services; the runner needs a rule of its own for the
+      # duration of the job. The server's resource group is looked up rather than assumed.
+      - name: Open the SQL firewall for this runner
+        id: firewall
+        run: |
+          server=$(sed -n 's/.*Server=tcp:\([^.,;]*\).*/\1/p' <<< "$ConnectionStrings__DefaultConnection")
+          rg=$(az sql server list --query "[?name=='$server'].resourceGroup" -o tsv)
+          ip=$(curl -fsS https://api.ipify.org)
+          rule="gha-migrate-${GITHUB_RUN_ID}"
+          az sql server firewall-rule create \
+            --name "$rule" --server "$server" --resource-group "$rg" \
+            --start-ip-address "$ip" --end-ip-address "$ip" -o none
+          {
+            echo "server=$server"
+            echo "rg=$rg"
+            echo "rule=$rule"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Apply EF Core migrations
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet ef database update --project src/FFXIV.Infrastructure
+
+      - name: Close the SQL firewall
+        if: always() && steps.firewall.outputs.rule != ''
+        run: |
+          az sql server firewall-rule delete \
+            --name "${{ steps.firewall.outputs.rule }}" \
+            --server "${{ steps.firewall.outputs.server }}" \
+            --resource-group "${{ steps.firewall.outputs.rg }}"
+
+  deploy:
+    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - name: Azure Login
