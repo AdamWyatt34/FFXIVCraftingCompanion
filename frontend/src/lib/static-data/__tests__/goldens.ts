@@ -11,3 +11,7 @@ export function readGoldenLines<T>(fileName: string): T[] {
     .filter((line) => line.length > 0)
     .map((line) => JSON.parse(line) as T);
 }
+
+export function readGoldenJson<T>(fileName: string): T {
+  return JSON.parse(readFileSync(join(goldenDir, fileName), "utf8")) as T;
+}

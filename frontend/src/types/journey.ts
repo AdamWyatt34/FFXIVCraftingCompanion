@@ -1,7 +1,7 @@
-import type { MaterialTreeResultDto } from "./api";
+import type { RecipeDto, MaterialTreeResultDto } from "./api";
 
 export interface CraftingJourneyDto {
-  recipeId: number;
+  recipe: RecipeDto;
   materials: MaterialTreeResultDto;
   sufficiency: StatSufficiencyResultDto | null;
   gearUpgrades: GearUpgradeSuggestionDto[];

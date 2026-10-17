@@ -220,11 +220,7 @@ export function getMaterialTree(
   quantity = 1,
   signal?: AbortSignal,
 ): Promise<MaterialTreeResultDto> {
-  const params = quantity > 1 ? `?quantity=${quantity}` : "";
-  return fetchApi<MaterialTreeResultDto>(
-    `/api/recipes/${recipeId}/materials${params}`,
-    { signal },
-  );
+  return staticData.getMaterialTree(recipeId, quantity, signal);
 }
 
 export function getShoppingList(
@@ -775,7 +771,7 @@ export function getCraftingJourney(
   recipeId: number,
   signal?: AbortSignal,
 ): Promise<import("@/types/journey").CraftingJourneyDto> {
-  return fetchApi(`/api/crafting/journey/${recipeId}`, { signal });
+  return staticData.getCraftingJourney(recipeId, signal);
 }
 
 export function analyzeSufficiency(
@@ -861,12 +857,7 @@ export function resolveCraftPlan(
   items: import("@/types/craft-plan").CraftPlanItemInput[],
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
-  return fetchApi("/api/craft-plans/resolve", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items }),
-    signal,
-  });
+  return staticData.resolveCraftPlan(items, signal);
 }
 
 export function exportCraftPlan(
@@ -874,12 +865,7 @@ export function exportCraftPlan(
   format: string,
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").ExportResultDto> {
-  return fetchApi("/api/craft-plans/export", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items, format }),
-    signal,
-  });
+  return staticData.exportCraftPlan(items, format, signal);
 }
 
 export function createCraftPlan(
@@ -906,13 +892,22 @@ export function getCraftPlanById(
   return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, { signal });
 }
 
-export function getResolvedCraftPlan(
+/** A shared plan's name and items; the only account call a shareable plan link needs. */
+export function getSharedCraftPlan(
+  id: string,
+  signal?: AbortSignal,
+): Promise<import("@/types/craft-plan").CraftPlanDto> {
+  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/items`, { signal });
+}
+
+export async function getResolvedCraftPlan(
   id: string,
   signal?: AbortSignal,
 ): Promise<import("@/types/craft-plan").CraftPlanResultDto> {
-  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/resolved`, {
-    signal,
-  });
+  const plan = await getSharedCraftPlan(id, signal);
+  if (plan.items.length === 0)
+    throw new ApiClientError(404, { error: "Craft plan not found." });
+  return staticData.resolveCraftPlan(plan.items, signal);
 }
 
 export function updateCraftPlan(

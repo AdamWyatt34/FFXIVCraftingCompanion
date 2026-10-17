@@ -33,7 +33,8 @@ export interface MaterialGraphExport {
 
 export interface MaterialSkeletonNode {
   itemId: number;
-  quantity: number;
+  /** Ingredient quantity one craft of the parent needs; 1 at the root. */
+  perCraft: number;
   children: MaterialSkeletonNode[];
   truncated: boolean;
 }

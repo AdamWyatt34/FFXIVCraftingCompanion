@@ -1,9 +1,19 @@
 import { ApiClientError } from "@/lib/api-errors";
-import type { ItemDto, ItemSearchResultDto, RecipeCraftingParametersDto, RecipeDto } from "@/types/api";
-import type { ItemContextDto } from "@/types/journey";
-import { dataBasePath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
+import type {
+  ItemDto,
+  ItemSearchResultDto,
+  MaterialTreeResultDto,
+  RecipeCraftingParametersDto,
+  RecipeDto,
+} from "@/types/api";
+import type { CraftPlanItemInput, CraftPlanResultDto, ExportResultDto } from "@/types/craft-plan";
+import type { CraftingJourneyDto, ItemContextDto } from "@/types/journey";
+import { CRYSTALS_PATH, dataBasePath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
 import { searchIndex } from "./search";
 import { toRecipeDto } from "./recipes";
+import { expandMaterialTree, type CrystalTable } from "./materials";
+import { aggregateCraftPlan, exportCraftPlanContent, validatePlanItems, type ExportFormat, type PlanEntry } from "./craft-plans";
+import { composeJourney } from "./journey";
 import type { Bucket, ItemExport, RecipeExport, SearchIndexEntry } from "./types";
 
 // Browser-side reads of the exported game data. Buckets are fetched once per page load and kept;
@@ -75,6 +85,62 @@ export async function getItem(itemId: number): Promise<ItemDto> {
 
 export async function getItemContext(itemId: number, signal?: AbortSignal): Promise<ItemContextDto> {
   return (await getItemExport(itemId, signal)).context;
+}
+
+export function getCrystals(signal?: AbortSignal): Promise<CrystalTable> {
+  return loadJson<CrystalTable>(CRYSTALS_PATH, signal);
+}
+
+export async function getMaterialTree(
+  recipeId: number,
+  quantity = 1,
+  signal?: AbortSignal,
+): Promise<MaterialTreeResultDto> {
+  if (quantity < 1 || quantity > 999)
+    throw new ApiClientError(400, { error: "Quantity must be between 1 and 999." });
+  const [data, crystals] = await Promise.all([getRecipeExport(recipeId, signal), getCrystals(signal)]);
+  return expandMaterialTree(data.materials, crystals, quantity);
+}
+
+async function planEntries(items: CraftPlanItemInput[], signal?: AbortSignal): Promise<PlanEntry[]> {
+  const error = validatePlanItems(items);
+  if (error) throw new ApiClientError(400, { error });
+  const crystals = await getCrystals(signal);
+  const entries: PlanEntry[] = [];
+  for (const input of items) {
+    let data: RecipeExport;
+    try {
+      data = await getRecipeExport(input.recipeId, signal);
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 404)
+        throw new ApiClientError(404, { error: "One or more recipes not found." });
+      throw err;
+    }
+    entries.push({ input, recipe: data.recipe, tree: expandMaterialTree(data.materials, crystals, input.quantity) });
+  }
+  return entries;
+}
+
+export async function resolveCraftPlan(items: CraftPlanItemInput[], signal?: AbortSignal): Promise<CraftPlanResultDto> {
+  return aggregateCraftPlan(await planEntries(items, signal));
+}
+
+export async function exportCraftPlan(
+  items: CraftPlanItemInput[],
+  format: string,
+  signal?: AbortSignal,
+): Promise<ExportResultDto> {
+  const normalized = format.toLowerCase();
+  if (normalized !== "text" && normalized !== "json" && normalized !== "teamcraft")
+    throw new ApiClientError(400, { error: "Format must be one of: text, json, teamcraft." });
+  const result = aggregateCraftPlan(await planEntries(items, signal));
+  return { format: normalized, content: exportCraftPlanContent(result, normalized as ExportFormat) };
+}
+
+export async function getCraftingJourney(recipeId: number, signal?: AbortSignal): Promise<CraftingJourneyDto> {
+  const [data, crystals] = await Promise.all([getRecipeExport(recipeId, signal), getCrystals(signal)]);
+  const context = await getItemContext(data.recipe.resultItem.itemId, signal);
+  return composeJourney(data, context, crystals);
 }
 
 export function getSearchIndex(signal?: AbortSignal): Promise<SearchIndexEntry[]> {
