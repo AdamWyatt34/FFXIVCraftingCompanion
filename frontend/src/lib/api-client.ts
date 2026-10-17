@@ -791,10 +791,8 @@ export function getMarketPrices(
   return fetchApi(`/api/market/prices?${params}`, { signal });
 }
 
-export function getWorldList(
-  signal?: AbortSignal,
-): Promise<import("@/types/market").WorldGroupDto[]> {
-  return fetchApi("/api/market/worlds", { signal });
+export function getWorldList(): Promise<import("@/types/market").WorldGroupDto[]> {
+  return staticData.getWorldList();
 }
 
 export function getRecipeCost(
@@ -804,14 +802,7 @@ export function getRecipeCost(
   options?: { useMinPrice?: boolean; includeGatheredItemPrices?: boolean },
   signal?: AbortSignal,
 ): Promise<import("@/types/market").CostEstimateDto> {
-  const params = new URLSearchParams({
-    world,
-    quantity: String(quantity),
-  });
-  if (options?.useMinPrice) params.set("useMinPrice", "true");
-  if (options?.includeGatheredItemPrices === false)
-    params.set("includeGatheredPrices", "false");
-  return fetchApi(`/api/recipes/${recipeId}/cost?${params}`, { signal });
+  return staticData.getRecipeCost(recipeId, world, quantity, options ?? {}, signal);
 }
 
 // --- Gathering API ---
@@ -820,18 +811,11 @@ export function getGatheringGuide(
   items: import("@/types/gathering").GatheringGuideItemInput[],
   signal?: AbortSignal,
 ): Promise<import("@/types/gathering").GatheringGuideDto> {
-  return fetchApi("/api/gathering/guide", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items }),
-    signal,
-  });
+  return staticData.getGatheringGuide(items, signal);
 }
 
-export function getEorzeanTime(
-  signal?: AbortSignal,
-): Promise<import("@/types/gathering").EorzeanTimeResponse> {
-  return fetchApi("/api/gathering/eorzean-time", { signal });
+export function getEorzeanTime(): Promise<import("@/types/gathering").EorzeanTimeResponse> {
+  return staticData.getEorzeanTime();
 }
 
 // --- Craft Plans API ---
