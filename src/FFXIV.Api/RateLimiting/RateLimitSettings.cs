@@ -18,8 +18,4 @@ public sealed class RateLimitSettings
     public int PublicReadPerMinute { get; set; } = 120;
 
     public int FeedbackPerHour { get; set; } = 5;
-
-    public int SolverPerMinute { get; set; } = 20;
-
-    public int AnalyticsPerMinute { get; set; } = 60;
 }

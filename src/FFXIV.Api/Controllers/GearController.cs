@@ -1,7 +1,6 @@
 using FFXIV.Application.Gear.DTOs;
 using FFXIV.Application.Gear.Queries;
 using FFXIV.Domain.Constants;
-using FFXIV.Domain.Enums;
 using FFXIV.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace FFXIV.Api.Controllers;
 
 /// <summary>
-/// Provides endpoints for gear recommendations and equipment search for all jobs.
+/// Gear recommendations compared against the signed-in user's profile. Anonymous gear
+/// recommendations, profiles and equipment search are served from the static game-data export.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -24,128 +24,6 @@ public class GearController : ControllerBase
     {
         _mediator = mediator;
         _currentUser = currentUser;
-    }
-
-    /// <summary>
-    /// Get a full gear set recommendation for a job and level.
-    /// </summary>
-    /// <param name="job">Job abbreviation (e.g. BSM, CRP, MIN, PLD, WHM).</param>
-    /// <param name="level">Character level (1-100).</param>
-    /// <param name="profile">Stat weight profile name (default: "balanced").</param>
-    /// <param name="craftedOnly">If true, only show craftable equipment.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <response code="200">Returns the recommended gear set.</response>
-    /// <response code="400">Invalid job or level.</response>
-    [HttpGet("recommendations")]
-    [ProducesResponseType(typeof(GearSetDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetRecommendations(
-        [FromQuery] string job,
-        [FromQuery] int level = 90,
-        [FromQuery] string profile = "balanced",
-        [FromQuery] bool craftedOnly = false,
-        CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(job))
-            return BadRequest(new { error = "Job is required." });
-
-        var normalizedJob = job.ToUpperInvariant();
-        if (!JobClassification.IsKnownJob(normalizedJob))
-            return BadRequest(new { error = $"'{job}' is not a valid job. Valid jobs: {string.Join(", ", JobClassification.AllJobs)}." });
-
-        if (level is < 1 or > 100)
-            return BadRequest(new { error = "Level must be between 1 and 100." });
-
-        var result = await _mediator.Send(
-            new GetGearRecommendationsQuery(normalizedJob, level, profile, craftedOnly), ct);
-
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Get a recommendation for a single equipment slot.
-    /// </summary>
-    /// <param name="slot">Equipment slot (e.g. MainHand, Head, Body, Ring).</param>
-    /// <param name="job">Job abbreviation.</param>
-    /// <param name="level">Character level (1-100).</param>
-    /// <param name="profile">Stat weight profile name (default: "balanced").</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <response code="200">Returns the slot recommendation with alternatives.</response>
-    /// <response code="400">Invalid slot, job, or level.</response>
-    [HttpGet("recommendations/{slot}")]
-    [ProducesResponseType(typeof(GearSlotDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetSlotRecommendation(
-        string slot,
-        [FromQuery] string job,
-        [FromQuery] int level = 90,
-        [FromQuery] string profile = "balanced",
-        CancellationToken ct = default)
-    {
-        if (!Enum.TryParse<EquipSlot>(slot, ignoreCase: true, out _))
-            return BadRequest(new { error = $"'{slot}' is not a valid equipment slot. Valid slots: {string.Join(", ", Enum.GetNames<EquipSlot>())}." });
-
-        if (string.IsNullOrWhiteSpace(job))
-            return BadRequest(new { error = "Job is required." });
-
-        var normalizedJob = job.ToUpperInvariant();
-        if (!JobClassification.IsKnownJob(normalizedJob))
-            return BadRequest(new { error = $"'{job}' is not a valid job." });
-
-        if (level is < 1 or > 100)
-            return BadRequest(new { error = "Level must be between 1 and 100." });
-
-        var result = await _mediator.Send(
-            new GetSlotRecommendationQuery(slot, normalizedJob, level, profile), ct);
-
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Get available stat weight profiles, optionally filtered by job.
-    /// </summary>
-    /// <param name="job">Optional job abbreviation to filter profiles.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <response code="200">Returns available stat weight profiles.</response>
-    [HttpGet("profiles")]
-    [ProducesResponseType(typeof(List<StatWeightProfileDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetProfiles(
-        [FromQuery] string? job = null,
-        CancellationToken ct = default)
-    {
-        if (!string.IsNullOrWhiteSpace(job))
-        {
-            var normalizedJob = job.ToUpperInvariant();
-            if (!JobClassification.IsKnownJob(normalizedJob))
-                return BadRequest(new { error = $"'{job}' is not a valid job." });
-        }
-
-        var result = await _mediator.Send(new GetStatWeightProfilesQuery(job), ct);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Calculate aggregated stats for a custom gear set.
-    /// </summary>
-    /// <param name="request">A mapping of slot keys to equipment IDs.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <response code="200">Returns the aggregated stats.</response>
-    /// <response code="400">Empty or invalid request body.</response>
-    [HttpPost("calculate-stats")]
-    [ProducesResponseType(typeof(GearStatsDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CalculateStats(
-        [FromBody] CalculateGearStatsRequest request,
-        CancellationToken ct = default)
-    {
-        if (request.Slots.Count == 0)
-            return BadRequest(new { error = "At least one slot must be provided." });
-
-        var result = await _mediator.Send(
-            new CalculateGearStatsQuery(request.Slots), ct);
-
-        return Ok(result);
     }
 
     /// <summary>
@@ -182,40 +60,6 @@ public class GearController : ControllerBase
 
         var result = await _mediator.Send(
             new GetGearComparisonQuery(_currentUser.UserId!, normalizedJob, level, profile), ct);
-
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Search for equipment by name with optional filters.
-    /// </summary>
-    /// <param name="q">Search query (minimum 2 characters).</param>
-    /// <param name="job">Optional job abbreviation filter.</param>
-    /// <param name="slot">Optional equipment slot filter.</param>
-    /// <param name="minLevel">Optional minimum equip level.</param>
-    /// <param name="maxLevel">Optional maximum equip level.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <response code="200">Returns matching equipment.</response>
-    /// <response code="400">Invalid search query.</response>
-    [HttpGet("search")]
-    [ProducesResponseType(typeof(List<EquipmentDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> SearchEquipment(
-        [FromQuery] string? q = null,
-        [FromQuery] string? job = null,
-        [FromQuery] string? slot = null,
-        [FromQuery] int? minLevel = null,
-        [FromQuery] int? maxLevel = null,
-        CancellationToken ct = default)
-    {
-        if ((string.IsNullOrWhiteSpace(q) || q.Length < 2) && string.IsNullOrEmpty(job) && string.IsNullOrEmpty(slot))
-            return BadRequest(new { error = "Provide a search query (min 2 characters) or a filter." });
-
-        if (!string.IsNullOrEmpty(slot) && !Enum.TryParse<EquipSlot>(slot, ignoreCase: true, out _))
-            return BadRequest(new { error = $"'{slot}' is not a valid equipment slot." });
-
-        var result = await _mediator.Send(
-            new SearchEquipmentQuery(q ?? "", job, slot, minLevel, maxLevel), ct);
 
         return Ok(result);
     }
