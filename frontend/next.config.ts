@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
   images: {
+    // Serve remote icons as-is. XIVAPI/Lodestone icons are already small PNGs, and
+    // routing every icon size through Vercel Image Optimization exhausted the Hobby
+    // plan's 5,000 transformations and paused the team.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
