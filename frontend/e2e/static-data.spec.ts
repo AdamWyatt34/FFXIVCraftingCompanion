@@ -22,8 +22,11 @@ test("signed-out pages never call the API", async ({ page, request }) => {
   await page.goto(`/recipes/${RECIPE_ID}/journey`);
   await expect(page.getByRole("heading", { name: RECIPE_NAME }).first()).toBeVisible();
 
-  await page.goto(`/recipes/plan?add=${RECIPE_ID}`);
-  await expect(page.getByText(RECIPE_NAME).first()).toBeVisible();
+  await page.goto("/recipes/plan");
+  await page.getByRole("textbox", { name: "Search items" }).fill("Cosmic");
+  await page.getByRole("button", { name: RECIPE_NAME }).first().click();
+  await page.getByRole("button", { name: "Resolve" }).click();
+  await expect(page.getByRole("button", { name: "Shopping List" })).toBeVisible();
 
   await page.goto("/gear?job=CRP&level=100");
   await expect(page.getByText("Saw of Stars").first()).toBeVisible();
