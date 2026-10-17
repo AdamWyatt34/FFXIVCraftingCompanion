@@ -30,6 +30,7 @@ public sealed class StaticDataExporter(
     public const int SchemaVersion = 1;
 
     private readonly Dictionary<int, MaterialItemExport> _crystals = new();
+    private readonly HashSet<int> _touchedItems = new();
 
     // Matches ASP.NET Core's controller serialization (web defaults) so the files carry the
     // same JSON the API would have sent.
@@ -63,13 +64,22 @@ public sealed class StaticDataExporter(
 
         var recipeIds = await db.Recipes.AsNoTracking().Select(r => r.RecipeId).OrderBy(id => id).ToListAsync(ct);
         var itemIds = await db.Items.AsNoTracking().Where(i => i.Name != "").Select(i => i.ItemId).OrderBy(id => id).ToListAsync(ct);
+        if (options.OnlyRecipeIds.Count > 0)
+        {
+            var missing = options.OnlyRecipeIds.Except(recipeIds).ToList();
+            if (missing.Count > 0)
+                throw new InvalidOperationException($"Unknown recipes: {string.Join(", ", missing)}");
+            recipeIds = options.OnlyRecipeIds.Distinct().OrderBy(id => id).ToList();
+        }
 
         await ExportBucketsAsync("recipes", recipeIds, ExportRecipeBucketAsync, ct);
+        if (options.OnlyRecipeIds.Count > 0)
+            itemIds = _touchedItems.OrderBy(id => id).ToList();
         await ExportBucketsAsync("items", itemIds, ExportItemBucketAsync, ct);
         Directory.CreateDirectory(Path.Combine(options.OutDir, "materials"));
         await WriteAsync(Path.Combine("materials", "crystals.json"), new SortedDictionary<int, MaterialItemExport>(_crystals), ct);
-        var equipmentCount = await ExportGearAsync(ct);
-        await ExportSearchIndexAsync(ct);
+        var equipmentCount = options.OnlyRecipeIds.Count > 0 ? 0 : await ExportGearAsync(ct);
+        await ExportSearchIndexAsync(itemIds, ct);
 
         var manifest = new Manifest(
             SchemaVersion, version, versionName, versionKey, exportedAt, options.BucketSize,
@@ -147,7 +157,14 @@ public sealed class StaticDataExporter(
                 ?? throw new InvalidOperationException($"Recipe {id} has no crafting parameters.");
             var materials = await mediator.Send(new GetMaterialTreeQuery(id, Quantity: 1), ct)
                 ?? throw new InvalidOperationException($"Recipe {id} has no material tree.");
-            bucket[id] = new RecipeExport(recipe, parameters, MaterialGraph.Build(materials, _crystals));
+            var graph = MaterialGraph.Build(materials, _crystals);
+            bucket[id] = new RecipeExport(recipe, parameters, graph);
+            lock (_touchedItems)
+            {
+                _touchedItems.Add(recipe.ResultItem.ItemId);
+                _touchedItems.UnionWith(graph.Items.Keys);
+                _touchedItems.UnionWith(materials.CrystalRequirements.Select(c => c.ItemId));
+            }
         }
         return JsonSerializer.Serialize(bucket, Json);
     }
@@ -234,8 +251,9 @@ public sealed class StaticDataExporter(
             ["magicDefense"] = p.MagicDefenseWeight,
         };
 
-    private async Task ExportSearchIndexAsync(CancellationToken ct)
+    private async Task ExportSearchIndexAsync(IReadOnlyList<int> itemIds, CancellationToken ct)
     {
+        var wanted = itemIds.ToHashSet();
         Directory.CreateDirectory(Path.Combine(options.OutDir, "search"));
 
         var equipment = await db.Equipment.AsNoTracking()
@@ -251,6 +269,8 @@ public sealed class StaticDataExporter(
         var entries = new List<SearchIndexEntry>();
         await foreach (var item in db.Items.AsNoTracking().Where(i => i.Name != "").OrderBy(i => i.ItemId).AsAsyncEnumerable().WithCancellation(ct))
         {
+            if (!wanted.Contains(item.ItemId))
+                continue;
             var dto = Application.Mapping.Mapper.ToDto(item);
             entries.Add(new SearchIndexEntry(
                 dto.ItemId, dto.Name, IconUrl.ToId(dto.IconUrl), dto.ItemLevel, dto.Category, dto.CanBeHQ,

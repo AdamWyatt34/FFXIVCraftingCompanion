@@ -18,7 +18,7 @@ cd frontend && npm ci && npx tsc --noEmit && npm run build
 
 ```
 dotnet test FFXIVCraftingCompanion.slnx --configuration Release
-cd frontend && npm run lint
+cd frontend && npm run lint && npm test
 ```
 
 ## Run
@@ -37,4 +37,5 @@ cd frontend && npm run dev
 - API runs on http://localhost:5159 (Swagger at `/swagger`, health at `/health`); frontend on http://localhost:3000. The API needs the docker SQL Server + Redis containers.
 - Solver benchmark and MCTS tuning tests are slow and time-budgeted; the full `dotnet test` run can take several minutes.
 - Static data export: `dotnet run --project src/FFXIV.Export --configuration Release -- --out ./out --skip-sync` (drop `--skip-sync` to sync XIVAPI first, about six minutes). The static-data goldens regenerate with `FFXIV_PARITY_GENERATE=1 dotnet test ... --filter "FullyQualifiedName~StaticDataGolden"`.
+- Frontend builds run `scripts/data-fetch.mjs` first (`prebuild`): set `FFXIV_DATA_DIR=e2e/fixtures/data` for a quick local build, or a full export directory for all recipe pages; `npm run dev` needs `npm run data:fetch` once.
 - Frontend `npm run build` uses `--webpack` (see `frontend/package.json`), not Turbopack.

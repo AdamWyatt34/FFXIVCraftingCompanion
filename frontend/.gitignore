@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# exported game data placed by scripts/data-fetch.mjs
+/public/data/
+
 # production
 /build
 

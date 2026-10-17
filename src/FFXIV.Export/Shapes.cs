@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Gear.DTOs;
 using FFXIV.Application.Journey.DTOs;
@@ -56,7 +57,7 @@ public sealed record ItemExport(
     EquipmentDto? Equipment);
 
 public sealed record GatheringNodeExport(
-    GatheringType GatheringType,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] GatheringType GatheringType,
     string ClassJob,
     int Level,
     int Stars,
@@ -67,7 +68,7 @@ public sealed record GatheringNodeExport(
     bool IsTimed,
     string? SpawnTimes,
     bool IsHidden,
-    NodeType NodeType);
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] NodeType NodeType);
 
 // Per job: the stat-weight profiles and, per slot, every piece the recommendation query can
 // return for some character level (the top CandidateLimit by item level among pieces equippable

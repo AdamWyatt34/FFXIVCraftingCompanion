@@ -1,3 +1,5 @@
+import { ApiClientError } from "@/lib/api-errors";
+import * as staticData from "@/lib/static-data/client";
 import type {
   ItemDto,
   ItemSearchResultDto,
@@ -59,15 +61,7 @@ import type {
   UpvoteResult,
 } from "@/types/solver";
 
-export class ApiClientError extends Error {
-  constructor(
-    public status: number,
-    public body: ApiError,
-  ) {
-    super(body.error);
-    this.name = "ApiClientError";
-  }
-}
+export { ApiClientError };
 
 function getBaseUrl(): string {
   if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
@@ -188,6 +182,9 @@ async function authFetchApi<T>(path: string, init?: RequestInit): Promise<T> {
 
 // --- Items API ---
 
+// Game data is read from the exported static files (src/lib/static-data), not the API. The
+// signatures and the DTOs are the API's, so callers do not care which one answered.
+
 export function searchItems(
   query: string | null,
   page = 1,
@@ -195,19 +192,11 @@ export function searchItems(
   signal?: AbortSignal,
   craftType?: string,
 ): Promise<ItemSearchResultDto> {
-  const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
-  });
-  if (query) params.set("q", query);
-  if (craftType) params.set("craftType", craftType);
-  return fetchApi<ItemSearchResultDto>(`/api/items/search?${params}`, {
-    signal,
-  });
+  return staticData.searchItems(query, page, pageSize, signal, craftType);
 }
 
 export function getItem(id: number): Promise<ItemDto> {
-  return fetchApi<ItemDto>(`/api/items/${id}`);
+  return staticData.getItem(id);
 }
 
 // --- Recipes API ---
@@ -216,18 +205,14 @@ export function getRecipe(
   id: number,
   includeMaterials = false,
 ): Promise<RecipeDto> {
-  const params = includeMaterials ? "?includeMaterials=true" : "";
-  return fetchApi<RecipeDto>(`/api/recipes/${id}${params}`);
+  return staticData.getRecipe(id, includeMaterials);
 }
 
 export function getRecipeCraftingParameters(
   id: number,
   signal?: AbortSignal,
 ): Promise<RecipeCraftingParametersDto> {
-  return fetchApi<RecipeCraftingParametersDto>(
-    `/api/recipes/${id}/crafting-parameters`,
-    { signal },
-  );
+  return staticData.getRecipeCraftingParameters(id, signal);
 }
 
 export function getMaterialTree(
@@ -810,7 +795,7 @@ export function getItemContext(
   itemId: number,
   signal?: AbortSignal,
 ): Promise<import("@/types/journey").ItemContextDto> {
-  return fetchApi(`/api/items/${itemId}/context`, { signal });
+  return staticData.getItemContext(itemId, signal);
 }
 
 // --- Market API ---

@@ -1,9 +1,24 @@
 import type { Metadata } from "next";
-import { getRecipeServer } from "@/lib/server-api";
+import { notFound } from "next/navigation";
+import { getRecipeExportServer } from "@/lib/static-data/server";
 import RecipeDetailClient from "./RecipeDetailClient";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+// Rendered on first request from the exported data and cached for the deployment's lifetime.
+// Prerendering all ~14k recipes measured 1.4 GB of build output (about 100 KB a page), too much
+// to upload on every deploy for pages that are static anyway; the API is never involved.
+export const dynamicParams = true;
+export const revalidate = false;
+
+export function generateStaticParams(): { id: string }[] {
+  return [];
+}
+
+async function getRecipeServer(id: number) {
+  return (await getRecipeExportServer(id))?.recipe ?? null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -38,6 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function RecipeDetailPage({ params }: Props) {
   const { id } = await params;
   const recipe = await getRecipeServer(Number(id));
+  if (!recipe) notFound();
 
   return (
     <>

@@ -40,6 +40,7 @@ public sealed class FixtureDatabase : IDisposable
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, InMemoryCacheService>();
         services.AddDbContext<AppDbContext>(o => o.UseSqlite(_connection));
+        services.AddScoped<AppDbContext>(sp => new FixtureDbContext(sp.GetRequiredService<DbContextOptions<AppDbContext>>()));
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IRecipeRepository, RecipeRepository>();
         services.AddScoped<IEquipmentRepository, EquipmentRepository>();
@@ -65,6 +66,17 @@ public sealed class FixtureDatabase : IDisposable
     }
 
     public IServiceScope CreateScope() => _services.CreateScope();
+
+    // Production orders names under SQL Server's case-insensitive collation; SQLite's default is
+    // binary. NOCASE (ASCII case folding) is the order the frontend port reproduces.
+    private sealed class FixtureDbContext(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Domain.Entities.Item>().Property(i => i.Name).UseCollation("NOCASE");
+        }
+    }
 
     public void Dispose()
     {

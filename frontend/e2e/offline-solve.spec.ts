@@ -2,9 +2,9 @@ import { expect, test } from "@playwright/test";
 
 /**
  * With the WASM engine on and a recipe already cached, the simulator and the solver work with
- * the network disabled. The API is never reached for crafting math: the only API responses the
- * page ever sees are the recipe and its crafting parameters, served by e2e/mock-api.mjs (the
- * e2e build's NEXT_PUBLIC_API_URL) and cached by the service worker.
+ * the network disabled. The API is never reached for crafting math or game data: the recipe and
+ * its crafting parameters come from the static data set under /data/v/ (e2e/fixtures/data) and
+ * are cached by the service worker; e2e/mock-api.mjs stands in for the API's other endpoints.
  */
 
 const RECIPE_ID = 37783;
@@ -39,8 +39,8 @@ test("simulator and solver run offline from the WASM engine", async ({
   await expect
     .poll(async () =>
       page.evaluate(async () => {
-        const keys = await (await caches.open("game-data-api")).keys();
-        return keys.some((k) => k.url.includes("/crafting-parameters"));
+        const keys = await (await caches.open("game-data")).keys();
+        return keys.some((k) => k.url.includes("/data/v/") && k.url.includes("/recipes/"));
       }),
     )
     .toBe(true);

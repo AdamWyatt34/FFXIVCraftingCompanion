@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using FFXIV.Application.Gear;
+using FFXIV.Application.DTOs;
 using FFXIV.Application.Items.Queries;
+using FFXIV.Domain.Enums;
 using FFXIV.Application.Journey.Queries;
 using FFXIV.Application.Recipes.DTOs;
 using FFXIV.Application.Recipes.Queries;
@@ -19,6 +21,24 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
 {
     private const string GenerateVariable = "FFXIV_PARITY_GENERATE";
     private static readonly int[] Quantities = [1, 2, 7, 99, 999];
+
+    private static readonly (string? Query, string? CraftType, int Page, int PageSize)[] Searches =
+    [
+        ("ing", null, 1, 20),
+        ("ing", null, 2, 20),
+        ("ing", null, 3, 5),
+        ("Ind", null, 1, 20),
+        ("INGOT", null, 1, 50),
+        ("ilmenite ingot", null, 1, 20),
+        ("Grade 8", null, 1, 20),
+        ("zzzz", null, 1, 20),
+        ("o'", null, 1, 20),
+        (null, "ARM", 1, 20),
+        (null, "CRP", 2, 10),
+        ("ingot", "ARM", 1, 20),
+        ("ingot", "BSM", 1, 20),
+        ("saw", "CRP", 1, 20),
+    ];
 
     private static readonly string GoldenDirectory =
         Path.Combine(AppContext.BaseDirectory, "StaticData", "TestData", "goldens");
@@ -82,6 +102,23 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     }
 
     [Fact]
+    public async Task Item_search_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var text = new StringBuilder();
+
+        foreach (var (query, craftType, page, pageSize) in Searches)
+        {
+            var parsed = craftType is null ? (CraftType?)null : Enum.Parse<CraftType>(craftType);
+            var result = await mediator.Send(new SearchItemsQuery(query, page, pageSize, parsed));
+            text.Append(JsonSerializer.Serialize(new ItemSearchGolden(query, craftType, page, pageSize, result), StaticDataExporter.Json)).Append('\n');
+        }
+
+        AssertOrWrite("item-search.jsonl", text.ToString());
+    }
+
+    [Fact]
     public async Task Material_tree_quantities_golden_is_current()
     {
         using var scope = _db.CreateScope();
@@ -138,4 +175,6 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     }
 
     private sealed record MaterialTreeGolden(int RecipeId, int Quantity, MaterialTreeResultDto Result);
+
+    private sealed record ItemSearchGolden(string? Query, string? CraftType, int Page, int PageSize, ItemSearchResultDto Result);
 }
