@@ -32,6 +32,13 @@ const withBundleAnalyzer = withBundleAnalyzerInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
+  // The server loader (src/lib/static-data/server.ts) reads public/data from disk during the
+  // build and from the deployment's CDN inside a function, so the data set must not be traced
+  // into any function bundle: with it, the recipe page's function was 283 MB uncompressed,
+  // over Vercel's 250 MB limit.
+  outputFileTracingExcludes: {
+    "*": ["./public/data/**"],
+  },
   env: {
     NEXT_PUBLIC_DATA_VERSION: dataSet?.version ?? "",
     NEXT_PUBLIC_DATA_BUCKET_SIZE: String(dataSet?.bucketSize ?? 100),
