@@ -27,6 +27,8 @@ export interface GatheringGuideItemDto {
 export interface EorzeanTimeWindowDto {
   startHour: number;
   endHour: number;
+  isCurrentlyActive: boolean;
+  timeUntil: string | null;
 }
 
 export interface TimedNodeEntryDto {
@@ -40,6 +42,8 @@ export interface TimedNodeEntryDto {
   nodeType: string;
   startHour: number;
   endHour: number;
+  isCurrentlyActive: boolean;
+  timeUntil: string | null;
   coordinateX: number | null;
   coordinateY: number | null;
 }

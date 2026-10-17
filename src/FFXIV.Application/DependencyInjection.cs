@@ -8,6 +8,7 @@ using FFXIV.Application.Notifications;
 using FFXIV.Application.Recipes;
 using FFXIV.Domain.CraftingEngine;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace FFXIV.Application;
 
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IStatSufficiencyService, StatSufficiencyService>();
         services.AddScoped<IContextualLinkService, ContextualLinkService>();
         services.AddScoped<ICraftPlanResolver, CraftPlanResolver>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<ICostEstimationService, CostEstimationService>();
         services.AddScoped<IGatheringGuideService, GatheringGuideService>();
         services.AddScoped<INotificationService, NotificationService>();

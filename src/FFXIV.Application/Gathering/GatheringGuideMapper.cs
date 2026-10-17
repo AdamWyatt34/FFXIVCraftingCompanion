@@ -6,11 +6,14 @@ namespace FFXIV.Application.Gathering;
 
 public static class GatheringGuideMapper
 {
-    public static GatheringGuideDto ToDto(GatheringGuide guide)
+    public static GatheringGuideDto ToDto(GatheringGuide guide) =>
+        ToDto(guide, EorzeanTime.GetCurrentEorzeanHour());
+
+    public static GatheringGuideDto ToDto(GatheringGuide guide, int currentEorzeanHour)
     {
         return new GatheringGuideDto(
-            ZoneGroups: guide.ZoneGroups.Select(MapZoneGroup).ToList(),
-            TimedNodes: guide.TimedNodes.Select(MapTimedNode).ToList(),
+            ZoneGroups: guide.ZoneGroups.Select(g => MapZoneGroup(g, currentEorzeanHour)).ToList(),
+            TimedNodes: guide.TimedNodes.Select(t => MapTimedNode(t, currentEorzeanHour)).ToList(),
             CrystalSummary: guide.CrystalSummary.Select(MapCrystal).ToList(),
             Summary: new GatheringGuideSummaryDto(
                 guide.Summary.TotalZones,
@@ -19,14 +22,14 @@ public static class GatheringGuideMapper
                 guide.Summary.TotalCrystalTypes));
     }
 
-    private static GatheringZoneGroupDto MapZoneGroup(GatheringZoneGroup group)
+    private static GatheringZoneGroupDto MapZoneGroup(GatheringZoneGroup group, int currentHour)
     {
         return new GatheringZoneGroupDto(
             ZoneName: group.ZoneName,
-            Items: group.Items.Select(MapGuideItem).ToList());
+            Items: group.Items.Select(i => MapGuideItem(i, currentHour)).ToList());
     }
 
-    private static GatheringGuideItemDto MapGuideItem(GatheringGuideItem item)
+    private static GatheringGuideItemDto MapGuideItem(GatheringGuideItem item, int currentHour)
     {
         return new GatheringGuideItemDto(
             ItemId: item.ItemId,
@@ -38,14 +41,14 @@ public static class GatheringGuideMapper
             NodeType: item.NodeType.ToString(),
             CoordinateX: item.CoordinateX,
             CoordinateY: item.CoordinateY,
-            TimeWindow: item.TimeWindow is not null ? MapTimeWindow(item.TimeWindow) : null,
+            TimeWindow: item.TimeWindow is not null ? MapTimeWindow(item.TimeWindow, currentHour) : null,
             IsHidden: item.IsHidden);
     }
 
-    private static EorzeanTimeWindowDto MapTimeWindow(EorzeanTimeWindow window)
+    private static EorzeanTimeWindowDto MapTimeWindow(EorzeanTimeWindow window, int currentHour)
     {
-        var isActive = EorzeanTime.IsWindowActive(window.StartHour, window.EndHour);
-        var timeUntil = EorzeanTime.TimeUntilWindow(window.StartHour, window.EndHour);
+        var isActive = EorzeanTime.IsWindowActive(window.StartHour, window.EndHour, currentHour);
+        var timeUntil = EorzeanTime.TimeUntilWindow(window.StartHour, window.EndHour, currentHour);
 
         return new EorzeanTimeWindowDto(
             StartHour: window.StartHour,
@@ -54,10 +57,10 @@ public static class GatheringGuideMapper
             TimeUntil: isActive ? null : FormatTimeUntil(timeUntil));
     }
 
-    private static TimedNodeEntryDto MapTimedNode(TimedNodeEntry entry)
+    private static TimedNodeEntryDto MapTimedNode(TimedNodeEntry entry, int currentHour)
     {
-        var isActive = EorzeanTime.IsWindowActive(entry.StartHour, entry.EndHour);
-        var timeUntil = EorzeanTime.TimeUntilWindow(entry.StartHour, entry.EndHour);
+        var isActive = EorzeanTime.IsWindowActive(entry.StartHour, entry.EndHour, currentHour);
+        var timeUntil = EorzeanTime.TimeUntilWindow(entry.StartHour, entry.EndHour, currentHour);
 
         return new TimedNodeEntryDto(
             ItemId: entry.ItemId,
@@ -87,7 +90,7 @@ public static class GatheringGuideMapper
             Tier: crystal.Tier);
     }
 
-    private static string FormatTimeUntil(TimeSpan timeUntil)
+    public static string FormatTimeUntil(TimeSpan timeUntil)
     {
         if (timeUntil.TotalMinutes < 1)
             return "< 1 min";

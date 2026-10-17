@@ -28,7 +28,7 @@ export interface CostEstimateDto {
   finalItemMarketPrice: number | null;
   craftingIsCheaper: boolean | null;
   savings: number | null;
-  warnings?: string[];
+  warnings: string[];
 }
 
 export interface MaterialCostDto {
@@ -40,7 +40,7 @@ export interface MaterialCostDto {
   priceSource: PriceSource;
   isStalePrice: boolean;
   listingCount: number;
-  lastUploadTime?: string;
+  lastUploadTime: string | null;
 }
 
 export type PriceSource = "Vendor" | "MarketBoard" | "NonGil" | "Unknown";

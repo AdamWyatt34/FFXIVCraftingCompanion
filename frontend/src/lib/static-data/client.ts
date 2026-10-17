@@ -9,6 +9,8 @@ import type {
 import type { CraftPlanItemInput, CraftPlanResultDto, ExportResultDto } from "@/types/craft-plan";
 import type { CraftingJourneyDto, ItemContextDto } from "@/types/journey";
 import type { EquipmentDto, GearSetDto, StatWeightProfileDto } from "@/types/gear";
+import type { EorzeanTimeResponse, GatheringGuideDto, GatheringGuideItemInput } from "@/types/gathering";
+import type { CostEstimateDto, WorldGroupDto } from "@/types/market";
 import { CRYSTALS_PATH, dataBasePath, GEAR_PROFILES_PATH, gearJobPath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
 import { searchIndex } from "./search";
 import { toRecipeDto } from "./recipes";
@@ -17,6 +19,9 @@ import { aggregateCraftPlan, exportCraftPlanContent, validatePlanItems, type Exp
 import { composeJourney } from "./journey";
 import { availableProfiles, isEquipSlot, recommendGear, searchGearIndex, toSearchResultDto } from "./gear";
 import { ALL_JOBS, isKnownJob } from "./jobs";
+import { buildGatheringGuide, validateGuideItems, type GatheringItemData } from "./gathering";
+import { estimateCost, fetchUniversalisPrices, isValidWorldOrDc, marketBoardItemIds, worldGroups, type CostEstimationOptions } from "./market";
+import { getCurrentEorzeanHour } from "@/lib/eorzean-time";
 import type { Bucket, GearJobExport, ItemExport, RecipeExport, SearchIndexEntry, StatWeightProfileExport } from "./types";
 
 // Browser-side reads of the exported game data. Buckets are fetched once per page load and kept;
@@ -195,6 +200,58 @@ export async function searchEquipment(
   const matches = searchGearIndex(index, { query, job, slot, minLevel, maxLevel });
   const exports = await Promise.all(matches.map((m) => getItemExport(m.itemId, signal)));
   return exports.flatMap((e) => (e.equipment ? [toSearchResultDto(e.equipment)] : []));
+}
+
+export async function getGatheringGuide(items: GatheringGuideItemInput[], signal?: AbortSignal): Promise<GatheringGuideDto> {
+  const error = validateGuideItems(items);
+  if (error) throw badRequest(error);
+  const ids = [...new Set(items.map((i) => i.itemId))];
+  const exports = new Map<number, GatheringItemData | null>();
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const data = await getItemExport(id, signal);
+        exports.set(id, { item: data.item, gatheringNodes: data.gatheringNodes });
+      } catch (err) {
+        if (err instanceof ApiClientError && err.status === 404) exports.set(id, null);
+        else throw err;
+      }
+    }),
+  );
+  return buildGatheringGuide(items, (id) => exports.get(id) ?? null, getCurrentEorzeanHour());
+}
+
+export function getEorzeanTime(): Promise<EorzeanTimeResponse> {
+  return Promise.resolve({ currentEorzeanHour: getCurrentEorzeanHour() });
+}
+
+export function getWorldList(): Promise<WorldGroupDto[]> {
+  return Promise.resolve(worldGroups());
+}
+
+export async function getRecipeCost(
+  recipeId: number,
+  world: string,
+  quantity = 1,
+  options: CostEstimationOptions = {},
+  signal?: AbortSignal,
+): Promise<CostEstimateDto> {
+  if (world.trim() === "" || !isValidWorldOrDc(world)) throw badRequest("Invalid or missing world/data center name.");
+  if (quantity < 1 || quantity > 999) throw badRequest("Quantity must be between 1 and 999.");
+  const [data, crystals] = await Promise.all([getRecipeExport(recipeId, signal), getCrystals(signal)]);
+  const tree = expandMaterialTree(data.materials, crystals, quantity);
+  const materials = [...tree.shoppingList, ...tree.crystalRequirements];
+  const finalItemId = (options.includeCraftVsBuyAnalysis ?? true) ? data.recipe.resultItem.itemId : null;
+
+  const warnings: string[] = [];
+  let prices = new Map();
+  try {
+    prices = await fetchUniversalisPrices(world, marketBoardItemIds(materials, finalItemId, options), signal);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    warnings.push(`Could not fetch some market board prices from Universalis: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return estimateCost(materials, finalItemId, world, options, prices, Date.now(), warnings);
 }
 
 export function getSearchIndex(signal?: AbortSignal): Promise<SearchIndexEntry[]> {
