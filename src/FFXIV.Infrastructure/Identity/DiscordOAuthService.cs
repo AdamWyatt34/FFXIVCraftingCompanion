@@ -74,10 +74,15 @@ public class DiscordOAuthService : IDiscordOAuthService
             ? $"https://cdn.discordapp.com/avatars/{discordUser.Id}/{discordUser.Avatar}.png"
             : null;
 
+        var email = string.IsNullOrWhiteSpace(discordUser.Email) ? null : discordUser.Email.Trim();
+
         return new DiscordUserInfo(
             DiscordId: discordUser.Id,
             Username: discordUser.Username,
-            Email: discordUser.Email ?? string.Empty,
+            Email: email,
+            // Discord reports whether it has verified the address. Anyone can type any address
+            // into a new Discord account, so an unverified one proves nothing about ownership.
+            EmailVerified: email is not null && discordUser.Verified == true,
             AvatarUrl: avatarUrl);
     }
 
@@ -100,6 +105,9 @@ public class DiscordOAuthService : IDiscordOAuthService
 
         [JsonPropertyName("email")]
         public string? Email { get; set; }
+
+        [JsonPropertyName("verified")]
+        public bool? Verified { get; set; }
 
         [JsonPropertyName("avatar")]
         public string? Avatar { get; set; }

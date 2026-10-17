@@ -5,6 +5,7 @@ using FFXIV.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace FFXIV.Api.Controllers;
@@ -17,35 +18,35 @@ namespace FFXIV.Api.Controllers;
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {
+    private const string InvalidCredentials = "Invalid credentials.";
+
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITokenService _tokenService;
     private readonly IDiscordOAuthService _discordService;
+    private readonly IOAuthStateProtector _stateProtector;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         ITokenService tokenService,
-        IDiscordOAuthService discordService)
+        IDiscordOAuthService discordService,
+        IOAuthStateProtector stateProtector)
     {
         _userManager = userManager;
         _tokenService = tokenService;
         _discordService = discordService;
+        _stateProtector = stateProtector;
     }
 
     /// <summary>
     /// Register a new user with email and password.
     /// </summary>
     [HttpPost("register")]
+    [EnableRateLimiting("register")]
     [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Email))
-            return BadRequest(new { error = "Email is required." });
-
-        if (string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { error = "Password is required." });
-
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
             return Conflict(new { error = "An account with this email already exists." });
@@ -73,20 +74,29 @@ public class AuthController : ControllerBase
     /// Login with email and password.
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            return Unauthorized(new { error = "Invalid credentials." });
-
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is null)
-            return Unauthorized(new { error = "Invalid credentials." });
+            return Unauthorized(new { error = InvalidCredentials });
+
+        // A locked-out account answers exactly like a wrong password, so the lockout cannot be
+        // used to confirm that an address is registered.
+        if (await _userManager.IsLockedOutAsync(user))
+            return Unauthorized(new { error = InvalidCredentials });
 
         var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!passwordValid)
-            return Unauthorized(new { error = "Invalid credentials." });
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Unauthorized(new { error = InvalidCredentials });
+        }
+
+        if (user.AccessFailedCount > 0)
+            await _userManager.ResetAccessFailedCountAsync(user);
 
         user.LastLoginAt = DateTimeOffset.UtcNow;
         await _userManager.UpdateAsync(user);
@@ -96,16 +106,16 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Refresh an expired access token using a valid refresh token.
+    /// Refresh an expired access token using a valid refresh token. Guessing a 512-bit token is
+    /// not a realistic attack, and every signed-in page load refreshes, so this shares the
+    /// public-read budget rather than the login one.
     /// </summary>
     [HttpPost("refresh")]
+    [EnableRateLimiting("public-read")]
     [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            return Unauthorized(new { error = "Refresh token is required." });
-
         try
         {
             var tokens = await _tokenService.RefreshTokensAsync(request.RefreshToken, ct);
@@ -159,27 +169,32 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Get the Discord OAuth authorization URL for the frontend to redirect to.
+    /// Get the Discord OAuth authorization URL for the frontend to redirect to. The response also
+    /// carries the <c>state</c> embedded in the URL; the browser stores it and sends it back with
+    /// the authorization code.
     /// </summary>
     [HttpGet("discord/url")]
+    [EnableRateLimiting("public-read")]
     [ProducesResponseType(typeof(DiscordAuthUrlDto), StatusCodes.Status200OK)]
     public IActionResult GetDiscordUrl()
     {
-        var state = Guid.NewGuid().ToString("N");
+        var state = _stateProtector.Create();
         var url = _discordService.GetAuthorizationUrl(state);
-        return Ok(new DiscordAuthUrlDto(url));
+        return Ok(new DiscordAuthUrlDto(url, state));
     }
 
     /// <summary>
     /// Exchange a Discord OAuth code for authentication tokens.
     /// </summary>
     [HttpPost("discord/callback")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(AuthTokensDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DiscordCallback([FromBody] DiscordCallbackRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Code))
-            return BadRequest(new { error = "Authorization code is required." });
+        if (!_stateProtector.Validate(request.State))
+            return BadRequest(new { error = "The sign-in request has expired or is invalid. Please try again." });
 
         DiscordUserInfo discordUser;
         try
@@ -191,33 +206,42 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = "Failed to exchange Discord authorization code." });
         }
 
-        // Find existing user by Discord ID
         var user = await _userManager.Users
             .FirstOrDefaultAsync(u => u.DiscordId == discordUser.DiscordId, ct);
 
-        if (user is null && !string.IsNullOrEmpty(discordUser.Email))
-        {
-            // Try to find by email and link Discord account
-            user = await _userManager.FindByEmailAsync(discordUser.Email);
-            if (user is not null)
-            {
-                user.DiscordId = discordUser.DiscordId;
-                user.AvatarUrl ??= discordUser.AvatarUrl;
-            }
-        }
-
         if (user is null)
         {
-            // Create new user from Discord info
+            // An account is only created from a Discord identity when Discord has verified the
+            // address; an unverified one could have been typed in by anyone.
+            if (discordUser.Email is null || !discordUser.EmailVerified)
+            {
+                return BadRequest(new
+                {
+                    error = "Your Discord account has no verified email address. Verify it on Discord, or sign in with your email and password."
+                });
+            }
+
+            // Addresses on password accounts are never verified here, so a Discord identity is not
+            // attached to one automatically: someone who registered the address first would
+            // otherwise receive the Discord user's sessions.
+            var existingUser = await _userManager.FindByEmailAsync(discordUser.Email);
+            if (existingUser is not null)
+            {
+                return Conflict(new
+                {
+                    error = "An account with this email already exists. Sign in with your email and password."
+                });
+            }
+
             user = new ApplicationUser
             {
-                UserName = discordUser.Email ?? $"discord_{discordUser.DiscordId}",
+                UserName = discordUser.Email,
                 Email = discordUser.Email,
                 DisplayName = discordUser.Username,
                 AvatarUrl = discordUser.AvatarUrl,
                 DiscordId = discordUser.DiscordId,
                 CreatedAt = DateTimeOffset.UtcNow,
-                EmailConfirmed = !string.IsNullOrEmpty(discordUser.Email)
+                EmailConfirmed = true
             };
 
             var createResult = await _userManager.CreateAsync(user);
