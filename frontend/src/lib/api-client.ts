@@ -244,15 +244,7 @@ export function getGearRecommendations(
   signal?: AbortSignal,
   craftedOnly?: boolean,
 ): Promise<GearSetDto> {
-  const params = new URLSearchParams({
-    job,
-    level: String(level),
-    profile,
-  });
-  if (craftedOnly) params.set("craftedOnly", "true");
-  return fetchApi<GearSetDto>(`/api/gear/recommendations?${params}`, {
-    signal,
-  });
+  return staticData.getGearRecommendations(job, level, profile, signal, craftedOnly ?? false);
 }
 
 export function getSlotRecommendation(
@@ -276,10 +268,7 @@ export function getStatWeightProfiles(
   job: string,
   signal?: AbortSignal,
 ): Promise<StatWeightProfileDto[]> {
-  const params = new URLSearchParams({ job });
-  return fetchApi<StatWeightProfileDto[]>(`/api/gear/profiles?${params}`, {
-    signal,
-  });
+  return staticData.getStatWeightProfiles(job, signal);
 }
 
 export function calculateGearStats(
@@ -302,13 +291,7 @@ export function searchEquipment(
   maxLevel?: number,
   signal?: AbortSignal,
 ): Promise<EquipmentDto[]> {
-  const params = new URLSearchParams();
-  if (query) params.set("q", query);
-  if (job) params.set("job", job);
-  if (slot) params.set("slot", slot);
-  if (minLevel !== undefined) params.set("minLevel", String(minLevel));
-  if (maxLevel !== undefined) params.set("maxLevel", String(maxLevel));
-  return fetchApi<EquipmentDto[]>(`/api/gear/search?${params}`, { signal });
+  return staticData.searchEquipment(query, job, slot, minLevel, maxLevel, signal);
 }
 
 // --- Auth API ---
