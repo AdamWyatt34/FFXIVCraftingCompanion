@@ -13,8 +13,10 @@ export async function generateSitemaps(): Promise<{ id: number }[]> {
   return Array.from({ length: chunks + 1 }, (_, id) => ({ id }));
 }
 
-export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
-  if (id === 0) {
+export default async function sitemap({ id }: { id: number | string | Promise<number | string> }): Promise<MetadataRoute.Sitemap> {
+  // Next hands the id over as a number, a string or a promise of either depending on version.
+  const sitemapId = Number(await id);
+  if (sitemapId === 0) {
     return [
       {
         url: BASE_URL,
@@ -45,7 +47,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   const [recipeIds, manifest] = await Promise.all([listRecipeIdsServer(), getManifestServer()]);
   const lastModified = manifest ? new Date(manifest.exportedAt) : new Date();
-  const start = (id - 1) * RECIPES_PER_SITEMAP;
+  const start = (sitemapId - 1) * RECIPES_PER_SITEMAP;
   return recipeIds.slice(start, start + RECIPES_PER_SITEMAP).map((recipeId) => ({
     url: `${BASE_URL}/recipes/${recipeId}`,
     lastModified,

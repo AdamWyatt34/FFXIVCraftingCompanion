@@ -4,11 +4,34 @@ import { join } from "node:path";
 import { DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
 import type { Bucket, Manifest, RecipeExport } from "./types";
 
-// Build-time reads for static generation. scripts/data-fetch.mjs puts the data set under
-// public/data/v/<version>/ before `next build`; without it there is nothing to prerender.
+// Server-side reads of the data set. At build time (sitemap, any prerender) it is on disk under
+// public/data/v/<version>/, placed by scripts/data-fetch.mjs. A recipe page rendered on demand
+// runs in a function without that directory, so it reads the same file from the deployment's own
+// static assets instead; the result is cached per deployment like any static route.
 
 function dataDir(): string {
   return join(process.cwd(), "public", DATA_ROOT, DATA_VERSION);
+}
+
+function deploymentOrigin(): string | null {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.NEXT_PUBLIC_SITE_URL ?? null;
+}
+
+async function fetchFromDeployment<T>(relativePath: string): Promise<T | null> {
+  const origin = deploymentOrigin();
+  if (!origin || DATA_VERSION === "") return null;
+  const headers: Record<string, string> = {};
+  // Preview deployments can sit behind Vercel's deployment protection.
+  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET)
+    headers["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const response = await fetch(`${origin}${DATA_ROOT}/${DATA_VERSION}/${relativePath}`, {
+    headers,
+    cache: "force-cache",
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Game data ${relativePath} answered ${response.status}`);
+  return (await response.json()) as T;
 }
 
 const cache = new Map<string, Promise<unknown>>();
@@ -19,7 +42,7 @@ function readJson<T>(relativePath: string): Promise<T | null> {
     promise = readFile(join(dataDir(), relativePath), "utf8")
       .then((text) => JSON.parse(text) as T)
       .catch((err: NodeJS.ErrnoException) => {
-        if (err.code === "ENOENT") return null;
+        if (err.code === "ENOENT") return fetchFromDeployment<T>(relativePath);
         throw err;
       });
     cache.set(relativePath, promise);
@@ -29,6 +52,10 @@ function readJson<T>(relativePath: string): Promise<T | null> {
 
 export async function hasStaticData(): Promise<boolean> {
   return DATA_VERSION !== "" && (await readJson<Manifest>(MANIFEST_PATH)) !== null;
+}
+
+export function hasDataVersion(): boolean {
+  return DATA_VERSION !== "";
 }
 
 export function getManifestServer(): Promise<Manifest | null> {
