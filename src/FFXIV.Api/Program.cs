@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Threading.RateLimiting;
+using FFXIV.Api.Filters;
 using FFXIV.Api.Health;
 using FFXIV.Api.Middleware;
 using FFXIV.Application;
@@ -43,6 +44,7 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<AdminApiKeyFilter>();
 
 // Response Compression
 builder.Services.AddResponseCompression(options =>

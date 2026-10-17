@@ -74,7 +74,7 @@ public sealed class GearRecommendationService : IGearRecommendationService
                 Alternatives = alternatives,
                 WeightedScore = best.Score,
                 Source = best.Equipment is not null
-                    ? BuildSourceInfo(best.Equipment)
+                    ? GearMapper.BuildSourceInfo(best.Equipment)
                     : new EquipmentSourceInfo()
             };
 
@@ -129,7 +129,7 @@ public sealed class GearRecommendationService : IGearRecommendationService
             Alternatives = alternatives,
             WeightedScore = best.Score,
             Source = best.Equipment is not null
-                ? BuildSourceInfo(best.Equipment)
+                ? GearMapper.BuildSourceInfo(best.Equipment)
                 : new EquipmentSourceInfo()
         };
     }
@@ -264,55 +264,6 @@ public sealed class GearRecommendationService : IGearRecommendationService
              + (equipment.PhysicalDamage * profile.PhysicalDamageWeight)
              + (equipment.Defense * profile.DefenseWeight)
              + (equipment.MagicDefense * profile.MagicDefenseWeight);
-    }
-
-    private static EquipmentSourceInfo BuildSourceInfo(Equipment equipment)
-    {
-        var info = new EquipmentSourceInfo
-        {
-            SourceType = equipment.SourceType ?? ItemSourceType.Other,
-            RecipeId = equipment.RecipeId
-        };
-
-        if (!string.IsNullOrEmpty(equipment.SourceDetails))
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(equipment.SourceDetails);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("vendorName", out var vendorName))
-                    info.VendorName = vendorName.GetString();
-                if (root.TryGetProperty("cost", out var cost))
-                    info.VendorCost = cost.GetInt32();
-                if (root.TryGetProperty("currencyType", out var currency))
-                    info.CurrencyType = currency.GetString();
-                if (root.TryGetProperty("scripCost", out var scripCost))
-                    info.ScripCost = scripCost.GetInt32();
-            }
-            catch (JsonException)
-            {
-                // Malformed JSON — leave fields null
-            }
-        }
-
-        info.Description = equipment.SourceType switch
-        {
-            ItemSourceType.Crafted => equipment.RecipeId.HasValue
-                ? $"Crafted (Recipe #{equipment.RecipeId})"
-                : "Crafted",
-            ItemSourceType.Vendor => info.VendorName is not null
-                ? $"Sold by {info.VendorName} for {info.VendorCost} {info.CurrencyType ?? "Gil"}"
-                : "Purchased from vendor",
-            ItemSourceType.Scrip => info.ScripCost.HasValue
-                ? $"Scrip exchange ({info.ScripCost} {info.CurrencyType ?? "scrips"})"
-                : "Scrip exchange",
-            ItemSourceType.Quest => "Quest reward",
-            ItemSourceType.Dungeon => "Dungeon drop",
-            _ => equipment.SourceType?.ToString() ?? "Unknown"
-        };
-
-        return info;
     }
 
     private async Task EnrichSourceInfoAsync(

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using FFXIV.Api.Filters;
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Recipes;
 using FFXIV.Application.Recipes.DTOs;
@@ -10,14 +11,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FFXIV.Api.Controllers;
 
-// TODO: Secure these endpoints with authentication/authorization (Sprint 4)
-
 /// <summary>
 /// Administrative endpoints for data synchronization management and tree validation.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[ServiceFilter<AdminApiKeyFilter>]
 public class AdminController : ControllerBase
 {
     private readonly IDataSyncTrigger _syncTrigger;
