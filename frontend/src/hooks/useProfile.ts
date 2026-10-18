@@ -39,7 +39,7 @@ export function useProfile(): UseProfileReturn {
       cachedProfile = data;
       setProfile(data);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (controller.signal.aborted) return;
       if (err instanceof ApiClientError && err.status === 404) {
         cachedProfile = null;
         setProfile(null);

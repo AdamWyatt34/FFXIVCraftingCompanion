@@ -22,6 +22,8 @@ import { useWhatIf } from "@/hooks/useWhatIf";
 import { getRecipe, submitRotation } from "@/lib/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseRotationFromUrl } from "@/lib/format-utils";
+import { validateCrafterStats } from "@/lib/stat-limits";
+import { useToast } from "@/components/ui";
 import { RecipeSelector } from "@/components/simulator/RecipeSelector";
 import { StatsInput } from "@/components/simulator/StatsInput";
 import { RecipeParams } from "@/components/simulator/RecipeParams";
@@ -40,7 +42,7 @@ import { SolverConfigPanel } from "@/components/solver/SolverConfigPanel";
 import { SolverProgressOverlay } from "@/components/solver/SolverProgressOverlay";
 import { LoadingSkeleton } from "@/components/ui/LoadingStates";
 import { buildShareUrl } from "@/lib/format-utils";
-import { buildSolverShareUrl } from "@/lib/rotation-codec";
+import { buildSolverShareUrl, parseSolverShareUrl } from "@/lib/rotation-codec";
 
 // Lazy-load heavy components that are conditionally rendered
 const MacroExportPanel = dynamic(
@@ -137,10 +139,20 @@ function SimulatorPageContent() {
   );
   const hasInitializedFromUrlRef = useRef(false);
   const autoSolveTriggeredRef = useRef(false);
+  const { toast } = useToast();
 
   // URL-driven initialization
   useEffect(() => {
     if (hasInitializedFromUrlRef.current) return;
+
+    // A solver share link (?solve=1&r=...) carries the recipe, the stats and the packed rotation.
+    const shared = parseSolverShareUrl(searchParams);
+    if (shared) {
+      hasInitializedFromUrlRef.current = true;
+      simulator.loadSharedRotation(shared.recipeId, shared.stats, shared.actionIds);
+      setShowRotationResult(true);
+      return;
+    }
 
     const recipeIdParam = searchParams.get("recipeId");
     const craftsmanshipParam = searchParams.get("craftsmanship");
@@ -158,7 +170,7 @@ function SimulatorPageContent() {
     const hasStats =
       craftsmanshipParam && controlParam && cpParam && levelParam;
 
-    const stats: CrafterStatsInput | null = hasStats
+    let stats: CrafterStatsInput | null = hasStats
       ? {
           level: Number(levelParam),
           craftsmanship: Number(craftsmanshipParam),
@@ -167,7 +179,18 @@ function SimulatorPageContent() {
         }
       : null;
 
+    // Stats in a link are user input; out-of-range values are reported and left out rather
+    // than handed to the engine.
+    const statsProblem = stats ? validateCrafterStats(stats) : null;
+    if (statsProblem) {
+      toast(`The stats in this link were ignored: ${statsProblem}`, "error", 6000);
+      stats = null;
+    }
+
     const rotationIds = parseRotationFromUrl(rotationParam);
+    if (rotationParam && !rotationIds) {
+      toast("The rotation in this link is invalid or too long and was ignored.", "error", 6000);
+    }
 
     const solveParam = searchParams.get("solve") === "true";
     const whatifParam = searchParams.get("whatif") === "true";
@@ -202,7 +225,7 @@ function SimulatorPageContent() {
     } else if (solveParam) {
       setSetupMode("solve");
     }
-  }, [searchParams, simulator]);
+  }, [searchParams, simulator, toast]);
 
   // Sync whatIf hook with simulator state
   useEffect(() => {

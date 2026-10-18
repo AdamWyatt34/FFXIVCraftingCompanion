@@ -1,4 +1,5 @@
 import type { StepResult, CrafterStatsInput } from "@/types/simulator";
+import { SIMULATOR_CONSTANTS } from "@/lib/constants";
 
 /** Collapse consecutive identical actions: [{name, count}] */
 export function collapseActions(
@@ -58,12 +59,14 @@ export function buildShareUrl(params: {
   return `${base}/simulator?${search.toString()}`;
 }
 
-/** Parse a comma-separated rotation param into action IDs */
+/**
+ * Parse a comma-separated rotation param into action IDs. Null when there is nothing usable, when
+ * any entry is not a positive integer, or when there are more steps than a craft can hold.
+ */
 export function parseRotationFromUrl(param: string | null): number[] | null {
   if (!param) return null;
-  const ids = param
-    .split(",")
-    .map(Number)
-    .filter((n) => !isNaN(n) && n > 0);
-  return ids.length > 0 ? ids : null;
+  const parts = param.split(",").filter((part) => part.trim().length > 0);
+  if (parts.length === 0 || parts.length > SIMULATOR_CONSTANTS.MAX_ACTIONS_PER_CRAFT) return null;
+  const ids = parts.map((part) => Number(part.trim()));
+  return ids.every((n) => Number.isInteger(n) && n >= 1 && n <= 0xffff) ? ids : null;
 }

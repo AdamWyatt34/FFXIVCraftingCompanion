@@ -44,7 +44,7 @@ export function useCraftPlan(): UseCraftPlanReturn {
       const data = await resolveCraftPlan(items, signal);
       setResult(data);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (signal?.aborted) return;
       const msg = err instanceof ApiClientError ? err.message : "Failed to resolve plan.";
       setResolveError(msg);
     } finally {

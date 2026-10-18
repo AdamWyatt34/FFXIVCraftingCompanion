@@ -55,7 +55,7 @@ export function useRotationLibrary(
         }
         setTotalCount(result.totalCount);
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setError(
           err instanceof ApiClientError
             ? err.body.error
@@ -108,7 +108,7 @@ export function useRotationLibrary(
         setFiltersState((prev) => ({ ...prev, page: nextPage }));
       })
       .catch((err) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted) return;
         setError(
           err instanceof ApiClientError
             ? err.body.error

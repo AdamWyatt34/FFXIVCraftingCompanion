@@ -47,7 +47,8 @@ createServer((req, res) => {
     return json(res, 200, "{}");
   }
 
-  if (path.startsWith("/api/")) requests.push(`${req.method} ${path}`);
+  // The availability probe lives outside /api; it counts as a request to the API all the same.
+  if (path.startsWith("/api/") || path.startsWith("/health")) requests.push(`${req.method} ${path}`);
   if (offline) {
     req.socket.destroy();
     return;
@@ -56,6 +57,7 @@ createServer((req, res) => {
     res.writeHead(204, CORS);
     return res.end();
   }
+  if (path === "/health/live") return json(res, 200, "{}");
   if (path === `/api/recipes/${RECIPE_ID}`) return json(res, 200, recipe);
   if (path === `/api/recipes/${RECIPE_ID}/crafting-parameters`) return json(res, 200, parameters);
   if (path.startsWith("/api/crafting/solve") || path.startsWith("/api/crafting/simulate")) {

@@ -16,6 +16,8 @@ export interface UserInfoDto {
 
 export interface DiscordAuthUrlDto {
   authorizationUrl: string;
+  /** Signed, single-use value the callback must echo; stored for the round trip, never reused. */
+  state: string;
 }
 
 export interface RegisterRequest {
@@ -39,4 +41,5 @@ export interface LogoutRequest {
 
 export interface DiscordCallbackRequest {
   code: string;
+  state: string;
 }

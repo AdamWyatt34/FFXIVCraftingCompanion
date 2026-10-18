@@ -286,7 +286,11 @@ export const MARKET_CONSTANTS = {
 } as const;
 
 export const NOTIFICATION_CONSTANTS = {
-  POLL_INTERVAL_MS: 60_000,
+  // Timed-node windows are 2 to 4 Eorzean hours (6 to 12 real minutes), so a 5-minute poll still
+  // catches every window; the old 60-second poll kept the account database awake.
+  POLL_INTERVAL_MS: 300_000,
+  /** A tab regaining focus refreshes at most this often. */
+  FOCUS_REFRESH_MIN_MS: 60_000,
   STORAGE_KEY: "ffxiv_dismissed_notifications",
   MAX_DISPLAYED: 20,
 } as const;
