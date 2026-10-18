@@ -5,6 +5,17 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    // eslint-config-next 16.4 brought in the React Compiler rules of eslint-plugin-react-hooks 7.
+    // They flag 19 existing effects (setState inside useEffect and two memoisation notes) that
+    // are advisory until the compiler is enabled; they stay visible as warnings and are worked
+    // off in the component PRs that touch those files, not in a dependency bump.
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/immutability": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

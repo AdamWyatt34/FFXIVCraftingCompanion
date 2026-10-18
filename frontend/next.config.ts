@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import withSerwistInit from "@serwist/next";
 import withBundleAnalyzerInit from "@next/bundle-analyzer";
 import type { NextConfig } from "next";
@@ -89,6 +89,15 @@ const baseConfig = withBundleAnalyzer(withSerwist(nextConfig));
 export default process.env.NEXT_PUBLIC_SENTRY_DSN
   ? withSentryConfig(baseConfig, {
       silent: true,
-      disableLogger: true,
+      webpack: { treeshake: { removeDebugLogging: true } },
+      // Errors only (see src/instrumentation-client.ts): the tracing and replay code paths are
+      // never used, so they are stripped from the client bundle rather than shipped as dead weight.
+      bundleSizeOptimizations: {
+        excludeDebugStatements: true,
+        excludeTracing: true,
+        excludeReplayIframe: true,
+        excludeReplayShadowDom: true,
+        excludeReplayWorker: true,
+      },
     })
   : baseConfig;
