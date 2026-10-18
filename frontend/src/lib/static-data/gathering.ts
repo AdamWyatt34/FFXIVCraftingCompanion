@@ -9,6 +9,7 @@ import type {
 import type { ItemDto } from "@/types/api";
 import type { GatheringNodeExport } from "./types";
 import { compareOrdinalIgnoreCase } from "./materials";
+import { parseSpawnWindows } from "./spawn-windows";
 import { isWindowActive, timeUntilWindowSeconds } from "@/lib/eorzean-time";
 
 // Port of GatheringGuideService + GatheringGuideMapper. The caller supplies the item lookup
@@ -46,23 +47,10 @@ export function validateGuideItems(items: GatheringGuideItemInput[] | null | und
 
 const isCrystalId = (id: number) => id >= 2 && id <= 19;
 
-function parseHour(timeString: string): number {
-  const part = timeString.split(":")[0];
-  return /^\s*[+-]?\d+\s*$/.test(part) ? Number(part) : -1;
-}
-
+/** The guide shows one window per node: the first stored one (GatheringGuideService.ParseTimeWindow). */
 function parseTimeWindow(spawnTimes: string | null): { startHour: number; endHour: number } | null {
-  if (!spawnTimes) return null;
-  try {
-    const times = JSON.parse(spawnTimes) as unknown;
-    if (!Array.isArray(times) || times.length < 2) return null;
-    const startHour = parseHour(String(times[0]));
-    const endHour = parseHour(String(times[1]));
-    if (startHour < 0 || endHour < 0) return null;
-    return { startHour, endHour };
-  } catch {
-    return null;
-  }
+  const windows = parseSpawnWindows(spawnTimes);
+  return windows.length === 0 ? null : windows[0];
 }
 
 function pickPreferredNode(nodes: GatheringNodeExport[]): GatheringNodeExport {
@@ -150,7 +138,9 @@ export function buildGatheringGuide(
       },
     });
 
-    if (preferred.isTimed && window) {
+    // "Timed" follows from a usable window, not the stored flag: data exported before the
+    // spawn-time fix carries isTimed for every node with the 65535 sentinel.
+    if (window) {
       const mapped = mapWindow(window.startHour, window.endHour, currentHour);
       timedNodes.push({
         itemId: input.itemId,

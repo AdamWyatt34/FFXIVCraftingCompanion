@@ -24,6 +24,7 @@ import {
 } from "@/components/ui";
 import type { ItemDto, CraftType } from "@/types/api";
 import type { ItemContextDto } from "@/types/journey";
+import { formatSpawnWindows, parseSpawnWindows } from "@/lib/static-data/spawn-windows";
 
 export default function ItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -225,8 +226,10 @@ export default function ItemDetailPage() {
                   </div>
                   <div className="text-xs text-text-muted">
                     {g.gatheringClass} Lv.{g.gatheringLevel} &middot; {g.gatheringType}
-                    {g.isTimed && g.spawnTimes && (
-                      <span className="text-amber-400 ml-1">Timed: {g.spawnTimes}</span>
+                    {formatSpawnWindows(parseSpawnWindows(g.spawnTimes)) && (
+                      <span className="text-amber-400 ml-1">
+                        Timed: {formatSpawnWindows(parseSpawnWindows(g.spawnTimes))}
+                      </span>
                     )}
                   </div>
                 </div>

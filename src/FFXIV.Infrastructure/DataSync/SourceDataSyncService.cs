@@ -128,20 +128,12 @@ public sealed class SourceDataSyncService
             var gatheringType = XivApiDataMapper.MapGatheringType(pointBase.GatheringTypeRowId);
             var classJob = XivApiDataMapper.GatheringTypeToClassJob(gatheringType);
 
-            // Check if this is a timed node and derive NodeType
-            var isTimed = false;
-            string? spawnTimes = null;
-            var nodeType = Domain.Enums.NodeType.Standard;
-            if (transients.TryGetValue(pointRowId, out var transient))
-            {
-                if (transient.StartTime != 0 || transient.EndTime != 0)
-                {
-                    isTimed = true;
-                    spawnTimes = JsonSerializer.Serialize(new[] { $"{transient.StartTime}:00", $"{transient.EndTime}:00" });
-                    var duration = (transient.EndTime - transient.StartTime + 24) % 24;
-                    nodeType = duration >= 4 ? Domain.Enums.NodeType.Ephemeral : Domain.Enums.NodeType.Unspoiled;
-                }
-            }
+            // Timed nodes (ephemeral windows, unspoiled/legendary time tables) were resolved while
+            // loading the transient sheet; everything else is a standard node.
+            var timing = transients.GetValueOrDefault(pointRowId, GatheringNodeTiming.Result.Untimed);
+            var isTimed = timing.IsTimed;
+            var spawnTimes = timing.SpawnTimes;
+            var nodeType = timing.NodeType;
 
             foreach (var gatheringItemRowId in pointBase.GatheringItemRowIds)
             {
@@ -347,9 +339,13 @@ public sealed class SourceDataSyncService
         return result;
     }
 
-    private async Task<Dictionary<int, (int StartTime, int EndTime)>> LoadGatheringPointTransientsAsync(CancellationToken ct)
+    /// <summary>
+    /// Loads the transient sheet and keeps only the points that are timed: ephemeral windows come
+    /// from the row itself, unspoiled and legendary windows from its linked rare-pop time table.
+    /// </summary>
+    private async Task<Dictionary<int, GatheringNodeTiming.Result>> LoadGatheringPointTransientsAsync(CancellationToken ct)
     {
-        var result = new Dictionary<int, (int StartTime, int EndTime)>();
+        var result = new Dictionary<int, GatheringNodeTiming.Result>();
         int? afterRowId = null;
 
         while (true)
@@ -357,20 +353,16 @@ public sealed class SourceDataSyncService
             ct.ThrowIfCancellationRequested();
 
             var (rows, lastRowId) = await _xivApiClient.GetSheetAsync<XivApiGatheringPointTransientFields>(
-                "GatheringPointTransient", "EphemeralStartTime,EphemeralEndTime",
+                "GatheringPointTransient", XivApiGatheringPointTransientFields.RequestFields,
                 limit: PageSize, afterRowId: afterRowId, cancellationToken: ct);
 
             if (rows.Count == 0) break;
 
             foreach (var row in rows)
             {
-                if (row.Fields.EphemeralStartTime != 0 || row.Fields.EphemeralEndTime != 0)
-                {
-                    result[row.RowId] = (
-                        StartTime: row.Fields.EphemeralStartTime,
-                        EndTime: row.Fields.EphemeralEndTime
-                    );
-                }
+                var timing = GatheringNodeTiming.Resolve(row.Fields);
+                if (timing.IsTimed)
+                    result[row.RowId] = timing;
             }
 
             afterRowId = lastRowId;
