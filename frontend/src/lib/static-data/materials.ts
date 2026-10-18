@@ -1,4 +1,5 @@
 import type {
+  RecipeIngredientDto,
   IntermediateCraftDto,
   ItemSourceDto,
   MaterialTreeNodeDto,
@@ -203,4 +204,56 @@ function aggregate(node: MaterialTreeNodeDto, agg: Aggregation): void {
   }
 
   for (const child of node.children) aggregate(child, agg);
+}
+
+export interface DirectIngredientSummary {
+  itemId: number;
+  itemName: string;
+  iconUrl: string;
+  quantity: number;
+  canBeHQ: boolean;
+  /** "Crafted", "Gathered", "Vendor", "Crystal", ... as the export classifies it. */
+  primarySource: string;
+  isCrafted: boolean;
+  /** What one craft of a crafted ingredient needs: the first level of the material tree below it. */
+  madeFrom: { itemId: number; itemName: string; quantity: number }[];
+}
+
+/**
+ * The recipe's direct ingredients with the first level of the material tree beneath each crafted
+ * one, from the export's material graph. Pure, so the recipe page can render it on the server.
+ */
+export function directIngredients(
+  ingredients: RecipeIngredientDto[],
+  graph: MaterialGraphExport | null | undefined,
+  crystals: CrystalTable,
+): DirectIngredientSummary[] {
+  const nodes = new Map<number, MaterialSkeletonNode>();
+  for (const child of graph?.tree.children ?? []) nodes.set(child.itemId, child);
+
+  const info = (itemId: number): MaterialItemExport | undefined =>
+    isCrystal(itemId) ? crystals[String(itemId)] : graph?.items[String(itemId)];
+
+  return ingredients.map((ingredient) => {
+    const node = nodes.get(ingredient.itemId);
+    const item = info(ingredient.itemId);
+    const crystal = isCrystal(ingredient.itemId);
+    const isCrafted = !crystal && !!node && !node.truncated && !!item?.recipe;
+    return {
+      itemId: ingredient.itemId,
+      itemName: ingredient.itemName,
+      iconUrl: ingredient.iconUrl,
+      quantity: ingredient.quantity,
+      canBeHQ: ingredient.canBeHQ,
+      primarySource: crystal ? "Crystal" : isCrafted ? "Crafted" : item?.primarySource ?? "Other",
+      isCrafted,
+      madeFrom: isCrafted
+        ? node!.children.map((child) => ({
+            itemId: child.itemId,
+            itemName: info(child.itemId)?.itemName ?? `Item ${child.itemId}`,
+            quantity: child.perCraft,
+          }))
+        : [],
+    };
+  });
 }

@@ -1,7 +1,8 @@
 import "server-only";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
+import type { CrystalTable } from "./materials";
+import { CRYSTALS_PATH, DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
 import type { Bucket, Manifest, RecipeExport } from "./types";
 
 // Server-side reads of the data set. At build time (sitemap, any prerender) it is on disk under
@@ -68,6 +69,11 @@ export function hasDataVersion(): boolean {
 
 export function getManifestServer(): Promise<Manifest | null> {
   return readJson<Manifest>(MANIFEST_PATH);
+}
+
+/** The crystal item table (ids 2–19 are not in the recipe buckets' material items). */
+export async function getCrystalsServer(): Promise<CrystalTable> {
+  return (await readJson<CrystalTable>(CRYSTALS_PATH)) ?? {};
 }
 
 export async function getRecipeExportServer(recipeId: number): Promise<RecipeExport | null> {
