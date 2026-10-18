@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Shield, User, FlaskConical, SlidersHorizontal, ClipboardList, Hammer } from "lucide-react";
+import { User, FlaskConical, SlidersHorizontal, ClipboardList, Hammer } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useGearRecommendations } from "@/hooks/useGearRecommendations";
@@ -176,19 +176,8 @@ function GearPageContent() {
       : true;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Page header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-1">
-          <Shield className="text-gold" size={24} />
-          <h1 className="text-xl font-bold">Gear Recommendations</h1>
-        </div>
-        <p className="text-text-secondary text-sm">
-          Find the best equipment for your job and level
-        </p>
-      </div>
-
-      {/* Main content */}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Main content (the page heading is rendered by the server wrapper) */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6 max-w-4xl mx-auto">
           {/* Mode toggle */}

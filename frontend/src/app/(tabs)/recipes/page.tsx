@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { listRecipesServer } from "@/lib/static-data/server";
+import { countByJob } from "@/lib/static-data/hubs";
+import { RecipeBrowse } from "@/components/recipes/RecipeBrowse";
 import RecipesPageClient from "./RecipesPageClient";
 
-// Server wrapper: the page itself is a client component (search params, hooks), and only a
-// server file can publish metadata. The canonical lives here, never in a layout.
+// The search itself needs the query string, so it hydrates on the client behind a Suspense
+// boundary and is not in the HTML. Everything a crawler should see (the heading, the job hubs and
+// the quick filters) renders here, outside that boundary, from the exported recipe list.
 export const metadata: Metadata = {
   title: "FFXIV Recipe Browser",
   description:
@@ -15,6 +19,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <RecipesPageClient />;
+export default async function Page() {
+  const recipes = await listRecipesServer();
+  return (
+    <div className="flex flex-col h-full">
+      <header className="px-4 pt-4">
+        <h1 className="text-xl font-bold text-text-primary">FFXIV Crafting Recipes</h1>
+        <p className="text-sm text-text-secondary mt-1">
+          Search {recipes.length.toLocaleString("en-US")} recipes by item name, or browse by job and level.
+        </p>
+      </header>
+      <RecipesPageClient />
+      <RecipeBrowse counts={countByJob(recipes)} />
+    </div>
+  );
 }

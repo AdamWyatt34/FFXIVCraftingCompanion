@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { getManifestServer, listRecipesServer } from "@/lib/static-data/server";
 import { recipePath } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
+import { CRAFT_JOBS, LEVEL_BRACKETS } from "@/lib/static-data/hubs";
+import { DAWNTRAIL_RECIPES_PATH, recipesByJobPath } from "@/lib/routes";
 
 const BASE_URL = getSiteUrl();
 
@@ -48,6 +50,26 @@ export default async function sitemap({ id }: { id: number | string | Promise<nu
         changeFrequency: "weekly",
         priority: 0.7,
       },
+      {
+        url: `${BASE_URL}${DAWNTRAIL_RECIPES_PATH}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.8,
+      },
+      ...CRAFT_JOBS.flatMap((job) => [
+        {
+          url: `${BASE_URL}${recipesByJobPath(job)}`,
+          lastModified: new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.8,
+        },
+        ...LEVEL_BRACKETS.map((bracket) => ({
+          url: `${BASE_URL}${recipesByJobPath(job, bracket.slug)}`,
+          lastModified: new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        })),
+      ]),
     ];
   }
 

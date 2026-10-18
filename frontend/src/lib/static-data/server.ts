@@ -86,6 +86,8 @@ export async function getRecipeExportServer(recipeId: number): Promise<RecipeExp
 export interface RecipeListEntry {
   recipeId: number;
   itemName: string;
+  iconUrl: string;
+  itemLevel: number;
   craftType: string;
   /** The recipe level (rlvl). */
   recipeLevel: number;
@@ -120,6 +122,8 @@ async function readRecipeList(): Promise<RecipeListEntry[]> {
       entries.push({
         recipeId: data.recipe.recipeId,
         itemName: data.recipe.resultItem.name,
+        iconUrl: data.recipe.resultItem.iconUrl,
+        itemLevel: data.recipe.resultItem.itemLevel,
         craftType: data.recipe.craftType,
         recipeLevel: data.recipe.recipeLevel,
         classJobLevel: data.craftingParameters.classJobLevel,

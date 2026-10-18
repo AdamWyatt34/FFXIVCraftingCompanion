@@ -5,8 +5,8 @@ import { FlaskConical, Map, Shield, Sparkles } from "lucide-react";
 import { getCrystalsServer } from "@/lib/static-data/server";
 import { directIngredients } from "@/lib/static-data/materials";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
-import { itemPath, recipeJourneyPath, recipePath, simulatorPath } from "@/lib/routes";
-import { getSiteUrl } from "@/lib/site-url";
+import { itemPath, recipeJourneyPath, recipePath, recipesByJobPath, simulatorPath } from "@/lib/routes";
+import { breadcrumbListJsonLd } from "@/lib/structured-data";
 import { resolveRecipeRoute } from "./resolve";
 import { ItemIcon, StatBar } from "@/components/ui";
 import {
@@ -74,26 +74,16 @@ export default async function RecipeDetailPage({ params }: Props) {
   const jobName = craftInfo?.fullName ?? recipe.craftType;
   const ingredients = directIngredients(recipe.ingredients, materials, await getCrystalsServer());
   const equipInfo = recipe.equipmentInfo;
-  const base = getSiteUrl();
-
-  const breadcrumbs = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: `${base}/` },
-      { "@type": "ListItem", position: 2, name: "Recipes", item: `${base}/recipes` },
-      { "@type": "ListItem", position: 3, name: jobName, item: `${base}/recipes?craftType=${recipe.craftType}` },
-      { "@type": "ListItem", position: 4, name, item: `${base}${recipePath(recipe.recipeId, name)}` },
-    ],
-  };
+  const breadcrumbs = breadcrumbListJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Recipes", path: "/recipes" },
+    ...(craftInfo ? [{ name: jobName, path: recipesByJobPath(recipe.craftType as CraftType) }] : []),
+    { name, path: recipePath(recipe.recipeId, name) },
+  ]);
 
   return (
     <div className="p-4 space-y-6 max-w-2xl mx-auto">
-      <script
-        type="application/ld+json"
-        // "<" is escaped so a name can never close the script element.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs).replace(/</g, "\\u003c") }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: breadcrumbs }} />
 
       <RecipeBackLink />
 

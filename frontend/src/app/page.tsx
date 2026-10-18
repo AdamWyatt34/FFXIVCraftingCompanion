@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CRAFT_TYPE_INFO } from "@/lib/constants";
+import { CRAFT_JOBS, LATEST_BRACKET } from "@/lib/static-data/hubs";
+import { DAWNTRAIL_RECIPES_PATH, recipesByJobPath } from "@/lib/routes";
 import {
   ChefHat,
   FlaskConical,
@@ -123,6 +126,33 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
+      </section>
+
+      {/* Browse by job: the crawlable way into the recipe hubs */}
+      <section className="space-y-6" aria-labelledby="browse-heading">
+        <h2 id="browse-heading" className="text-2xl font-bold text-text-primary text-center">
+          Browse Recipes by Job
+        </h2>
+        <ul className="flex flex-wrap justify-center gap-3">
+          {CRAFT_JOBS.map((job) => (
+            <li key={job}>
+              <Link
+                href={recipesByJobPath(job)}
+                className={`inline-block px-4 py-2 rounded-full bg-bg-surface border border-border hover:border-gold transition-colors text-sm font-medium ${CRAFT_TYPE_INFO[job].colorClass}`}
+              >
+                {CRAFT_TYPE_INFO[job].fullName}
+              </Link>
+            </li>
+          ))}
+          <li>
+            <Link
+              href={DAWNTRAIL_RECIPES_PATH}
+              className="inline-block px-4 py-2 rounded-full bg-gold/10 border border-gold/40 hover:border-gold transition-colors text-sm font-medium text-gold"
+            >
+              {LATEST_BRACKET.expansion} Recipes ({LATEST_BRACKET.label})
+            </Link>
+          </li>
+        </ul>
       </section>
 
       {/* How It Works */}

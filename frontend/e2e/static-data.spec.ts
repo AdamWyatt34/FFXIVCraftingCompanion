@@ -17,6 +17,20 @@ test("signed-out pages never call the API", async ({ page, request }) => {
   await page.goto("/recipes?q=Cosmic");
   await expect(page.getByText(RECIPE_NAME).first()).toBeVisible();
 
+  // The listing and the hubs carry their recipe links in the HTML, not in JavaScript.
+  const listing = await (await request.get("/recipes")).text();
+  expect(listing).toContain("<h1");
+  expect(listing).toContain('href="/recipes/by-job/cul"');
+  expect(listing).toContain('href="/recipes/dawntrail"');
+  const bracketHub = await (await request.get("/recipes/by-job/cul/91-100")).text();
+  expect(bracketHub).toContain(`href="/recipes/${RECIPE_SLUG}"`);
+  expect(bracketHub).toContain('"@type":"BreadcrumbList"');
+  expect(await (await request.get("/recipes/by-job/arm")).text()).toContain('href="/recipes/by-job/arm/81-90"');
+  expect(await (await request.get("/recipes/dawntrail")).text()).toContain(`href="/recipes/${RECIPE_SLUG}"`);
+  for (const junk of ["/recipes/by-job/xyz", "/recipes/by-job/cul/1-999", "/recipes/by-job/CUL"]) {
+    expect((await request.get(junk)).status(), junk).toBe(404);
+  }
+
   await page.goto(`/recipes/${RECIPE_SLUG}`);
   await expect(page.getByRole("heading", { name: RECIPE_NAME }).first()).toBeVisible();
 
