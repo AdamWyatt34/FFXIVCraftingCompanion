@@ -114,7 +114,10 @@ az containerapp update \
 1. Go to [vercel.com](https://vercel.com) and import your GitHub repository
 2. Set **Root Directory** to `frontend`
 3. Framework preset will auto-detect Next.js
-4. Add environment variable: `NEXT_PUBLIC_API_URL` = your Azure Container Apps URL (e.g., `https://ffxiv-prod-api.kindgrass-abc123.eastus.azurecontainerapps.io`)
+4. Add environment variables:
+   - `NEXT_PUBLIC_API_URL` = your Azure Container Apps URL (e.g., `https://ffxiv-prod-api.kindgrass-abc123.eastus.azurecontainerapps.io`)
+   - `NEXT_PUBLIC_SITE_URL` = the canonical origin (e.g., `https://ffxivcrafting.app`). Required for the Production environment: every canonical URL, sitemap entry and social image is published under it, and a production build fails without it. Requests to the project's `*.vercel.app` host are redirected (308) to this origin by `next.config.ts`.
+   - `NEXT_PUBLIC_SENTRY_DSN` (optional) = the Sentry DSN; also the destination for Content-Security-Policy violation reports
 5. Deploy
 
 Vercel will auto-deploy on pushes to `main` and create preview deployments for PRs.

@@ -714,6 +714,7 @@ Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "
 |----------|----------|-----------|---------|
 | `NEXT_PUBLIC_API_URL` | Yes (prod) | `.env.local` / Vercel | Backend API base URL |
 | `NEXT_PUBLIC_SENTRY_DSN` | No | `.env.local` / Vercel | Sentry error tracking |
+| `NEXT_PUBLIC_SITE_URL` | Production builds | Vercel | Canonical origin for metadata, sitemap and social images |
 
 ---
 
