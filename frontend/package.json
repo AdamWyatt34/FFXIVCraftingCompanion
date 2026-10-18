@@ -16,7 +16,7 @@
     "test:e2e": "cross-env NEXT_PUBLIC_API_URL=http://localhost:3101 FFXIV_DATA_DIR=e2e/fixtures/data npm run build && playwright test"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.76.2",
+    "@sentry/nextjs": "^11.8.0",
     "lucide-react": "^1.57.0",
     "next": "16.4.2",
     "react": "19.3.1",
