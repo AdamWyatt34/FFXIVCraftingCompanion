@@ -10,6 +10,7 @@ import { useGearComparison } from "@/hooks/useGearComparison";
 import { useEquipmentSearch } from "@/hooks/useEquipmentSearch";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCraftPlanContext } from "@/contexts/CraftPlanContext";
 import {
   JobSelector,
   LevelInput,
@@ -41,6 +42,7 @@ function GearPageContent() {
   // Auth & profile
   const { isAuthenticated } = useAuth();
   const { profile: userProfile, invalidate: invalidateProfile } = useProfile();
+  const { clearPlan, addToPlan } = useCraftPlanContext();
 
   // Read URL params for deep-linking / sharing
   const urlJob = searchParams.get("job");
@@ -148,8 +150,10 @@ function GearPageContent() {
         quantity: 1,
       }));
     if (craftableItems.length === 0) return;
-    // Store in sessionStorage for CraftPlanContext to pick up
-    sessionStorage.setItem("ffxiv_craft_plan", JSON.stringify(craftableItems));
+    // Through the context, so the plan page (and its badge) see the items; a raw sessionStorage
+    // write was only read on the next full page load.
+    clearPlan();
+    for (const { quantity: _quantity, ...item } of craftableItems) addToPlan(item);
     router.push("/recipes/plan");
   };
 

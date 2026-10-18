@@ -39,7 +39,7 @@ export function useFavorites(): UseFavoritesReturn {
       const data = await getFavoriteRecipes(controller.signal);
       setFavorites(data);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (controller.signal.aborted) return;
       setError(err instanceof ApiClientError ? err.body.error : "Failed to load favorites");
     } finally {
       setIsLoading(false);

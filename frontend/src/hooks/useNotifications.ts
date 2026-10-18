@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from "@/lib/api-client";
+import { getApiAvailability } from "@/lib/api-status";
 import { useAuth } from "@/contexts/AuthContext";
 import { NOTIFICATION_CONSTANTS } from "@/lib/constants";
 import type { NotificationDto } from "@/types/notifications";
@@ -30,15 +31,22 @@ export interface UseNotificationsReturn {
   isLoading: boolean;
 }
 
+/**
+ * Notifications for the signed-in user. Fetched on sign-in, when the tab becomes visible or
+ * regains focus (at most once a minute), and every five minutes while the tab is visible; a
+ * hidden tab polls nothing, and an API known to be down is not polled either.
+ */
 export function useNotifications(): UseNotificationsReturn {
   const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dismissedRef = useRef(getDismissedSet());
+  const lastFetchedAtRef = useRef(0);
 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
+    if (getApiAvailability() === "unavailable") return;
+    lastFetchedAtRef.current = Date.now();
     try {
       setIsLoading(true);
       const all = await getNotifications();
@@ -53,7 +61,6 @@ export function useNotifications(): UseNotificationsReturn {
     }
   }, [isAuthenticated]);
 
-  // Initial fetch + polling
   useEffect(() => {
     if (!isAuthenticated) {
       setNotifications([]);
@@ -62,28 +69,40 @@ export function useNotifications(): UseNotificationsReturn {
 
     fetchNotifications();
 
-    const poll = () => {
-      // Pause when tab hidden or offline
-      if (document.visibilityState === "hidden" || !navigator.onLine) return;
-      fetchNotifications();
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => {
+        if (navigator.onLine) fetchNotifications();
+      }, NOTIFICATION_CONSTANTS.POLL_INTERVAL_MS);
     };
-
-    intervalRef.current = setInterval(poll, NOTIFICATION_CONSTANTS.POLL_INTERVAL_MS);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
     };
-  }, [isAuthenticated, fetchNotifications]);
-
-  // Pause/resume on visibility change
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && isAuthenticated) {
+    const refreshIfStale = () => {
+      if (Date.now() - lastFetchedAtRef.current >= NOTIFICATION_CONSTANTS.FOCUS_REFRESH_MIN_MS) {
         fetchNotifications();
       }
     };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshIfStale();
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    if (document.visibilityState === "visible") start();
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", refreshIfStale);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", refreshIfStale);
+    };
   }, [isAuthenticated, fetchNotifications]);
 
   const dismiss = useCallback((id: string) => {

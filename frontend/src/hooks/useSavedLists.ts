@@ -44,7 +44,7 @@ export function useSavedLists(typeFilter?: string): UseSavedListsReturn {
       });
       setLists(sorted);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (controller.signal.aborted) return;
       setError(err instanceof ApiClientError ? err.body.error : "Failed to load saved lists");
     } finally {
       setIsLoading(false);

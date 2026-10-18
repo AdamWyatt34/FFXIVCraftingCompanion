@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, OAuthStateError } from "@/contexts/AuthContext";
 import { LoadingSpinner } from "@/components/ui";
 
 function DiscordCallbackContent() {
@@ -18,17 +18,27 @@ function DiscordCallbackContent() {
     hasAttemptedRef.current = true;
 
     (async () => {
+      if (searchParams.get("error")) {
+        setError("Discord sign-in was cancelled.");
+        return;
+      }
+
       const code = searchParams.get("code");
+      const state = searchParams.get("state");
       if (!code) {
         setError("No authorization code received from Discord.");
         return;
       }
 
       try {
-        await handleDiscordCallback(code);
+        await handleDiscordCallback(code, state ?? "");
         router.push("/profile");
-      } catch {
-        setError("Failed to sign in with Discord. Please try again.");
+      } catch (err) {
+        setError(
+          err instanceof OAuthStateError
+            ? err.message
+            : "Failed to sign in with Discord. Please try again.",
+        );
       }
     })();
   }, [searchParams, handleDiscordCallback, router]);

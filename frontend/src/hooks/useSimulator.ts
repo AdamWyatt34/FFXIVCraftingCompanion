@@ -12,6 +12,7 @@ import {
   simulateCraft,
 } from "@/lib/crafting-engine";
 import { useProfile } from "@/hooks/useProfile";
+import { SIMULATOR_CONSTANTS } from "@/lib/constants";
 import type { RecipeSummaryDto } from "@/types/api";
 import type {
   CraftingState,
@@ -580,6 +581,17 @@ export function useSimulator(): UseSimulatorReturn {
       setError(null);
 
       try {
+        // A shared link is user input: keep only ids the engine knows, and never more steps
+        // than a craft can hold.
+        const known = new Set((await getCraftingActions()).map((a) => a.id));
+        const actionIds = sharedActionIds
+          .filter((id) => known.has(id))
+          .slice(0, SIMULATOR_CONSTANTS.MAX_ACTIONS_PER_CRAFT);
+        if (actionIds.length === 0) {
+          setError("The shared rotation contains no valid actions.");
+          return;
+        }
+
         // Fetch and set recipe
         const recipe = await getRecipe(sharedRecipeId);
         const summary: RecipeSummaryDto = {
@@ -600,7 +612,7 @@ export function useSimulator(): UseSimulatorReturn {
         const result = await simulateCraft({
           recipeId: sharedRecipeId,
           stats,
-          actionIds: sharedActionIds,
+          actionIds,
         });
 
         // Set initial state from the first step's "before" or calculate it

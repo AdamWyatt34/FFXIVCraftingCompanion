@@ -46,7 +46,6 @@ export function useJourney(recipeId: number): UseJourneyReturn {
         }
       } catch (err: unknown) {
         if (controller.signal.aborted) return;
-        if (err instanceof DOMException && err.name === "AbortError") return;
         const msg =
           err instanceof ApiClientError
             ? err.message

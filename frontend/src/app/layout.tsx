@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Header, BottomTabNav, Footer } from "@/components/layout";
-import { ToastProvider, Breadcrumbs, InstallBanner } from "@/components/ui";
+import { ToastProvider, Breadcrumbs, InstallBanner, ApiStatusBanner } from "@/components/ui";
 import { FeedbackButton } from "@/components/feedback";
 import Script from "next/script";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -83,6 +83,7 @@ export default function RootLayout({
         <AuthProvider>
           <BreadcrumbProvider>
             <Header />
+            <ApiStatusBanner />
             <Breadcrumbs />
             <CraftPlanProvider>
               <ToastProvider>

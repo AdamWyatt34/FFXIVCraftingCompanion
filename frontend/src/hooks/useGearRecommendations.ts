@@ -79,7 +79,6 @@ export function useGearRecommendations(
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
-        if (err instanceof DOMException && err.name === "AbortError") return;
         setProfileResult({ profiles: [], error: "Failed to load profiles", key: profileKey });
       });
 
@@ -118,7 +117,6 @@ export function useGearRecommendations(
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
-        if (err instanceof DOMException && err.name === "AbortError") return;
         const msg =
           err instanceof ApiClientError
             ? err.message

@@ -8,7 +8,19 @@
  *   base64url: ~34 chars vs comma-separated: ~75 chars
  */
 
+import { SIMULATOR_CONSTANTS } from "@/lib/constants";
+import { isValidCrafterStats } from "@/lib/stat-limits";
+
 const PREFIX_WIDE = 0xff;
+
+/** A shared rotation never carries more steps than a craft can. */
+export const MAX_SHARED_ACTIONS = SIMULATOR_CONSTANTS.MAX_ACTIONS_PER_CRAFT;
+const MAX_ACTION_ID = 0xffff;
+
+function boundedIds(ids: number[]): number[] | null {
+  if (ids.length === 0 || ids.length > MAX_SHARED_ACTIONS) return null;
+  return ids.every((id) => Number.isInteger(id) && id >= 1 && id <= MAX_ACTION_ID) ? ids : null;
+}
 
 /** Encode an array of action IDs into a compact base64url string. */
 export function encodeRotation(actionIds: number[]): string {
@@ -32,7 +44,10 @@ export function encodeRotation(actionIds: number[]): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** Decode a base64url rotation string back into action IDs. Returns null on invalid input. */
+/**
+ * Decode a base64url rotation string back into action IDs. Returns null on invalid input, on an
+ * empty rotation, on an id of zero in the wide form, and on more steps than a craft can hold.
+ */
 export function decodeRotation(encoded: string): number[] | null {
   if (!encoded) return null;
 
@@ -54,11 +69,10 @@ export function decodeRotation(encoded: string): number[] | null {
       for (let i = 0; i < count; i++) {
         ids.push((bytes[1 + i * 2] << 8) | bytes[1 + i * 2 + 1]);
       }
-      return ids.length > 0 ? ids : null;
+      return boundedIds(ids);
     }
 
-    const ids = Array.from(bytes).filter((b) => b > 0);
-    return ids.length > 0 ? ids : null;
+    return boundedIds(Array.from(bytes).filter((b) => b > 0));
   } catch {
     return null;
   }
@@ -105,15 +119,18 @@ export function parseSolverShareUrl(
   const rotation = searchParams.get("r");
   const algorithm = searchParams.get("alg") ?? undefined;
 
-  if (!recipeId || !craftsmanship || !cp || !level) return null;
+  if (!Number.isInteger(recipeId) || recipeId < 1) return null;
+
+  const stats = { craftsmanship, control, cp, level };
+  if (!isValidCrafterStats(stats)) return null;
 
   const actionIds = decodeRotation(rotation ?? "");
   if (!actionIds) return null;
 
   return {
     recipeId,
-    stats: { craftsmanship, control, cp, level },
+    stats,
     actionIds,
-    algorithm,
+    algorithm: algorithm && /^[a-z]{1,16}$/.test(algorithm) ? algorithm : undefined,
   };
 }

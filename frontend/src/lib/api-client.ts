@@ -1,4 +1,6 @@
 import { ApiClientError } from "@/lib/api-errors";
+import { getApiBaseUrl } from "@/lib/api-base-url";
+import { outcomeForStatus, reportApiOutcome } from "@/lib/api-status";
 import * as staticData from "@/lib/static-data/client";
 import type {
   ItemDto,
@@ -43,58 +45,91 @@ import type {
 
 export { ApiClientError };
 
-function getBaseUrl(): string {
-  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-    return "";
-  }
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5159";
+export interface RequestOptions extends RequestInit {
+  /** Overrides the default request timeout; the Lodestone endpoints wait on a slow upstream. */
+  timeoutMs?: number;
 }
 
-// In-flight GET request deduplication
+const DEFAULT_TIMEOUT_MS = 10_000;
+/** The Lodestone endpoints scrape Square Enix's site, which can take most of a minute. */
+export const LODESTONE_TIMEOUT_MS = 60_000;
+
+// In-flight GET deduplication, keyed by path plus a fingerprint of the bearer token so two
+// identities (or a request before and after a sign-in) never share a response. Emptied whenever
+// the signed-in identity changes.
 const inflightGets = new Map<string, Promise<unknown>>();
 
-async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+export function clearInflightRequests(): void {
+  inflightGets.clear();
+}
+
+function dedupKey(path: string, init?: RequestOptions): string {
+  const headers = (init?.headers as Record<string, string> | undefined) ?? {};
+  const bearer = headers["Authorization"];
+  // The tail of the token is enough to tell two tokens apart without holding the token in the key.
+  return bearer ? `${path}|${bearer.slice(-16)}` : path;
+}
+
+async function fetchApi<T>(path: string, init?: RequestOptions): Promise<T> {
   const method = init?.method?.toUpperCase() ?? "GET";
-  // Only deduplicate GETs without a caller-provided abort signal.
-  // Requests with signals manage their own lifecycle (e.g. hooks with
-  // AbortControllers) and must not receive a promise that another
-  // controller may abort — otherwise React Strict Mode double-mount
-  // causes a permanent loading state.
+  // Only deduplicate GETs without a caller-provided abort signal. Requests with signals manage
+  // their own lifecycle (hooks with AbortControllers) and must not receive a promise that
+  // another controller may abort; React Strict Mode's double mount would otherwise leave a
+  // permanent loading state.
   if (method === "GET" && !init?.signal) {
-    const existing = inflightGets.get(path);
+    const key = dedupKey(path, init);
+    const existing = inflightGets.get(key);
     if (existing) return existing as Promise<T>;
 
     const promise = fetchApiInternal<T>(path, init).finally(() => {
-      inflightGets.delete(path);
+      inflightGets.delete(key);
     });
-    inflightGets.set(path, promise);
+    inflightGets.set(key, promise);
     return promise;
   }
   return fetchApiInternal<T>(path, init);
 }
 
+/** The caller's signal and the timeout's as one; AbortSignal.any is not in every browser yet. */
+function combineSignals(first: AbortSignal, second: AbortSignal): AbortSignal {
+  if (typeof AbortSignal.any === "function") return AbortSignal.any([first, second]);
+
+  const controller = new AbortController();
+  for (const signal of [first, second]) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+    signal.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
+  }
+  return controller.signal;
+}
+
 async function fetchApiInternal<T>(
   path: string,
-  init?: RequestInit,
+  init?: RequestOptions,
 ): Promise<T> {
-  const url = `${getBaseUrl()}${path}`;
+  const url = `${getApiBaseUrl()}${path}`;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: callerSignal, ...rest } = init ?? {};
 
   const timeoutController = new AbortController();
-  const timeout = setTimeout(() => timeoutController.abort(), 10_000);
-
-  const signal = init?.signal
-    ? AbortSignal.any([init.signal, timeoutController.signal])
+  const timeout = setTimeout(() => timeoutController.abort(), timeoutMs);
+  const signal = callerSignal
+    ? combineSignals(callerSignal, timeoutController.signal)
     : timeoutController.signal;
 
   try {
     const response = await fetch(url, {
-      ...init,
+      ...rest,
       signal,
       headers: {
         Accept: "application/json",
-        ...init?.headers,
+        ...rest.headers,
       },
     });
+
+    // Any answer means the API is up, even a 4xx; a gateway error means it is not.
+    reportApiOutcome(outcomeForStatus(response.status));
 
     if (!response.ok) {
       const body = (await response.json().catch(() => ({
@@ -108,6 +143,24 @@ async function fetchApiInternal<T>(
     }
 
     return (await response.json()) as T;
+  } catch (err) {
+    if (err instanceof ApiClientError) throw err;
+
+    // The caller cancelled: their AbortError passes through untouched.
+    if (callerSignal?.aborted) throw err;
+
+    // Ours: the timeout fired. Surfaced as an error the UI can show, never as an AbortError the
+    // hooks would mistake for their own cancellation (and swallow into a permanent spinner).
+    if (timeoutController.signal.aborted) {
+      reportApiOutcome("unreachable");
+      throw new ApiClientError(408, { error: "The request timed out. Please try again." });
+    }
+
+    // fetch() itself failed: offline, DNS, CORS, or an API that is not answering at all.
+    reportApiOutcome("unreachable");
+    throw new ApiClientError(0, {
+      error: "Could not reach the server. Check your connection and try again.",
+    });
   } finally {
     clearTimeout(timeout);
   }
@@ -133,7 +186,7 @@ export function configureAuth(
   _refreshTokens = refreshTokens;
 }
 
-async function authFetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+async function authFetchApi<T>(path: string, init?: RequestOptions): Promise<T> {
   const token = _getToken();
   const headers: Record<string, string> = {
     ...((init?.headers as Record<string, string>) ?? {}),
@@ -260,16 +313,10 @@ export function authRefresh(refreshToken: string): Promise<AuthTokensDto> {
   });
 }
 
-export function authLogout(
-  accessToken: string,
-  refreshToken: string,
-): Promise<void> {
-  return fetchApi<void>("/api/auth/logout", {
+export function authLogout(refreshToken: string): Promise<void> {
+  return authFetchApi<void>("/api/auth/logout", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
   });
 }
@@ -282,11 +329,11 @@ export function authGetDiscordUrl(): Promise<DiscordAuthUrlDto> {
   return fetchApi<DiscordAuthUrlDto>("/api/auth/discord/url");
 }
 
-export function authDiscordCallback(code: string): Promise<AuthTokensDto> {
+export function authDiscordCallback(code: string, state: string): Promise<AuthTokensDto> {
   return fetchApi<AuthTokensDto>("/api/auth/discord/callback", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, state }),
   });
 }
 
@@ -337,12 +384,14 @@ export function importLodestone(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
+    timeoutMs: LODESTONE_TIMEOUT_MS,
   });
 }
 
 export function refreshLodestone(): Promise<CharacterProfileDto> {
   return authFetchApi<CharacterProfileDto>("/api/profile/refresh-lodestone", {
     method: "POST",
+    timeoutMs: LODESTONE_TIMEOUT_MS,
   });
 }
 
@@ -354,7 +403,7 @@ export function previewLodestone(
   const params = new URLSearchParams({ name, server });
   return fetchApi<LodestonePreviewDto>(
     `/api/profile/lodestone-preview?${params}`,
-    { signal },
+    { signal, timeoutMs: LODESTONE_TIMEOUT_MS },
   );
 }
 

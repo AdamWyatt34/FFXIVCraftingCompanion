@@ -30,7 +30,6 @@ export function useRotationDetail(id: number): UseRotationDetailReturn {
       if (controller.signal.aborted) return;
       setRotation(data);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
       if (err instanceof ApiClientError && err.status === 404) {
         setError("Rotation not found.");
       } else {
