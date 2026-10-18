@@ -8,7 +8,21 @@ if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SENTRY_DSN)
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
-    sendDefaultPii: false,
+    // v11 collects user info, cookies, headers, bodies and query strings unless told otherwise;
+    // this keeps the SDK's v10 behaviour (the former `sendDefaultPii: false`).
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: {
+        request: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+        response: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+      },
+      httpBodies: [],
+      urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      graphQL: { document: false, variables: false },
+    },
   });
 }
 
