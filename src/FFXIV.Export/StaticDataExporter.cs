@@ -219,36 +219,10 @@ public sealed class StaticDataExporter(
 
     private async Task ExportSearchIndexAsync(IReadOnlyList<int> itemIds, CancellationToken ct)
     {
-        var wanted = itemIds.ToHashSet();
         Directory.CreateDirectory(Path.Combine(options.OutDir, "search"));
-
-        var equipment = await db.Equipment.AsNoTracking()
-            .Select(e => new { e.EquipmentId, e.EquipSlot, e.EquipLevel, e.ClassJobCategory })
-            .ToDictionaryAsync(e => e.EquipmentId, e => new SearchIndexEquipment(e.EquipSlot.ToString(), e.EquipLevel, e.ClassJobCategory), ct);
-        var classJobLevels = await db.RecipeLevelEntries.AsNoTracking()
-            .ToDictionaryAsync(l => l.RecipeLevel, l => l.ClassJobLevel, ct);
-        var recipesByItem = (await db.Recipes.AsNoTracking()
-                .Select(r => new { r.ResultItemId, r.RecipeId, r.CraftType, r.RecipeLevel })
-                .OrderBy(r => r.RecipeId)
-                .ToListAsync(ct))
-            .GroupBy(r => r.ResultItemId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<SearchIndexRecipe>)g
-                .Select(r => new SearchIndexRecipe(r.RecipeId, r.CraftType.ToString(), classJobLevels.GetValueOrDefault(r.RecipeLevel)))
-                .ToList());
-
-        var entries = new List<SearchIndexEntry>();
-        await foreach (var item in db.Items.AsNoTracking().Where(i => i.Name != "").OrderBy(i => i.ItemId).AsAsyncEnumerable().WithCancellation(ct))
-        {
-            if (!wanted.Contains(item.ItemId))
-                continue;
-            var dto = Application.Mapping.Mapper.ToDto(item);
-            entries.Add(new SearchIndexEntry(
-                dto.ItemId, dto.Name, IconUrl.ToId(dto.IconUrl), dto.ItemLevel, dto.Category, dto.CanBeHQ,
-                recipesByItem.GetValueOrDefault(item.ItemId) ?? [],
-                equipment.GetValueOrDefault(item.ItemId)));
-        }
-
-        await WriteAsync(Path.Combine("search", "items.json"), entries, ct);
+        var entries = await SearchIndexExport.BuildEntriesAsync(db, itemIds.ToHashSet(), ct);
+        await WriteAsync(SearchIndexExport.IndexPath, entries, ct);
+        await WriteAsync(SearchIndexExport.CompactPath, SearchIndexExport.Compact(entries), ct);
     }
 
     private async Task WriteAsync<T>(string relativePath, T value, CancellationToken ct)

@@ -99,4 +99,25 @@ export interface SearchIndexEntry {
   equipment: { slot: string; equipLevel: number; classJobCategory: string } | null;
 }
 
+/**
+ * search/compact.json (SearchIndexExport.Compact): the entries as interned tables and columns,
+ * column i describing item i. `recipes[i]` holds [recipeId, index into craftTypes, class job
+ * level] triples; `equipment[i]` is [index into slots, equip level, index into classJobCategories]
+ * or null.
+ */
+export interface CompactSearchIndex {
+  craftTypes: string[];
+  categories: string[];
+  slots: string[];
+  classJobCategories: string[];
+  itemIds: number[];
+  names: string[];
+  icons: number[];
+  itemLevels: number[];
+  categoryIndexes: number[];
+  canBeHQ: boolean[];
+  recipes: [number, number, number][][];
+  equipment: ([number, number, number] | null)[];
+}
+
 export type Bucket<T> = Record<string, T>;
