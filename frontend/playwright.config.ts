@@ -16,6 +16,11 @@ export default defineConfig({
     baseURL: "http://localhost:3100",
     trace: "retain-on-failure",
     serviceWorkers: "allow",
+    // Environments with a preinstalled Chromium and no browser download point here; CI installs
+    // Playwright's own build and leaves it unset.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+      : undefined,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [

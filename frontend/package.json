@@ -16,28 +16,28 @@
     "test:e2e": "cross-env NEXT_PUBLIC_API_URL=http://localhost:3101 FFXIV_DATA_DIR=e2e/fixtures/data npm run build && playwright test"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.38.0",
+    "@sentry/nextjs": "^10.76.2",
     "lucide-react": "^0.563.0",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "recharts": "^3.7.0",
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "recharts": "^3.10.1",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^16.1.6",
+    "@next/bundle-analyzer": "^16.4.2",
     "@playwright/test": "^1.63.0",
-    "@serwist/next": "^9.5.4",
+    "@serwist/next": "^9.5.13",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "cross-env": "^10.1.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "serwist": "^9.5.4",
+    "eslint-config-next": "16.4.2",
+    "serwist": "^9.5.13",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.5"
   }
 }

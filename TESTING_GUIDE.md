@@ -150,12 +150,12 @@ No registration needed. Docker Compose provides Redis 7.
 
 **Frontend files consuming this:**
 
-- `frontend/sentry.client.config.ts`
-- `frontend/sentry.server.config.ts`
-- `frontend/sentry.edge.config.ts`
-- All three only initialize if `NODE_ENV === "production"` AND `NEXT_PUBLIC_SENTRY_DSN` is set
+- `frontend/src/instrumentation-client.ts` — browser init (errors only: no tracing, no replay)
+- `frontend/src/instrumentation.ts` — server init via `register()` (imports `sentry.server.config.ts` / `sentry.edge.config.ts`) and the `onRequestError` hook that reports server-side render and route errors
+- All of them only initialize if `NODE_ENV === "production"` AND `NEXT_PUBLIC_SENTRY_DSN` is set; `withSentryConfig` in `next.config.ts` strips the tracing and replay code from the client bundle
+- To verify a deployment: throw once from a page on a preview (`NEXT_PUBLIC_SENTRY_DSN` set for Preview) and look for the event in Sentry
 
-**Package:** `@sentry/nextjs` ^10.38.0
+**Package:** `@sentry/nextjs` ^10.76
 
 ---
 
