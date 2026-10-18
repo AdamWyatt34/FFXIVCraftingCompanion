@@ -196,4 +196,73 @@ public class ImportLodestoneCommandHandlerTests
         capturedProfile!.CurrentGear.Should().NotBeNull();
         capturedProfile.CurrentGear!["MainHand"].Should().Be(42);
     }
+
+    [Fact]
+    public async Task Handle_MalformedLodestoneId_IsRejectedBeforeAnythingIsStored()
+    {
+        var command = new ImportLodestoneCommand("user-1", "Test Character", "Cactuar");
+        var lodestoneData = CreateLodestoneData();
+        lodestoneData.LodestoneId = "12345; drop";
+
+        _profileRepo.GetByUserIdAsync("user-1", Arg.Any<CancellationToken>()).Returns((CharacterProfile?)null);
+        _lodestoneService.SearchAndFetchCharacterAsync("Test Character", "Cactuar", Arg.Any<CancellationToken>())
+            .Returns(lodestoneData);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(502);
+        await _profileRepo.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+        await _profileRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_CharacterLinkedToAnotherAccount_Returns409()
+    {
+        var command = new ImportLodestoneCommand("user-1", "Test Character", "Cactuar");
+        var lodestoneData = CreateLodestoneData();
+
+        _profileRepo.GetByUserIdAsync("user-1", Arg.Any<CancellationToken>()).Returns((CharacterProfile?)null);
+        _profileRepo.GetByLodestoneIdAsync("12345", Arg.Any<CancellationToken>())
+            .Returns(new CharacterProfile { UserId = "someone-else", CharacterName = "Test Character", ActiveJob = "CRP" });
+        _lodestoneService.SearchAndFetchCharacterAsync("Test Character", "Cactuar", Arg.Any<CancellationToken>())
+            .Returns(lodestoneData);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(409);
+        await _profileRepo.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_ReimportOfOwnCharacter_IsAllowed()
+    {
+        var existingProfile = new CharacterProfile
+        {
+            UserId = "user-1",
+            CharacterName = "Test Character",
+            LodestoneId = "12345",
+            ActiveJob = "CRP",
+            ActiveJobLevel = 80,
+            JobLevels = new Dictionary<string, int>(),
+            Source = ProfileSource.Lodestone,
+            LastLodestoneSync = DateTimeOffset.UtcNow.AddDays(-1),
+        };
+        var command = new ImportLodestoneCommand("user-1", "Test Character", "Cactuar");
+
+        _profileRepo.GetByUserIdAsync("user-1", Arg.Any<CancellationToken>()).Returns(existingProfile);
+        _profileRepo.GetByLodestoneIdAsync("12345", Arg.Any<CancellationToken>()).Returns(existingProfile);
+        _lodestoneService.SearchAndFetchCharacterAsync("Test Character", "Cactuar", Arg.Any<CancellationToken>())
+            .Returns(CreateLodestoneData());
+        _equipmentRepo.GetByNamesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Equipment>());
+        _profileRepo.UpdateAsync(Arg.Any<CharacterProfile>(), Arg.Any<CancellationToken>())
+            .Returns(ci => ci.ArgAt<CharacterProfile>(0));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        await _profileRepo.Received(1).UpdateAsync(Arg.Any<CharacterProfile>(), Arg.Any<CancellationToken>());
+    }
 }

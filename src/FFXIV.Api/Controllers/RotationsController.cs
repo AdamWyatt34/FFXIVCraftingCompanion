@@ -16,6 +16,9 @@ namespace FFXIV.Api.Controllers;
 [Produces("application/json")]
 public class RotationsController : ControllerBase
 {
+    private const int MaxPage = 1000;
+    private const int MaxPageSize = 50;
+
     private readonly IMediator _mediator;
     private readonly ICurrentUserService _currentUser;
 
@@ -36,24 +39,7 @@ public class RotationsController : ControllerBase
     public async Task<IActionResult> Create(
         [FromBody] SubmitRotationRequest request, CancellationToken ct)
     {
-        if (request.ActionIds.Count == 0)
-            return BadRequest(new { error = "ActionIds must not be empty." });
-
-        if (request.ActionIds.Count > 50)
-            return BadRequest(new { error = "ActionIds must have at most 50 actions." });
-
-        if (request.RecipeId <= 0)
-            return BadRequest(new { error = "RecipeId must be a positive integer." });
-
-        if (request.Stats is null)
-            return BadRequest(new { error = "Stats are required." });
-
-        if (request.Name is not null && request.Name.Length > 256)
-            return BadRequest(new { error = "Name must be 256 characters or fewer." });
-
-        if (request.Notes is not null && request.Notes.Length > 2048)
-            return BadRequest(new { error = "Notes must be 2048 characters or fewer." });
-
+        // Action count, recipe id, stats and text lengths are DataAnnotations on the request type.
         var result = await _mediator.Send(
             new CreateRotationCommand(_currentUser.UserId!, request), ct);
 
@@ -79,9 +65,10 @@ public class RotationsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 1;
-        if (pageSize > 50) pageSize = 50;
+        // A huge page number is a huge OFFSET for the database; past the last page the result is
+        // empty anyway.
+        page = Math.Clamp(page, 1, MaxPage);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
         var result = await _mediator.Send(
             new SearchRotationsQuery(recipeId, craftType, minLevel, maxLevel,

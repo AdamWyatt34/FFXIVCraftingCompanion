@@ -13,13 +13,20 @@ public sealed class AdminApiKeyFilter(IConfiguration configuration) : IAuthoriza
 
     public void OnAuthorization(AuthorizationFilterContext context)
     {
-        var expected = configuration["Admin:ApiKey"];
-        if (string.IsNullOrEmpty(expected)
-            || !context.HttpContext.Request.Headers.TryGetValue(HeaderName, out var provided)
-            || !FixedTimeEquals(expected, provided.ToString()))
-        {
+        if (!Matches(context.HttpContext.Request, configuration))
             context.Result = new UnauthorizedResult();
-        }
+    }
+
+    /// <summary>
+    /// True when the request carries the configured admin key. Shared with the readiness endpoint,
+    /// which must not run its checks (and wake the database) for anonymous callers.
+    /// </summary>
+    public static bool Matches(HttpRequest request, IConfiguration configuration)
+    {
+        var expected = configuration["Admin:ApiKey"];
+        return !string.IsNullOrEmpty(expected)
+            && request.Headers.TryGetValue(HeaderName, out var provided)
+            && FixedTimeEquals(expected, provided.ToString());
     }
 
     private static bool FixedTimeEquals(string expected, string provided) =>

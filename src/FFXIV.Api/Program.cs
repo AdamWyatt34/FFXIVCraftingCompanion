@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi;
@@ -18,16 +19,22 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
+// Configure Serilog. The container's stdout is the log sink in production (Container Apps
+// collects it); a file under the app directory would only fill the writable layer.
+var loggerConfiguration = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .WriteTo.File(
+    .WriteTo.Console();
+
+if (builder.Environment.IsDevelopment())
+{
+    loggerConfiguration.WriteTo.File(
         path: "Logs/ffxiv-.log",
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7)
-    .CreateLogger();
+        retainedFileCountLimit: 7);
+}
+
+Log.Logger = loggerConfiguration.CreateLogger();
 
 builder.Host.UseSerilog();
 
@@ -100,10 +107,6 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartitions.SlidingWindow(context, rateLimits.PublicReadPerMinute, TimeSpan.FromMinutes(1)));
     options.AddPolicy("feedback", context =>
         RateLimitPartitions.FixedWindow(context, rateLimits.FeedbackPerHour, TimeSpan.FromHours(1)));
-    options.AddPolicy("solver", context =>
-        RateLimitPartitions.FixedWindow(context, rateLimits.SolverPerMinute, TimeSpan.FromMinutes(1)));
-    options.AddPolicy("analytics", context =>
-        RateLimitPartitions.FixedWindow(context, rateLimits.AnalyticsPerMinute, TimeSpan.FromMinutes(1)));
 
     options.OnRejected = async (context, ct) =>
     {
@@ -214,13 +217,27 @@ app.UseRateLimiter();
 
 app.MapControllers();
 
-app.MapHealthChecks("/health", new HealthCheckOptions
+// The full readiness report opens SQL (which resumes a paused free-tier database) and calls
+// XIVAPI, and it names components and error messages. It answers 401 without running a single
+// check unless the admin key is present; nothing anonymous can make the API wake the database.
+app.MapGet("/health", async (
+    HttpContext context,
+    HealthCheckService healthChecks,
+    IConfiguration configuration,
+    CancellationToken ct) =>
 {
-    ResponseWriter = HealthCheckResponseWriter.WriteResponse
-});
+    if (!AdminApiKeyFilter.Matches(context.Request, configuration))
+        return Results.Unauthorized();
+
+    var report = await healthChecks.CheckHealthAsync(ct);
+    var body = await HealthCheckResponseWriter.BuildResponseAsync(context.RequestServices, report, ct);
+    return Results.Json(body, HealthCheckResponseWriter.JsonOptions,
+        statusCode: HealthCheckResponseWriter.StatusCodeFor(report));
+})
+.ExcludeFromDescription();
 
 // Liveness must not depend on the database or XIVAPI: a paused free-tier DB would otherwise
-// fail the probe and restart the container forever. /health stays the full readiness check.
+// fail the probe and restart the container forever. This is the Container Apps probe.
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 
 try

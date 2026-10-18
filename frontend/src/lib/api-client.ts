@@ -6,16 +6,12 @@ import type {
   RecipeDto,
   RecipeCraftingParametersDto,
   MaterialTreeResultDto,
-  ShoppingListResultDto,
   ApiError,
 } from "@/types/api";
 import type {
   GearSetDto,
-  GearSlotDto,
   StatWeightProfileDto,
-  GearStatsDto,
   EquipmentDto,
-  CalculateGearStatsRequest,
 } from "@/types/gear";
 import type {
   AuthTokensDto,
@@ -208,18 +204,6 @@ export function getMaterialTree(
   return staticData.getMaterialTree(recipeId, quantity, signal);
 }
 
-export function getShoppingList(
-  recipeId: number,
-  quantity = 1,
-  signal?: AbortSignal,
-): Promise<ShoppingListResultDto> {
-  const params = quantity > 1 ? `?quantity=${quantity}` : "";
-  return fetchApi<ShoppingListResultDto>(
-    `/api/recipes/${recipeId}/shoppinglist${params}`,
-    { signal },
-  );
-}
-
 // --- Gear API ---
 
 export function getGearRecommendations(
@@ -232,40 +216,11 @@ export function getGearRecommendations(
   return staticData.getGearRecommendations(job, level, profile, signal, craftedOnly ?? false);
 }
 
-export function getSlotRecommendation(
-  slot: string,
-  job: string,
-  level: number,
-  profile: string,
-  signal?: AbortSignal,
-): Promise<GearSlotDto> {
-  const params = new URLSearchParams({
-    job,
-    level: String(level),
-    profile,
-  });
-  return fetchApi<GearSlotDto>(`/api/gear/recommendations/${slot}?${params}`, {
-    signal,
-  });
-}
-
 export function getStatWeightProfiles(
   job: string,
   signal?: AbortSignal,
 ): Promise<StatWeightProfileDto[]> {
   return staticData.getStatWeightProfiles(job, signal);
-}
-
-export function calculateGearStats(
-  request: CalculateGearStatsRequest,
-  signal?: AbortSignal,
-): Promise<GearStatsDto> {
-  return fetchApi<GearStatsDto>("/api/gear/calculate-stats", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  });
 }
 
 export function searchEquipment(
@@ -483,14 +438,6 @@ export function toggleFavoriteRecipe(
   });
 }
 
-export function getFavoriteStatus(
-  recipeId: number,
-): Promise<FavoriteStatusDto> {
-  return authFetchApi<FavoriteStatusDto>(
-    `/api/favorites/recipes/${recipeId}/status`,
-  );
-}
-
 // --- Gear Comparison API ---
 
 export function getGearComparison(
@@ -542,17 +489,6 @@ export function saveGearSet(req: {
   slots: Record<string, number>;
 }): Promise<SavedListDto> {
   return authFetchApi<SavedListDto>("/api/saved-lists/gear-set", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-}
-
-export function saveCraftingPlan(req: {
-  name: string;
-  items: { recipeId: number; quantity: number }[];
-}): Promise<SavedListDto> {
-  return authFetchApi<SavedListDto>("/api/saved-lists/crafting-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
@@ -623,18 +559,6 @@ export function getItemContext(
 }
 
 // --- Market API ---
-
-export function getMarketPrices(
-  world: string,
-  itemIds: number[],
-  signal?: AbortSignal,
-): Promise<Record<number, import("@/types/market").MarketBoardDataDto>> {
-  const params = new URLSearchParams({
-    world,
-    items: itemIds.join(","),
-  });
-  return fetchApi(`/api/market/prices?${params}`, { signal });
-}
 
 export function getWorldList(): Promise<import("@/types/market").WorldGroupDto[]> {
   return staticData.getWorldList();
@@ -722,32 +646,9 @@ export async function getResolvedCraftPlan(
   return staticData.resolveCraftPlan(plan.items, signal);
 }
 
-export function updateCraftPlan(
-  id: string,
-  request: import("@/types/craft-plan").UpdateCraftPlanRequest,
-): Promise<import("@/types/craft-plan").CraftPlanDto> {
-  return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-}
-
 export function deleteCraftPlan(id: string): Promise<void> {
   return authFetchApi(`/api/craft-plans/${encodeURIComponent(id)}`, {
     method: "DELETE",
-  });
-}
-
-export function getCraftPlanCost(
-  id: string,
-  world: string,
-  signal?: AbortSignal,
-): Promise<import("@/types/market").CostEstimateDto> {
-  const params = new URLSearchParams({ world });
-  return fetchApi(`/api/craft-plans/${encodeURIComponent(id)}/cost?${params}`, {
-    method: "POST",
-    signal,
   });
 }
 

@@ -74,6 +74,3 @@ export interface GearSetDto {
   totalStats: GearStatsDto;
 }
 
-export interface CalculateGearStatsRequest {
-  slots: Record<string, number>;
-}

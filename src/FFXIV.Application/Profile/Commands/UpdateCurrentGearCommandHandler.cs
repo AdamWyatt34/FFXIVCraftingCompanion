@@ -32,10 +32,12 @@ public sealed class UpdateCurrentGearCommandHandler
         int gathering = 0, perception = 0, gp = 0;
         var gearSlots = new List<ProfileGearSlotDto>();
 
+        var equipmentById = (await _equipmentRepo.GetByIdsAsync(request.Slots.Values, cancellationToken))
+            .ToDictionary(e => e.EquipmentId);
+
         foreach (var (slotKey, equipmentId) in request.Slots)
         {
-            var equipment = await _equipmentRepo.GetByIdAsync(equipmentId, cancellationToken);
-            if (equipment is null)
+            if (!equipmentById.TryGetValue(equipmentId, out var equipment))
                 continue;
 
             craftsmanship += equipment.Craftsmanship;

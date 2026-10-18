@@ -29,14 +29,14 @@ public sealed class GetProfileQueryHandler
 
         if (profile.CurrentGear is { Count: > 0 })
         {
+            var equipmentById = (await _equipmentRepo.GetByIdsAsync(profile.CurrentGear.Values, cancellationToken))
+                .ToDictionary(e => e.EquipmentId);
+
             gearSlots = [];
             foreach (var (slotKey, equipmentId) in profile.CurrentGear)
             {
-                var equipment = await _equipmentRepo.GetByIdAsync(equipmentId, cancellationToken);
-                if (equipment is not null)
-                {
+                if (equipmentById.TryGetValue(equipmentId, out var equipment))
                     gearSlots.Add(ProfileMapper.ToGearSlotDto(slotKey, equipment));
-                }
             }
         }
 

@@ -43,10 +43,18 @@ This takes several minutes. Monitor with `GET /api/admin/sync/status`.
 ## Health Check
 
 ```
-GET http://localhost:5159/health
+GET http://localhost:5159/health/live
 ```
 
-Returns JSON with database, XIVAPI, and Redis connectivity status.
+Returns 200 with no checks run (the container liveness probe). The full readiness report, which
+opens the database and calls XIVAPI, needs the admin key:
+
+```
+GET http://localhost:5159/health
+X-Admin-Key: <Admin:ApiKey>
+```
+
+Returns JSON with database, XIVAPI, and Redis connectivity status; 401 without the key.
 
 ---
 
@@ -642,12 +650,14 @@ If you want to add frontend tests:
 
 ## I. API Rate Limits to Test
 
-| Endpoint | Limit | Window | Scope |
-|----------|-------|--------|-------|
-| `POST /api/crafting/solve` | 20 | 1 minute | Per IP (fixed window) |
-| `GET /api/crafting/solve/quick` | 20 | 1 minute | Per IP (fixed window, same "solver" policy) |
-| `POST /api/analytics/event` | 60 | 1 minute | Per IP (fixed window) |
-| `POST /api/feedback` | 5 | 1 hour | Per IP (fixed window) |
+Every policy is partitioned per client: the signed-in user, otherwise the client address forwarded by the ingress. Budgets live in the `RateLimiting` configuration section; 429 responses carry a `Retry-After` header.
+
+| Endpoint | Limit | Window | Policy |
+|----------|-------|--------|--------|
+| `POST /api/auth/login`, `POST /api/auth/discord/callback` | 20 | 5 minutes | `auth` (sliding window) |
+| `POST /api/auth/register` | 10 | 1 hour | `register` |
+| `POST /api/auth/refresh`, `GET /api/auth/discord/url` | 120 | 1 minute | `public-read` (sliding window) |
+| `POST /api/feedback` | 5 | 1 hour | `feedback` |
 | Lodestone import/refresh | 15-min cooldown | Per user | Application-level (LastLodestoneSync field) |
 
 Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "error": "Rate limit exceeded. Try again later." }`.
@@ -709,6 +719,8 @@ Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "
 
 # Part 5: Complete API Endpoint Reference
 
+The API serves accounts, the community rotation library and feedback. Game data, simulation, solving, market prices and gathering are served to the browser from the static export, WASM and Universalis directly, so there are no API endpoints for them.
+
 ## Auth (`/api/auth`)
 
 | Method | Path | Auth | Description |
@@ -736,51 +748,13 @@ Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "
 | POST | `/api/profile/refresh-lodestone` | Yes | Refresh Lodestone data |
 | GET | `/api/profile/lodestone-preview` | No | Preview Lodestone character |
 
-## Items (`/api/items`)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/items/search` | No | Search items |
-| GET | `/api/items/{id}` | No | Get item by ID |
-| GET | `/api/items/{id}/context` | No | Get contextual links |
-
-## Recipes (`/api/recipes`)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/recipes/{id}` | No | Get recipe by ID |
-| GET | `/api/recipes/{id}/materials` | No | Get material tree |
-| GET | `/api/recipes/{id}/shoppinglist` | No | Get shopping list |
-| GET | `/api/recipes/tree/{itemId}` | No | Resolve tree by item ID |
-| GET | `/api/recipes/{id}/cost` | No | Get cost estimate |
-| POST | `/api/recipes/{id}/sufficiency` | No | Analyze stat sufficiency |
-
 ## Gear (`/api/gear`)
 
+Anonymous recommendations, profiles and equipment search come from the static game-data export; only the profile comparison stays on the API.
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/gear/recommendations` | No | Get full gear set |
-| GET | `/api/gear/recommendations/{slot}` | No | Get single slot recommendation |
 | GET | `/api/gear/recommendations/compare` | Yes | Compare with profile gear |
-| GET | `/api/gear/profiles` | No | Get stat weight profiles |
-| GET | `/api/gear/search` | No | Search equipment |
-| POST | `/api/gear/calculate-stats` | No | Calculate stats for gear set |
-
-## Crafting (`/api/crafting`)
-
-| Method | Path | Auth | Rate Limit | Description |
-|--------|------|------|------------|-------------|
-| POST | `/api/crafting/simulate` | No | — | Simulate full rotation |
-| POST | `/api/crafting/execute-action` | No | — | Execute single action |
-| GET | `/api/crafting/actions` | No | — | Get all action definitions |
-| POST | `/api/crafting/available-actions` | No | — | Get action availability |
-| POST | `/api/crafting/export-macro` | No | — | Export to macro format |
-| GET | `/api/crafting/initial-state` | No | — | Get initial state |
-| POST | `/api/crafting/solve` | No | solver | Enqueue MCTS solve |
-| GET | `/api/crafting/solve/quick` | No | solver | Quick greedy solve |
-| GET | `/api/crafting/solve/{jobId}` | No | solver | Get solve status |
-| DELETE | `/api/crafting/solve/{jobId}` | No | solver | Cancel solve job |
-| GET | `/api/crafting/journey/{recipeId}` | No | — | Get crafting journey |
 
 ## Rotations (`/api/rotations`)
 
@@ -818,29 +792,12 @@ Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/craft-plans/resolve` | No | Resolve plan (anonymous) |
-| POST | `/api/craft-plans/export` | No | Export plan |
 | POST | `/api/craft-plans` | Yes | Create saved plan |
 | GET | `/api/craft-plans` | Yes | Get all plans |
 | GET | `/api/craft-plans/{id}` | Yes | Get plan (owner only) |
-| GET | `/api/craft-plans/{id}/resolved` | No | Get resolved plan (public) |
+| GET | `/api/craft-plans/{id}/items` | No | Shared plan name and items (the id is the share link) |
 | PUT | `/api/craft-plans/{id}` | Yes | Update plan |
 | DELETE | `/api/craft-plans/{id}` | Yes | Delete plan |
-| POST | `/api/craft-plans/{id}/cost` | No | Get cost estimate |
-
-## Gathering (`/api/gathering`)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/gathering/guide` | No | Generate gathering guide |
-| GET | `/api/gathering/eorzean-time` | No | Get current Eorzean time |
-
-## Market (`/api/market`)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/market/prices` | No | Get market board prices |
-| GET | `/api/market/worlds` | No | Get worlds by region/DC |
 
 ## Notifications (`/api/notifications`)
 
@@ -859,12 +816,6 @@ Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "
 | POST | `/api/admin/validate-tree/{recipeId}` | No* | Validate recipe tree |
 | POST | `/api/admin/validate-batch` | No* | Batch validate trees |
 
-## Analytics (`/api/analytics`)
-
-| Method | Path | Auth | Rate Limit | Description |
-|--------|------|------|------------|-------------|
-| POST | `/api/analytics/event` | No | analytics | Track event |
-
 ## Feedback (`/api/feedback`)
 
 | Method | Path | Auth | Rate Limit | Description |
@@ -875,4 +826,5 @@ Test by exceeding limits and verifying 429 Too Many Requests responses with `{ "
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/health` | No | Health check (DB, XIVAPI, Redis) |
+| GET | `/health/live` | No | Liveness probe (no checks run) |
+| GET | `/health` | `X-Admin-Key` | Readiness report (DB, XIVAPI, Redis) |

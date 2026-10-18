@@ -192,7 +192,7 @@ The backend runs on `http://localhost:5159` and the frontend on `http://localhos
 ### Container App not starting
 - Check logs: `az containerapp logs show --name ffxiv-prod-api --resource-group rg-ffxiv-crafting`
 - Verify the image exists: `docker pull ghcr.io/YOUR_USERNAME/ffxiv-crafting-api:latest`
-- Check health endpoint: the app must respond on `/health` at port 8080
+- Check the liveness endpoint: the app must respond on `/health/live` at port 8080 (`/health`, the full readiness report, needs the `X-Admin-Key` header)
 
 ### Database connection issues
 - Azure SQL auto-pauses after 60 minutes of inactivity — first request may take ~30 seconds to resume

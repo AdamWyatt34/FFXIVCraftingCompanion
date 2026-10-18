@@ -32,11 +32,9 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
-# Create and switch to non-root user
+# Create the non-root user, copy the published output as that user, then drop privileges
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+COPY --from=build --chown=appuser:appgroup /app/publish .
 USER appuser
-
-# Copy published output from build stage
-COPY --from=build /app/publish .
 
 ENTRYPOINT ["dotnet", "FFXIV.Api.dll"]

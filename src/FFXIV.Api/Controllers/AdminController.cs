@@ -20,6 +20,8 @@ namespace FFXIV.Api.Controllers;
 [ServiceFilter<AdminApiKeyFilter>]
 public class AdminController : ControllerBase
 {
+    private const int MaxBatchSize = 500;
+
     private readonly IDataSyncTrigger _syncTrigger;
     private readonly AppDbContext _db;
     private readonly ITreeValidationService _validationService;
@@ -35,21 +37,19 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Trigger a manual data sync. The sync runs in the background.
+    /// Trigger a manual data sync. The sync runs in the background and outlives this request.
     /// Poll GET /api/admin/sync/status to monitor progress.
     /// </summary>
-    /// <response code="202">Sync has been triggered successfully.</response>
+    /// <response code="202">Sync has been started.</response>
     /// <response code="409">A sync operation is already in progress.</response>
     [HttpPost("sync")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> TriggerSync(CancellationToken cancellationToken)
+    public IActionResult TriggerSync()
     {
-        if (_syncTrigger.IsSyncRunning)
-            return Conflict(new { message = "A sync operation is already in progress." });
-
-        await _syncTrigger.TriggerSyncAsync(cancellationToken);
-        return Accepted(new { message = "Sync has been triggered." });
+        return _syncTrigger.TriggerSync()
+            ? Accepted(new { message = "Sync has been started." })
+            : Conflict(new { message = "A sync operation is already in progress." });
     }
 
     /// <summary>
@@ -119,13 +119,16 @@ public class AdminController : ControllerBase
             if (!request.RandomSpec.StartsWith("random:", StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new { error = "Invalid randomSpec format. Use 'random:N'." });
 
-            if (!int.TryParse(request.RandomSpec.AsSpan(7), out var count) || count < 1 || count > 500)
-                return BadRequest(new { error = "Random count must be between 1 and 500." });
+            if (!int.TryParse(request.RandomSpec.AsSpan(7), out var count) || count < 1 || count > MaxBatchSize)
+                return BadRequest(new { error = $"Random count must be between 1 and {MaxBatchSize}." });
 
             recipeIds = await GetRandomRecipeIdsAsync(count, cancellationToken);
         }
         else if (request.RecipeIds is { Count: > 0 })
         {
+            if (request.RecipeIds.Count > MaxBatchSize)
+                return BadRequest(new { error = $"At most {MaxBatchSize} recipe ids per batch." });
+
             recipeIds = request.RecipeIds;
         }
         else

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FFXIV.Application.Common;
 using FFXIV.Application.SavedLists.DTOs;
 using FFXIV.Domain.Repositories;
 using MediatR;
@@ -65,10 +66,13 @@ public sealed class AddItemToSavedListCommandHandler
         if (existingItem is not null)
         {
             var currentQty = existingItem.TryGetValue("quantity", out var q) && q is int qty ? qty : 0;
-            existingItem["quantity"] = currentQty + request.Quantity;
+            existingItem["quantity"] = Math.Min(SavedListLimits.MaxMaterialQuantity, currentQty + request.Quantity);
         }
         else
         {
+            if (materials.Count >= SavedListLimits.MaxMaterials)
+                throw new RequestValidationException($"A list can hold at most {SavedListLimits.MaxMaterials} materials.");
+
             var newItem = new Dictionary<string, object>
             {
                 ["itemId"] = request.ItemId,
