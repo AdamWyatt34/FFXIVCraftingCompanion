@@ -19,24 +19,25 @@ import type {
   StepResult,
 } from "@/types/simulator";
 import type { SolverConstraints, SolverResult } from "@/types/solver";
+import type { SearchProgress, SolverSessionSettings } from "@/wasm/xiv_craft";
+
+// The generated declarations (crates/xiv-craft-wasm/src/lib.rs publishes them) are the source of
+// the solver's progress and settings shapes.
+export type { SearchProgress, SolverSessionSettings } from "@/wasm/xiv_craft";
 
 type WasmModule = typeof import("@/wasm/xiv_craft");
 
-/** `SearchProgress` from the crate: what the MCTS search has found so far. */
-export interface SearchProgress {
-  iterations: number;
-  nodesExplored: number;
-  elapsedMs: number;
-  bestSteps: number;
-  bestQualityPercent: number;
-  bestHQPercent: number;
-  done: boolean;
-}
-
-export interface SolverSessionSettings {
-  timeBudgetMs: number;
-  maxIterations?: number;
-  randomSeed?: number;
+/**
+ * An error after which the WASM instance cannot be trusted: a trap (the crate is built with
+ * `panic = "abort"`, so a panic ends in `unreachable`), or wasm-bindgen refusing a re-entered
+ * object. The caller drops the instance; `resetWasmEngine` (or a fresh worker) loads a new one.
+ */
+export function isFatalEngineError(err: unknown): boolean {
+  if (typeof WebAssembly !== "undefined" && err instanceof WebAssembly.RuntimeError) return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /unreachable|recursive use of an object|memory access out of bounds|null pointer passed to rust|table index is out of bounds/i.test(
+    message,
+  );
 }
 
 export interface WasmEngine {
@@ -117,14 +118,15 @@ export function wasmLoadStats(): {
     : null;
 }
 
-function wrap(mod: WasmModule): WasmEngine {
+/** The typed engine over an instantiated module; the declarations carry the DTO types, so no casts. */
+export function createWasmEngine(mod: WasmModule): WasmEngine {
   return {
     initialState: (recipe, stats, startingQuality) =>
-      mod.initial_state(recipe, stats, startingQuality) as CraftingState,
+      mod.initial_state(recipe, stats, startingQuality),
     executeAction: (state, actionId, stats, recipe) =>
-      mod.execute_action(state, actionId, stats, recipe) as StepResult,
+      mod.execute_action(state, actionId, stats, recipe),
     availableActions: (state, stats, recipe) =>
-      mod.available_actions(state, stats, recipe) as ActionAvailability[],
+      mod.available_actions(state, stats, recipe),
     startingQuality: (recipe, hqIngredients) =>
       mod.starting_quality(recipe, hqIngredients),
     simulate: (recipe, stats, actionIds, options, hqIngredients) =>
@@ -134,28 +136,20 @@ function wrap(mod: WasmModule): WasmEngine {
         Int32Array.from(actionIds),
         options ?? null,
         hqIngredients ?? null,
-      ) as Omit<SimulationResult, "recipe"> & { recipe: null },
+      ),
     exportMacro: (actionIds, options) =>
-      mod.export_macro(
-        Int32Array.from(actionIds),
-        options ?? null,
-      ) as ExportMacroResult,
-    actionCatalog: (level) => mod.action_catalog(level ?? null) as ActionInfo[],
+      mod.export_macro(Int32Array.from(actionIds), options ?? null),
+    actionCatalog: (level) => mod.action_catalog(level ?? null),
     greedySolve: (recipe, stats, startingQuality, constraints) =>
-      mod.greedy_solve(
-        recipe,
-        stats,
-        startingQuality,
-        constraints ?? null,
-      ) as SolverResult,
+      mod.greedy_solve(recipe, stats, startingQuality, constraints ?? null),
     createSolverSession: (maxNodes, earlyTermination) => {
       const session = new mod.SolverSession(maxNodes, earlyTermination ?? null);
       return {
         begin: (recipe, stats, startingQuality, constraints, settings) =>
           session.begin(recipe, stats, startingQuality, constraints, settings),
-        run: (maxIterations) => session.run(maxIterations) as SearchProgress,
-        progress: () => session.progress() as SearchProgress,
-        finish: () => session.finish() as SolverResult,
+        run: (maxIterations) => session.run(maxIterations),
+        progress: () => session.progress(),
+        finish: () => session.finish(),
         treeMemoryBytes: () => session.tree_memory_bytes(),
         free: () => session.free(),
       };
@@ -176,7 +170,7 @@ export function loadWasmEngine(): Promise<WasmEngine> {
         await mod.default();
         instantiateMs = performance.now() - started;
         loadedAtMs = performance.now();
-        return wrap(mod);
+        return createWasmEngine(mod);
       })
       .catch((err) => {
         enginePromise = null;
@@ -184,4 +178,16 @@ export function loadWasmEngine(): Promise<WasmEngine> {
       });
   }
   return enginePromise;
+}
+
+/**
+ * Forgets the instance after a fatal error, so the next `loadWasmEngine` instantiates a fresh
+ * one. The module's glue keeps one instance per JS context, so `default()` returns the same
+ * (trapped) instance; a second instantiation needs the bytes again, which `default()` fetches
+ * from the (service-worker-cached) asset.
+ */
+export function resetWasmEngine(): void {
+  enginePromise = null;
+  loadedAtMs = null;
+  instantiateMs = null;
 }

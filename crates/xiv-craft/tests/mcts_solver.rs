@@ -10,6 +10,7 @@ use xiv_craft::solver::greedy;
 use xiv_craft::solver::mcts::calculate_reward;
 use xiv_craft::solver::mcts::tree::{Arena, NONE};
 use xiv_craft::solver::ActionSet;
+use xiv_craft::SolverError;
 use xiv_craft::{
     simulate, Action, CraftStatus, CrafterStats, CraftingState, GreedySolverConfig, MctsConfig,
     MctsSolver, Recipe, SolverAlgorithm, SolverConstraints, SolverResult, SolverSettings,
@@ -250,23 +251,25 @@ fn chunked_run_matches_the_one_shot_search() {
         &mut frozen_clock(),
     );
 
-    solver.begin(
-        &default_recipe(),
-        &default_stats(),
-        &SolverConstraints::default(),
-        &settings,
-        &mut frozen_clock(),
-    );
+    solver
+        .begin(
+            &default_recipe(),
+            &default_stats(),
+            &SolverConstraints::default(),
+            &settings,
+            &mut frozen_clock(),
+        )
+        .expect("begin");
     let mut chunks = 0;
     loop {
-        let progress = solver.run(1_000, &mut frozen_clock());
+        let progress = solver.run(1_000, &mut frozen_clock()).expect("run");
         chunks += 1;
         assert!(progress.iterations <= 20_000);
         if progress.done {
             break;
         }
     }
-    let chunked = solver.finish(&mut frozen_clock());
+    let chunked = solver.finish(&mut frozen_clock()).expect("finish");
 
     assert!(chunks > 1, "the search must have been sliced");
     assert_eq!(chunked.action_ids, one_shot.action_ids);
@@ -281,21 +284,26 @@ fn finish_after_a_partial_run_reports_the_best_so_far() {
         random_seed: Some(42),
     };
     let mut solver = solver();
-    solver.begin(
-        &default_recipe(),
-        &default_stats(),
-        &SolverConstraints::default(),
-        &settings,
-        &mut frozen_clock(),
-    );
+    solver
+        .begin(
+            &default_recipe(),
+            &default_stats(),
+            &SolverConstraints::default(),
+            &settings,
+            &mut frozen_clock(),
+        )
+        .expect("begin");
 
-    let progress = solver.run(200, &mut frozen_clock());
+    let progress = solver.run(200, &mut frozen_clock()).expect("run");
     assert_eq!(progress.iterations, 200);
     assert!(!progress.done);
     assert!(progress.best_steps > 0, "the greedy seed is a best-so-far");
-    assert_eq!(solver.progress(&mut frozen_clock()), progress);
+    assert_eq!(
+        solver.progress(&mut frozen_clock()).expect("progress"),
+        progress
+    );
 
-    let result = solver.finish(&mut frozen_clock());
+    let result = solver.finish(&mut frozen_clock()).expect("finish");
 
     assert_eq!(result.status, SolverStatus::Completed);
     assert_eq!(result.metrics.iterations_completed, 200);
@@ -316,16 +324,18 @@ fn run_after_a_stop_condition_does_nothing() {
         random_seed: Some(42),
     };
     let mut solver = solver();
-    solver.begin(
-        &default_recipe(),
-        &default_stats(),
-        &SolverConstraints::default(),
-        &settings,
-        &mut frozen_clock(),
-    );
+    solver
+        .begin(
+            &default_recipe(),
+            &default_stats(),
+            &SolverConstraints::default(),
+            &settings,
+            &mut frozen_clock(),
+        )
+        .expect("begin");
 
-    let first = solver.run(u64::MAX, &mut frozen_clock());
-    let second = solver.run(u64::MAX, &mut frozen_clock());
+    let first = solver.run(u64::MAX, &mut frozen_clock()).expect("run");
+    let second = solver.run(u64::MAX, &mut frozen_clock()).expect("run");
 
     assert!(first.done);
     assert_eq!(first.iterations, 300);
@@ -712,4 +722,66 @@ fn default_config_values_match_csharp() {
     assert_eq!(config.heuristic_expansion_probability, 0.7);
     assert_eq!(config.completed_quality_weight, 0.8);
     assert_eq!(config.step_penalty_per_step, 0.001);
+}
+
+// Refused before the arena is touched: a stat the packed state cannot hold fails begin (and a
+// one-shot solve) with a message instead of aborting the search part-way through.
+#[test]
+fn begin_refuses_a_state_the_tree_cannot_hold() {
+    let mut solver = solver();
+    let stats = CrafterStats {
+        cp: 40_000,
+        ..default_stats()
+    };
+    let error = solver
+        .begin(
+            &default_recipe(),
+            &stats,
+            &SolverConstraints::default(),
+            &SolverSettings::default(),
+            &mut frozen_clock(),
+        )
+        .unwrap_err();
+    assert_eq!(
+        error,
+        SolverError::StateDoesNotFit {
+            field: "cp",
+            value: 40_000
+        }
+    );
+    assert_eq!(
+        solver.run(1, &mut frozen_clock()),
+        Err(SolverError::NoSearchInProgress)
+    );
+
+    let result = solver.solve(
+        &default_recipe(),
+        &stats,
+        &SolverConstraints::default(),
+        &SolverSettings::default(),
+        &mut frozen_clock(),
+    );
+    assert_eq!(result.status, SolverStatus::Failed);
+    assert!(result
+        .error_message
+        .as_deref()
+        .unwrap_or("")
+        .contains("cp = 40000"));
+}
+
+#[test]
+fn a_step_without_a_search_is_an_error() {
+    let mut solver = solver();
+    assert_eq!(
+        solver.run(10, &mut frozen_clock()),
+        Err(SolverError::NoSearchInProgress)
+    );
+    assert_eq!(
+        solver.progress(&mut frozen_clock()),
+        Err(SolverError::NoSearchInProgress)
+    );
+    assert_eq!(
+        solver.finish(&mut frozen_clock()),
+        Err(SolverError::NoSearchInProgress)
+    );
 }

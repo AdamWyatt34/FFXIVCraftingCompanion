@@ -1,43 +1,88 @@
 /* tslint:disable */
 /* eslint-disable */
 
+import type { RecipeCraftingParametersDto } from "../types/api";
+import type {
+    ActionAvailability,
+    ActionInfo,
+    CrafterStatsInput,
+    CraftingState,
+    ExportMacroResult,
+    HQIngredientInput,
+    MacroOptions,
+    SimulationOptions,
+    SimulationResult,
+    StepResult,
+} from "../types/simulator";
+import type { SolverConstraints, SolverResult } from "../types/solver";
+
+/** The simulate endpoint's result without its recipe summary, which the caller fills in. */
+export type WasmSimulationResult = Omit<SimulationResult, "recipe"> & { recipe: null };
+
+/** What an MCTS search has found so far (`SearchProgress` in the crate). */
+export interface SearchProgress {
+    iterations: number;
+    nodesExplored: number;
+    elapsedMs: number;
+    bestSteps: number;
+    bestQualityPercent: number;
+    bestHQPercent: number;
+    done: boolean;
+}
+
+export interface SolverSessionSettings {
+    timeBudgetMs: number;
+    maxIterations?: number;
+    randomSeed?: number;
+}
+
+
+
 /**
  * A resumable MCTS search. `begin`, then `run` in slices until the progress says `done` (or the
- * caller decides to stop), then `finish`. The tree is kept between searches.
+ * caller decides to stop), then `finish`. The tree is kept between searches. Bad input is an
+ * error from `begin` and leaves the session as it was; a step without a search is an error too.
  */
 export class SolverSession {
     free(): void;
     [Symbol.dispose](): void;
-    begin(recipe: any, stats: any, starting_quality: number, constraints: any, settings: any): void;
-    finish(): any;
+    begin(recipe: RecipeCraftingParametersDto, stats: CrafterStatsInput, starting_quality: number, constraints: SolverConstraints | null | undefined, settings: SolverSessionSettings): void;
+    finish(): SolverResult;
     /**
      * `max_nodes` caps the tree (about 130 bytes per node in practice). `early_termination`
      * is the iterations-without-improvement stop; omit it for the C# default of 5000.
      */
     constructor(max_nodes: number, early_termination?: number | null);
-    progress(): any;
-    run(max_iterations: number): any;
+    progress(): SearchProgress;
+    run(max_iterations: number): SearchProgress;
     tree_memory_bytes(): number;
 }
 
-export function action_catalog(level?: number | null): any;
+export function action_catalog(level?: number | null): ActionInfo[];
 
-export function available_actions(state: any, stats: any, recipe: any): any;
+export function available_actions(state: CraftingState, stats: CrafterStatsInput, recipe: RecipeCraftingParametersDto): ActionAvailability[];
 
-export function execute_action(state: any, action_id: number, stats: any, recipe: any): any;
+export function execute_action(state: CraftingState, action_id: number, stats: CrafterStatsInput, recipe: RecipeCraftingParametersDto): StepResult;
 
-export function export_macro(action_ids: Int32Array, options: any): any;
+export function export_macro(action_ids: Int32Array, options: MacroOptions | null | undefined): ExportMacroResult;
 
 /**
  * The greedy solver; `constraints` may be null for the API's quick-solve defaults.
  */
-export function greedy_solve(recipe: any, stats: any, starting_quality: number, constraints: any): any;
+export function greedy_solve(recipe: RecipeCraftingParametersDto, stats: CrafterStatsInput, starting_quality: number, constraints: SolverConstraints | null | undefined): SolverResult;
 
-export function initial_state(recipe: any, stats: any, starting_quality: number): any;
+export function initial_state(recipe: RecipeCraftingParametersDto, stats: CrafterStatsInput, starting_quality: number): CraftingState;
 
-export function simulate(recipe: any, stats: any, action_ids: Int32Array, options: any, hq_ingredients: any): any;
+export function simulate(recipe: RecipeCraftingParametersDto, stats: CrafterStatsInput, action_ids: Int32Array, options: SimulationOptions | null | undefined, hq_ingredients: HQIngredientInput[] | null | undefined): WasmSimulationResult;
 
-export function starting_quality(recipe: any, hq_ingredients: any): number;
+/**
+ * The crate is built with `panic = "abort"`, so a panic ends in an unreachable trap and the
+ * instance's memory is no longer trusted; the hook writes the message to the console first,
+ * where the worker's error path would otherwise only see "unreachable executed".
+ */
+export function start(): void;
+
+export function starting_quality(recipe: RecipeCraftingParametersDto, hq_ingredients: HQIngredientInput[] | null | undefined): number;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -57,6 +102,7 @@ export interface InitOutput {
     readonly solversession_progress: (a: number) => [number, number, number];
     readonly solversession_run: (a: number, b: number) => [number, number, number];
     readonly solversession_tree_memory_bytes: (a: number) => number;
+    readonly start: () => void;
     readonly starting_quality: (a: any, b: any) => [number, number, number];
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
