@@ -19,6 +19,7 @@
 
 # exported game data placed by scripts/data-fetch.mjs
 /public/data/
+/.data/
 
 # production
 /build

@@ -9,6 +9,8 @@ export interface SecurityHeaderInputs {
   apiOrigin?: string | null;
   /** The Sentry DSN; its project turns into the CSP report endpoint. */
   sentryDsn?: string | null;
+  /** Where the browser reads the game data: a CDN URL, or this deployment's own path (ignored). */
+  dataBase?: string | null;
 }
 
 export interface Header {
@@ -41,11 +43,14 @@ function origin(value: string | null | undefined): string | null {
 export function buildContentSecurityPolicy(inputs: SecurityHeaderInputs): string {
   const apiOrigin = origin(inputs.apiOrigin);
   const sentryOrigin = origin(inputs.sentryDsn);
+  const dataOrigin = origin(inputs.dataBase);
   const reportUri = sentryReportUri(inputs.sentryDsn);
 
   const connect = [
     "'self'",
     apiOrigin,
+    // The exported game data, when a CDN serves it rather than the deployment.
+    dataOrigin,
     // Market prices are fetched from Universalis in the browser; icons come from XIVAPI.
     "https://universalis.app",
     "https://v2.xivapi.com",
