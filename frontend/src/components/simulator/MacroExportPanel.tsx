@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { ApiClientError } from "@/lib/api-client";
@@ -289,6 +290,9 @@ export function MacroExportPanel({
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   // Rotation summary
@@ -307,7 +311,9 @@ export function MacroExportPanel({
           Export as Macro
         </h2>
         <button
+          type="button"
           onClick={onClose}
+          aria-label="Close"
           className="text-text-muted hover:text-text-secondary transition-colors"
         >
           <X size={18} />
@@ -401,7 +407,7 @@ export function MacroExportPanel({
 
   // Desktop: slide-in right panel, Mobile: full-screen modal
   return createPortal(
-    <div className="fixed inset-0 z-[80]">
+    <div ref={dialogRef} className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Export as Macro">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 

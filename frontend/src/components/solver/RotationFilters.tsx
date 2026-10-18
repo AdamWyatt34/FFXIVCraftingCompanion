@@ -97,6 +97,7 @@ export function RotationFilters({
       <div className="flex gap-2 flex-wrap">
         {/* Sort dropdown */}
         <select
+          aria-label="Sort rotations"
           value={filters.sortBy ?? "recent"}
           onChange={(e) =>
             onFiltersChange({
@@ -122,6 +123,7 @@ export function RotationFilters({
               <button
                 onClick={handleClearRecipe}
                 className="text-text-muted hover:text-text-primary transition-colors"
+                aria-label="Clear recipe filter"
               >
                 <X size={14} />
               </button>
@@ -138,6 +140,7 @@ export function RotationFilters({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Filter by recipe..."
+                  aria-label="Filter by recipe"
                   className="w-full bg-bg-elevated border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-gold/50"
                 />
                 {isLoading && (

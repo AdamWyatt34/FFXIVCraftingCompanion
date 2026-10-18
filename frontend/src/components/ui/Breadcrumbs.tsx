@@ -25,7 +25,7 @@ export function Breadcrumbs() {
             <li key={i} className="flex items-center gap-1">
               {i > 0 && <span className="text-text-muted/50">&gt;</span>}
               {isLast || !crumb.href ? (
-                <span className="text-text-secondary truncate max-w-[200px]">
+                <span aria-current={isLast ? "page" : undefined} className="text-text-secondary truncate max-w-[200px]">
                   {crumb.label}
                 </span>
               ) : (
@@ -49,7 +49,7 @@ export function Breadcrumbs() {
             <li key={i} className="flex items-center gap-1">
               {i > 0 && <span className="text-text-muted/50">&gt;</span>}
               {isLast || !crumb.href ? (
-                <span className="text-text-secondary truncate max-w-[150px]">
+                <span aria-current={isLast ? "page" : undefined} className="text-text-secondary truncate max-w-[150px]">
                   {crumb.label}
                 </span>
               ) : (

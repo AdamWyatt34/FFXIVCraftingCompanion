@@ -153,6 +153,7 @@ function JobSection({
               {isEditing ? (
                 <input
                   type="number"
+                  aria-label={`${info.fullName} level`}
                   min={0}
                   max={100}
                   value={editValues[job] ?? 0}

@@ -17,7 +17,10 @@ export function BottomTabNav() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-bg-secondary border-t border-border flex items-center justify-around">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 left-0 right-0 z-50 h-16 bg-bg-secondary border-t border-border flex items-center justify-around"
+    >
       {tabs.map((tab) => {
         const isActive = pathname.startsWith(tab.href);
         const Icon = tab.icon;
@@ -26,6 +29,7 @@ export function BottomTabNav() {
           <Link
             key={tab.href}
             href={tab.href}
+            aria-current={isActive ? "page" : undefined}
             className={`flex flex-col items-center justify-center gap-0.5 w-full h-full relative transition-colors ${
               isActive ? "text-tab-active" : "text-tab-inactive"
             }`}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { createPortal } from "react-dom";
 import { Loader2, Eye, X } from "lucide-react";
 import type { SolverJobStatus, SolverResult } from "@/types/solver";
@@ -58,15 +59,17 @@ function OverlayContent({
     };
   }, [isSolving, elapsedMs]);
 
-  // Auto-focus cancel button on mount
-  useEffect(() => {
-    cancelRef.current?.focus();
-  }, []);
+  // Focus moves into the dialog on mount (its first control is the cancel button) and returns
+  // to the solve button when it closes.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(rootRef, true);
 
   return (
     <div
+      ref={rootRef}
       className="text-center space-y-4"
       role="dialog"
+      aria-modal="true"
       aria-label="Solver progress"
     >
       {/* Spinner */}

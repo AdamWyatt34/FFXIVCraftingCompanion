@@ -33,37 +33,33 @@ export function EquipmentSearchCard({
 
   return (
     <div
-      className={`rounded-lg border bg-bg-surface p-3 space-y-2 cursor-pointer transition-all ${
+      className={`rounded-lg border bg-bg-surface p-3 space-y-2 transition-all ${
         isExpanded
           ? "border-gold ring-1 ring-gold/30"
           : "border-border hover:border-gold/50 hover:bg-bg-elevated/50"
       }`}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      aria-expanded={isExpanded}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
     >
       {/* Main item row */}
       <div className="flex items-center gap-3">
-        <ItemIcon iconUrl={equipment.iconUrl} alt={equipment.name} size="lg" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className={`font-medium truncate ${rarityClass}`}>
+        <ItemIcon iconUrl={equipment.iconUrl} alt="" size="lg" />
+        {/* The item name is the control that expands the card; the links beside it stay their own controls. */}
+        <button
+          type="button"
+          onClick={onClick}
+          aria-expanded={isExpanded}
+          className="flex-1 min-w-0 text-left rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+        >
+          <span className="flex items-center gap-2">
+            <span className={`block font-medium truncate ${rarityClass}`}>
               {equipment.name}
-            </p>
+            </span>
             {equipment.canBeHQ && (
               <span title={equipment.hqNote ?? "HQ version available"}>
                 <Sparkles size={14} className="text-gold shrink-0" />
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
+          </span>
+          <span className="flex items-center gap-2 text-xs text-text-secondary">
             <span className="bg-bg-elevated px-1.5 py-0.5 rounded text-text-primary">
               iLv {equipment.itemLevel}
             </span>
@@ -82,8 +78,8 @@ export function EquipmentSearchCard({
                 ))}
               </span>
             )}
-          </div>
-        </div>
+          </span>
+        </button>
       </div>
 
       {/* Stats row */}

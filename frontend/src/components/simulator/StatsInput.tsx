@@ -290,14 +290,17 @@ export function StatsInput({
         <div className="space-y-4">
           {/* Level with presets */}
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
+            <label htmlFor="stats-level" className="block text-sm font-medium text-text-secondary mb-1">
               Level
             </label>
             <div className="flex gap-2">
               <input
+                id="stats-level"
                 type="text"
                 inputMode="numeric"
                 value={localStats.level}
+                aria-invalid={touched.level && !!errors.level}
+                aria-describedby={touched.level && errors.level ? "stats-level-error" : undefined}
                 onChange={(e) => handleFieldChange("level", e.target.value)}
                 onBlur={() => handleBlur("level")}
                 placeholder="1-100"
@@ -320,20 +323,23 @@ export function StatsInput({
               </div>
             </div>
             {touched.level && errors.level && (
-              <p className="text-xs text-red-400 mt-1">{errors.level}</p>
+              <p id="stats-level-error" className="text-xs text-red-400 mt-1">{errors.level}</p>
             )}
           </div>
 
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
+              <label htmlFor="stats-craftsmanship" className="block text-sm font-medium text-text-secondary mb-1">
                 Craftsmanship
               </label>
               <input
+                id="stats-craftsmanship"
                 type="text"
                 inputMode="numeric"
                 value={localStats.craftsmanship}
+                aria-invalid={touched.craftsmanship && !!errors.craftsmanship}
+                aria-describedby={touched.craftsmanship && errors.craftsmanship ? "stats-craftsmanship-error" : undefined}
                 onChange={(e) =>
                   handleFieldChange("craftsmanship", e.target.value)
                 }
@@ -342,43 +348,49 @@ export function StatsInput({
                 className="w-full bg-bg-elevated border border-border focus:border-border-focus focus:outline-none text-text-primary rounded-lg px-3 py-2 transition-colors"
               />
               {touched.craftsmanship && errors.craftsmanship && (
-                <p className="text-xs text-red-400 mt-1">
+                <p id="stats-craftsmanship-error" className="text-xs text-red-400 mt-1">
                   {errors.craftsmanship}
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
+              <label htmlFor="stats-control" className="block text-sm font-medium text-text-secondary mb-1">
                 Control
               </label>
               <input
+                id="stats-control"
                 type="text"
                 inputMode="numeric"
                 value={localStats.control}
+                aria-invalid={touched.control && !!errors.control}
+                aria-describedby={touched.control && errors.control ? "stats-control-error" : undefined}
                 onChange={(e) => handleFieldChange("control", e.target.value)}
                 onBlur={() => handleBlur("control")}
                 placeholder="e.g., 4200"
                 className="w-full bg-bg-elevated border border-border focus:border-border-focus focus:outline-none text-text-primary rounded-lg px-3 py-2 transition-colors"
               />
               {touched.control && errors.control && (
-                <p className="text-xs text-red-400 mt-1">{errors.control}</p>
+                <p id="stats-control-error" className="text-xs text-red-400 mt-1">{errors.control}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
+              <label htmlFor="stats-cp" className="block text-sm font-medium text-text-secondary mb-1">
                 CP
               </label>
               <input
+                id="stats-cp"
                 type="text"
                 inputMode="numeric"
                 value={localStats.cp}
+                aria-invalid={touched.cp && !!errors.cp}
+                aria-describedby={touched.cp && errors.cp ? "stats-cp-error" : undefined}
                 onChange={(e) => handleFieldChange("cp", e.target.value)}
                 onBlur={() => handleBlur("cp")}
                 placeholder="e.g., 620"
                 className="w-full bg-bg-elevated border border-border focus:border-border-focus focus:outline-none text-text-primary rounded-lg px-3 py-2 transition-colors"
               />
               {touched.cp && errors.cp && (
-                <p className="text-xs text-red-400 mt-1">{errors.cp}</p>
+                <p id="stats-cp-error" className="text-xs text-red-400 mt-1">{errors.cp}</p>
               )}
             </div>
             <div className="flex items-end pb-2">

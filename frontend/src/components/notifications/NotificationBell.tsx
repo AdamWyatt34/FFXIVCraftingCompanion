@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { Bell, Clock, Coins, X, CheckCheck } from "lucide-react";
 import Link from "next/link";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -33,6 +34,8 @@ function timeAgo(iso: string): string {
 export function NotificationBell() {
   const { notifications, unreadCount, dismiss, dismissAll } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+  const mobileRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(mobileRef, isOpen);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Click outside to close
@@ -65,9 +68,15 @@ export function NotificationBell() {
       {isOpen && (
         <>
           {/* Mobile: full-screen overlay */}
-          <div className="sm:hidden fixed inset-0 z-50 bg-bg-primary">
+          <div
+            ref={mobileRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notifications-title"
+            className="sm:hidden fixed inset-0 z-50 bg-bg-primary"
+          >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h2 className="text-sm font-semibold text-text-primary">Notifications</h2>
+              <h2 id="notifications-title" className="text-sm font-semibold text-text-primary">Notifications</h2>
               <div className="flex items-center gap-2">
                 {notifications.length > 0 && (
                   <button
@@ -79,7 +88,9 @@ export function NotificationBell() {
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => setIsOpen(false)}
+                  aria-label="Close notifications"
                   className="p-1 text-text-muted hover:text-text-primary"
                 >
                   <X size={18} />

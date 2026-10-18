@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import {
@@ -144,8 +145,17 @@ export function RotationReplay({
     );
   }, [replay.currentStep, replay.previousState, replay.currentState]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, true);
+
   const content = (
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg-primary/95 backdrop-blur-sm">
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="replay-title"
+      className="fixed inset-0 z-50 flex flex-col bg-bg-primary/95 backdrop-blur-sm"
+    >
       {/* SR announcement */}
       <div
         ref={announcementRef}
@@ -157,7 +167,7 @@ export function RotationReplay({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-surface">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-text-primary">
+          <h2 id="replay-title" className="text-lg font-bold text-text-primary">
             Step {replay.currentStepIndex} / {replay.totalSteps}
           </h2>
           {replay.currentStep && (
@@ -172,6 +182,7 @@ export function RotationReplay({
         <div className="flex items-center gap-2">
           <button
             onClick={onLoadIntoSimulator}
+            aria-label="Load into Simulator"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-text-primary border border-border transition-colors text-sm"
           >
             <Wrench size={14} />

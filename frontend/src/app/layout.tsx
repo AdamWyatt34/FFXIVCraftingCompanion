@@ -63,6 +63,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-gold focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-bg-primary"
+        >
+          Skip to content
+        </a>
         <Script id="vercel-analytics-queue" strategy="beforeInteractive">
           {"window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };"}
         </Script>
@@ -74,7 +80,7 @@ export default function RootLayout({
             <Breadcrumbs />
             <CraftPlanProvider>
               <ToastProvider>
-                <main className="flex-1 pb-16">{children}</main>
+                <main id="main" className="flex-1 pb-16">{children}</main>
               </ToastProvider>
             </CraftPlanProvider>
             <Footer />
