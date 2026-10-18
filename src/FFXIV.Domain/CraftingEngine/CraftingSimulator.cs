@@ -157,7 +157,7 @@ public class CraftingSimulator : ICraftingSimulator
         return result;
     }
 
-    private StepResult ExecuteActionInternal(CraftingState state, ICraftingAction action,
+    private static StepResult ExecuteActionInternal(CraftingState state, ICraftingAction action,
                                               CrafterStats stats, RecipeParameters recipe,
                                               SimulationOptions options, ConditionResolver conditionResolver,
                                               Random random)

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FFXIV.Domain.Models;
+using System.Globalization;
 
 namespace FFXIV.Application.CraftPlans;
 
@@ -21,7 +22,7 @@ public static class ShoppingListExporter
         sb.AppendLine("=== Items to Craft ===");
         foreach (var item in result.Items)
         {
-            sb.AppendLine($"  {item.ItemName} x{item.Quantity} ({item.CraftType})");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {item.ItemName} x{item.Quantity} ({item.CraftType})");
         }
         sb.AppendLine();
 
@@ -31,7 +32,7 @@ public static class ShoppingListExporter
             sb.AppendLine("=== Intermediate Crafts ===");
             foreach (var craft in result.IntermediateCrafts)
             {
-                sb.AppendLine($"  {craft.CraftOrder}. {craft.ItemName} x{craft.TotalQuantity} ({craft.CraftType}, Lv.{craft.RecipeLevel})");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  {craft.CraftOrder}. {craft.ItemName} x{craft.TotalQuantity} ({craft.CraftType}, Lv.{craft.RecipeLevel})");
             }
             sb.AppendLine();
         }
@@ -52,17 +53,17 @@ public static class ShoppingListExporter
             sb.AppendLine("=== Crystals ===");
             foreach (var crystal in result.Crystals)
             {
-                sb.AppendLine($"  {crystal.ItemName} x{crystal.TotalQuantity}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  {crystal.ItemName} x{crystal.TotalQuantity}");
             }
             sb.AppendLine();
         }
 
         // Summary
         sb.AppendLine("=== Summary ===");
-        sb.AppendLine($"  Plan Items: {result.Summary.TotalPlanItems}");
-        sb.AppendLine($"  Raw Materials: {result.Summary.TotalUniqueRawMaterials} types");
-        sb.AppendLine($"  Crystals: {result.Summary.TotalUniqueCrystals} types");
-        sb.AppendLine($"  Intermediate Crafts: {result.Summary.TotalIntermediateCrafts}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Plan Items: {result.Summary.TotalPlanItems}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Raw Materials: {result.Summary.TotalUniqueRawMaterials} types");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Crystals: {result.Summary.TotalUniqueCrystals} types");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Intermediate Crafts: {result.Summary.TotalIntermediateCrafts}");
 
         return sb.ToString();
     }
@@ -80,25 +81,25 @@ public static class ShoppingListExporter
         // Final items
         foreach (var item in result.Items)
         {
-            sb.AppendLine($"{item.ItemId},{item.Quantity}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{item.ItemId},{item.Quantity}");
         }
 
         // Intermediate crafts
         foreach (var craft in result.IntermediateCrafts)
         {
-            sb.AppendLine($"{craft.ItemId},{craft.TotalQuantity}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{craft.ItemId},{craft.TotalQuantity}");
         }
 
         // Raw materials
         foreach (var mat in result.RawMaterials)
         {
-            sb.AppendLine($"{mat.ItemId},{mat.TotalQuantity}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{mat.ItemId},{mat.TotalQuantity}");
         }
 
         // Crystals
         foreach (var crystal in result.Crystals)
         {
-            sb.AppendLine($"{crystal.ItemId},{crystal.TotalQuantity}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{crystal.ItemId},{crystal.TotalQuantity}");
         }
 
         return sb.ToString();

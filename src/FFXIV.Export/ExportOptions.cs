@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace FFXIV.Export;
 
 public sealed record ExportOptions(
@@ -56,8 +58,8 @@ public sealed record ExportOptions(
                 case "--out": outDir = Next(); break;
                 case "--skip-sync": skipSync = true; break;
                 case "--fixture-only": fixtureOnly = true; break;
-                case "--bucket-size": bucketSize = int.Parse(Next()); break;
-                case "--parallelism": parallelism = int.Parse(Next()); break;
+                case "--bucket-size": bucketSize = int.Parse(Next(), CultureInfo.InvariantCulture); break;
+                case "--parallelism": parallelism = int.Parse(Next(), CultureInfo.InvariantCulture); break;
                 case "--recipes":
                     onlyRecipes.AddRange(Next().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                     break;

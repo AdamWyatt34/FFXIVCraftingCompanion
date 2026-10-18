@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi;
 using Serilog;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,14 +25,15 @@ var builder = WebApplication.CreateBuilder(args);
 var loggerConfiguration = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console();
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture);
 
 if (builder.Environment.IsDevelopment())
 {
     loggerConfiguration.WriteTo.File(
         path: "Logs/ffxiv-.log",
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7);
+        retainedFileCountLimit: 7,
+        formatProvider: CultureInfo.InvariantCulture);
 }
 
 Log.Logger = loggerConfiguration.CreateLogger();
@@ -113,7 +115,7 @@ builder.Services.AddRateLimiter(options =>
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
         {
             context.HttpContext.Response.Headers.RetryAfter =
-                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
         }
 
         context.HttpContext.Response.ContentType = "application/json";

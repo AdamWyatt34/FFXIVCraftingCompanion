@@ -154,7 +154,7 @@ public class QualityActionTests
 
     // --- Test Double ---
 
-    private class TestQualityAction : QualityAction
+    private sealed class TestQualityAction : QualityAction
     {
         public override int Id => 1001;
         public override string Name => "TestQuality";

@@ -61,4 +61,5 @@ dotnet run --project src/FFXIV.Export --configuration Release -- --out ./out --s
 - First local run needs a data sync (`POST /api/admin/sync`) to populate items and recipes; it takes minutes.
 - The root `package.json` (single dependency `claude`) and root `node_modules` are unrelated to the app. Do not add app dependencies there.
 - Backend CI runs only when `src/**`, `tests/**`, or `*.slnx` change; frontend CI only on `frontend/**`.
+- A Vercel deployment does not carry the data set: `scripts/data-fetch.mjs` downloads the locked commit into `frontend/.data/` for the build's server-side reads and points the site at the same commit on jsDelivr (`NEXT_PUBLIC_DATA_BASE`); it falls back to `public/data/v/<version>/` when the CDN cannot serve it (private repository) or for a local export (`FFXIV_DATA_DIR`, which the e2e build uses). Hobby includes 10 GB of Deployment Storage, and the fallback costs about 260 MB per deployment.
 - `/api/admin/*` needs the `X-Admin-Key` header matching `Admin:ApiKey`; with no key configured the endpoints answer 401.
