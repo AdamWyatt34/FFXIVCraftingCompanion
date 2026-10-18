@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -26,10 +26,9 @@ import {
 import type { CraftType } from "@/types/api";
 import { recipePath } from "@/lib/routes";
 
-export default function JourneyPage() {
-  const params = useParams<{ id: string }>();
+/** The journey for one recipe; the server wrapper has already resolved the URL to its id. */
+export default function JourneyPage({ recipeId }: { recipeId: number }) {
   const router = useRouter();
-  const recipeId = Number(params.id);
   const { journey, isLoading, error, retry } = useJourney(recipeId);
   const { setBreadcrumbs } = useBreadcrumbs();
 

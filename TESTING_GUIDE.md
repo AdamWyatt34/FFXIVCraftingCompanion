@@ -227,7 +227,7 @@ These are free, public APIs used by the data sync pipeline:
 
 ### A1. Recipe Search & Detail
 
-**Route:** `/recipes` -> `/recipes/[id]`
+**Route:** `/recipes` -> `/recipes/{id}-{item-name}`
 
 | # | Test Step | Expected Result | API Call |
 |---|-----------|-----------------|----------|
@@ -235,7 +235,7 @@ These are free, public APIs used by the data sync pipeline:
 | 2 | Type a recipe name (e.g., "Iron Ingot") | Results appear after debounce (~300ms) | `GET /api/items/search?q=Iron+Ingot` |
 | 3 | Filter by craft type (e.g., "BSM") | Results filter to blacksmith recipes only | `GET /api/items/search?q=...&craftType=BSM` |
 | 4 | Scroll to bottom | Infinite scroll loads more results | Same endpoint with pagination |
-| 5 | Click a recipe card | Navigates to `/recipes/[id]` with full detail | `GET /api/recipes/{id}` |
+| 5 | Click a recipe card | Navigates to `/recipes/{id}-{item-name}` with full detail | `GET /api/recipes/{id}` |
 | 6 | View recipe detail page | Shows ingredients, difficulty, durability, quality target | — |
 | 7 | Click "Material Tree" tab | Full tree of sub-recipes and raw materials renders | `GET /api/recipes/{id}/materials` |
 | 8 | Click "Shopping List" tab | Flat list of all raw materials with quantities, grouped by source | `GET /api/recipes/{id}/materials` |
@@ -342,7 +342,7 @@ These are free, public APIs used by the data sync pipeline:
 
 ### A8. Crafting Journey & Cost Estimate
 
-**Route:** Accessed via `/recipes/[id]/journey`
+**Route:** Accessed via `/recipes/{id}-{item-name}/journey`
 
 | # | Test Step | Expected Result | API Call |
 |---|-----------|-----------------|----------|

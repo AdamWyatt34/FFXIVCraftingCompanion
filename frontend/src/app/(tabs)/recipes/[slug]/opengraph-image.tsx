@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getRecipeExportServer } from "@/lib/static-data/server";
+import { parseRecipeSlug } from "@/lib/static-data/slug";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { CraftType } from "@/types/api";
 
@@ -8,9 +9,10 @@ export const alt = "FFXIV recipe";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default async function RecipeOpenGraphImage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const data = /^\d{1,9}$/.test(id) ? await getRecipeExportServer(Number(id)) : null;
+export default async function RecipeOpenGraphImage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const parsed = parseRecipeSlug(slug);
+  const data = parsed ? await getRecipeExportServer(parsed.recipeId) : null;
   const name = data?.recipe.resultItem.name ?? "Recipe";
   const job = data ? (CRAFT_TYPE_INFO[data.recipe.craftType as CraftType]?.fullName ?? data.recipe.craftType) : "";
   const level = data?.craftingParameters.classJobLevel;

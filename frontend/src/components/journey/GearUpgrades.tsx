@@ -69,7 +69,7 @@ export function GearUpgrades({ upgrades }: GearUpgradesProps) {
               </div>
               {upgrade.recipeId && (
                 <Link
-                  href={recipeJourneyPath(upgrade.recipeId)}
+                  href={recipeJourneyPath(upgrade.recipeId, upgrade.suggestedItem)}
                   className="inline-flex items-center gap-1 text-xs text-gold hover:text-gold-light transition-colors"
                 >
                   <Map size={12} />

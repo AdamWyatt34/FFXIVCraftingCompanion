@@ -1,13 +1,13 @@
-import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { FlaskConical, Map, Shield, Sparkles } from "lucide-react";
-import { getCrystalsServer, getRecipeExportServer } from "@/lib/static-data/server";
+import { getCrystalsServer } from "@/lib/static-data/server";
 import { directIngredients } from "@/lib/static-data/materials";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { itemPath, recipeJourneyPath, recipePath, simulatorPath } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
+import { resolveRecipeRoute } from "./resolve";
 import { ItemIcon, StatBar } from "@/components/ui";
 import {
   RecipeBackLink,
@@ -18,7 +18,7 @@ import {
 import type { CraftType } from "@/types/api";
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 // Rendered on first request from the exported data and cached for the deployment's lifetime.
@@ -27,28 +27,20 @@ interface Props {
 export const dynamicParams = true;
 export const revalidate = false;
 
-export function generateStaticParams(): { id: string }[] {
+export function generateStaticParams(): { slug: string }[] {
   return [];
 }
 
-// One read per request, shared by the metadata and the page. The recipe is resolved before any
-// Suspense boundary and there is no loading.tsx in this segment: a streamed shell would fix the
-// status at 200 and turn notFound() into a soft 404.
-const resolveRecipe = cache(async (idParam: string) => {
-  const id = Number(idParam);
-  if (!/^\d{1,9}$/.test(idParam) || !Number.isInteger(id) || id < 1) return null;
-  return getRecipeExportServer(id);
-});
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const data = await resolveRecipe(id);
+  const { slug } = await params;
+  const route = await resolveRecipeRoute(slug);
 
-  if (!data) {
+  // The page itself answers the 404 and the 308; neither response carries metadata.
+  if (route.status !== "ok") {
     return { title: "Recipe Not Found", robots: { index: false, follow: false } };
   }
 
-  const { recipe, craftingParameters } = data;
+  const { recipe, craftingParameters } = route.data;
   const name = recipe.resultItem.name;
   const job = CRAFT_TYPE_INFO[recipe.craftType as CraftType]?.fullName ?? recipe.craftType;
   const stars = craftingParameters.stars > 0 ? ` ${"★".repeat(craftingParameters.stars)}` : "";
@@ -70,11 +62,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function RecipeDetailPage({ params }: Props) {
-  const { id } = await params;
-  const data = await resolveRecipe(id);
-  if (!data) notFound();
+  const { slug } = await params;
+  const route = await resolveRecipeRoute(slug);
+  if (route.status === "not-found") notFound();
+  // A bare id or a stale name 308s to the canonical slug; the query string is not carried over.
+  if (route.status === "redirect") permanentRedirect(recipePath(route.recipeId, route.itemName));
 
-  const { recipe, craftingParameters, materials } = data;
+  const { recipe, craftingParameters, materials } = route.data;
   const name = recipe.resultItem.name;
   const craftInfo = CRAFT_TYPE_INFO[recipe.craftType as CraftType];
   const jobName = craftInfo?.fullName ?? recipe.craftType;

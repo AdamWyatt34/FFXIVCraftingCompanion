@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getManifestServer, listRecipeIdsServer } from "@/lib/static-data/server";
+import { getManifestServer, listRecipesServer } from "@/lib/static-data/server";
 import { recipePath } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
 
@@ -10,8 +10,8 @@ const RECIPES_PER_SITEMAP = 5000;
 
 /** How many sitemap files exist: the static one plus one per chunk of recipes. */
 export async function sitemapCount(): Promise<number> {
-  const recipeIds = await listRecipeIdsServer();
-  return Math.ceil(recipeIds.length / RECIPES_PER_SITEMAP) + 1;
+  const recipes = await listRecipesServer();
+  return Math.ceil(recipes.length / RECIPES_PER_SITEMAP) + 1;
 }
 
 export async function generateSitemaps(): Promise<{ id: number }[]> {
@@ -51,11 +51,11 @@ export default async function sitemap({ id }: { id: number | string | Promise<nu
     ];
   }
 
-  const [recipeIds, manifest] = await Promise.all([listRecipeIdsServer(), getManifestServer()]);
+  const [recipes, manifest] = await Promise.all([listRecipesServer(), getManifestServer()]);
   const lastModified = manifest ? new Date(manifest.exportedAt) : new Date();
   const start = (sitemapId - 1) * RECIPES_PER_SITEMAP;
-  return recipeIds.slice(start, start + RECIPES_PER_SITEMAP).map((recipeId) => ({
-    url: `${BASE_URL}${recipePath(recipeId)}`,
+  return recipes.slice(start, start + RECIPES_PER_SITEMAP).map((recipe) => ({
+    url: `${BASE_URL}${recipePath(recipe.recipeId, recipe.itemName)}`,
     lastModified,
     changeFrequency: "monthly",
     priority: 0.6,
