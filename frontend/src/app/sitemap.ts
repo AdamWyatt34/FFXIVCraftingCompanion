@@ -1,17 +1,22 @@
 import type { MetadataRoute } from "next";
 import { getManifestServer, listRecipeIdsServer } from "@/lib/static-data/server";
 import { recipePath } from "@/lib/routes";
+import { getSiteUrl } from "@/lib/site-url";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const BASE_URL = getSiteUrl();
 
 // Sitemap 0 is the static pages; the rest list recipe pages in chunks of RECIPES_PER_SITEMAP.
 const RECIPES_PER_SITEMAP = 5000;
 
-export async function generateSitemaps(): Promise<{ id: number }[]> {
+/** How many sitemap files exist: the static one plus one per chunk of recipes. */
+export async function sitemapCount(): Promise<number> {
   const recipeIds = await listRecipeIdsServer();
-  const chunks = Math.ceil(recipeIds.length / RECIPES_PER_SITEMAP);
-  return Array.from({ length: chunks + 1 }, (_, id) => ({ id }));
+  return Math.ceil(recipeIds.length / RECIPES_PER_SITEMAP) + 1;
+}
+
+export async function generateSitemaps(): Promise<{ id: number }[]> {
+  const chunks = await sitemapCount();
+  return Array.from({ length: chunks }, (_, id) => ({ id }));
 }
 
 export default async function sitemap({ id }: { id: number | string | Promise<number | string> }): Promise<MetadataRoute.Sitemap> {
