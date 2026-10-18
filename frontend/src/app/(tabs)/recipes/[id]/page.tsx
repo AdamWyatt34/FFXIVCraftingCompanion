@@ -7,6 +7,7 @@ import { getCrystalsServer, getRecipeExportServer } from "@/lib/static-data/serv
 import { directIngredients } from "@/lib/static-data/materials";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { itemPath, recipeJourneyPath, recipePath, simulatorPath } from "@/lib/routes";
+import { getSiteUrl } from "@/lib/site-url";
 import { ItemIcon, StatBar } from "@/components/ui";
 import {
   RecipeBackLink,
@@ -38,10 +39,6 @@ const resolveRecipe = cache(async (idParam: string) => {
   if (!/^\d{1,9}$/.test(idParam) || !Number.isInteger(id) || id < 1) return null;
   return getRecipeExportServer(id);
 });
-
-function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -83,7 +80,7 @@ export default async function RecipeDetailPage({ params }: Props) {
   const jobName = craftInfo?.fullName ?? recipe.craftType;
   const ingredients = directIngredients(recipe.ingredients, materials, await getCrystalsServer());
   const equipInfo = recipe.equipmentInfo;
-  const base = siteUrl();
+  const base = getSiteUrl();
 
   const breadcrumbs = {
     "@context": "https://schema.org",
