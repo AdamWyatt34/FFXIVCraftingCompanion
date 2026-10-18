@@ -62,6 +62,7 @@ internal static class RateLimitPartitions
         {
             if (disposing)
                 inner.Dispose();
+            base.Dispose(disposing);
         }
 
         private RateLimitLease WithRetryAfter(RateLimitLease lease) =>
@@ -91,6 +92,7 @@ internal static class RateLimitPartitions
             {
                 if (disposing)
                     inner.Dispose();
+                base.Dispose(disposing);
             }
         }
     }
