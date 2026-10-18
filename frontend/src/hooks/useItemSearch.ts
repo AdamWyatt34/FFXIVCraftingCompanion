@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebounce } from "./useDebounce";
-import { searchItems, ApiClientError, } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { searchItems } from "@/lib/game-data";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { DEFAULT_PAGE_SIZE, MIN_SEARCH_LENGTH } from "@/lib/constants";
 import type { QuickFilter } from "@/lib/static-data/search";

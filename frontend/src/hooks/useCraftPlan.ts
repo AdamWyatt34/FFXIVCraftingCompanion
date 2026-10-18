@@ -1,14 +1,6 @@
 import { useState, useCallback } from "react";
-import {
-  resolveCraftPlan,
-  createCraftPlan,
-  getCraftPlans,
-  getCraftPlanById,
-  getResolvedCraftPlan,
-  deleteCraftPlan as apiDeletePlan,
-  exportCraftPlan,
-  ApiClientError,
-  } from "@/lib/api-client";
+import { createCraftPlan, getCraftPlans, getCraftPlanById, deleteCraftPlan as apiDeletePlan, ApiClientError } from "@/lib/api-client";
+import { resolveCraftPlan, getResolvedCraftPlan, exportCraftPlan } from "@/lib/game-data";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import type { CraftPlanItemInput, CraftPlanResultDto, CraftPlanDto, ExportResultDto } from "@/types/craft-plan";
 

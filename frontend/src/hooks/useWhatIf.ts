@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { getBisStats, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getBisStats } from "@/lib/game-data";
 import { quickSolve } from "@/lib/solver-client";
 import { WHAT_IF_CONSTANTS, WHAT_IF_PRESETS } from "@/lib/constants";
 import type { WhatIfStatSet, WhatIfResult, SolverResult } from "@/types/solver";

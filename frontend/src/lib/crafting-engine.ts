@@ -4,11 +4,8 @@
  * from the static game data and are memoized here per recipe id.
  */
 
-import {
-  ApiClientError,
-  getRecipe,
-  getRecipeCraftingParameters,
-} from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getRecipe, getRecipeCraftingParameters } from "@/lib/game-data";
 import { loadWasmEngine } from "@/lib/wasm-engine";
 import type {
   RecipeCraftingParametersDto,

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, Pickaxe, Clock } from "lucide-react";
-import { getGatheringGuide, getEorzeanTime, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getGatheringGuide, getEorzeanTime } from "@/lib/game-data";
 import { ItemIcon, LoadingSpinner, ErrorState } from "@/components/ui";
 import { GATHERING_CLASS_INFO, NODE_TYPE_INFO } from "@/lib/constants";
 import { TimedNodeCountdown } from "@/components/notifications/TimedNodeCountdown";

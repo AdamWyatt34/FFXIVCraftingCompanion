@@ -22,8 +22,9 @@ const withSerwist = withSerwistInit({
   swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",
   // public/data (the exported game data, hundreds of MB) is cached at runtime as pages touch
-  // it, never precached. node-glob has no negation, so list what is precached instead.
-  globPublicPatterns: ["*", "icons/**/*"],
+  // it, never precached, and nothing else in public/ is worth a download on install: only the
+  // manifest and the icons are listed (node-glob has no negation).
+  globPublicPatterns: ["manifest.json", "icons/**/*"],
 });
 
 const withBundleAnalyzer = withBundleAnalyzerInit({
@@ -37,6 +38,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   turbopack: {},
+  // The repo root has its own (unrelated) package-lock.json; without this Next guesses the
+  // workspace root from it and warns on every build.
+  outputFileTracingRoot: __dirname,
   // The server loader (src/lib/static-data/server.ts) reads public/data from disk during the
   // build and from the deployment's CDN inside a function, so the data set must not be traced
   // into any function bundle: with it, the recipe page's function was 283 MB uncompressed,

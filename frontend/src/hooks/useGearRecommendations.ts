@@ -1,10 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useDebounce } from "./useDebounce";
-import {
-  getGearRecommendations,
-  getStatWeightProfiles,
-  ApiClientError,
-} from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getGearRecommendations, getStatWeightProfiles } from "@/lib/game-data";
 import type { GearSetDto, StatWeightProfileDto } from "@/types/gear";
 import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
 

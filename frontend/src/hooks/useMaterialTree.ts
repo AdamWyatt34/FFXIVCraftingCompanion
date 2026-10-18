@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useDebounce } from "./useDebounce";
-import { getMaterialTree, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getMaterialTree } from "@/lib/game-data";
 import type { MaterialTreeResultDto } from "@/types/api";
 
 interface UseMaterialTreeReturn {

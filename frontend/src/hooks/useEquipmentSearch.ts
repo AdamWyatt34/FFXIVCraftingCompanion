@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebounce } from "./useDebounce";
-import { searchEquipment, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { searchEquipment } from "@/lib/game-data";
 import type { EquipmentDto } from "@/types/gear";
 
 const MIN_QUERY_LENGTH = 2;
