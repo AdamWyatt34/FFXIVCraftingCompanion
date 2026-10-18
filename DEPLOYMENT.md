@@ -83,6 +83,8 @@ And one repository **variable** (Settings > Secrets and variables > Actions > Va
 ```powershell
 # Set environment variables
 $env:SQL_ADMIN_PASSWORD = "YourStrongPassword123!"
+$env:SQL_CONNECTION_STRING = "Server=tcp:...;Database=...;User ID=...;Password=...;Encrypt=true;"  # main.bicepparam sets deploySql = false
+$env:ADMIN_API_KEY = ""
 $env:JWT_SECRET_KEY = "your-32-byte-secret-key-here-minimum!!"
 $env:CORS_ORIGINS = "https://your-app.vercel.app"
 $env:DISCORD_CLIENT_ID = ""
@@ -92,6 +94,13 @@ $env:CONTAINER_IMAGE = "ghcr.io/YOUR_USERNAME/ffxiv-crafting-api:latest"
 
 ./infra/scripts/deploy.ps1 -ResourceGroup "rg-ffxiv-crafting" -Location "eastus"
 ```
+
+### What the template creates
+
+- A Log Analytics workspace, a Container Apps environment and the API Container App (0.25 vCPU, 0.5 GiB, scaling 0 to 1 replica).
+- The SQL connection string, JWT key, admin key and Discord client secret are stored as Container App secrets (`sql-connection-string`, `jwt-secret-key`, `admin-api-key`, `discord-client-secret`) and reach the container as `secretRef` environment variables, so `az containerapp show` and the deployment history show names, not values. To rotate one, update the GitHub secret and re-run **Infrastructure Deploy**.
+- A startup probe on `/health/live` gives a cold start up to 150 seconds before the liveness probe (every 30 seconds) takes over.
+- With `deploySql = true` the template also creates a serverless SQL server whose only firewall rule is "Allow Azure services" (`0.0.0.0`): any Azure-hosted client may reach port 1433 with valid credentials, because the Container App has no fixed outbound address on the consumption plan. Production uses `deploySql = false` with a portal-managed server: keep it on that rule and nothing broader; a private endpoint or a VNet-integrated environment is the upgrade path.
 
 ---
 
@@ -211,11 +220,12 @@ The backend runs on `http://localhost:5159` and the frontend on `http://localhos
 - Check logs: `az containerapp logs show --name ffxiv-prod-api --resource-group rg-ffxiv-crafting`
 - Verify the image exists: `docker pull ghcr.io/YOUR_USERNAME/ffxiv-crafting-api:latest`
 - Check the liveness endpoint: the app must respond on `/health/live` at port 8080 (`/health`, the full readiness report, needs the `X-Admin-Key` header)
+- A new revision has up to 150 seconds to answer the startup probe before it is restarted; `az containerapp revision list --name ffxiv-prod-api --resource-group rg-ffxiv-crafting -o table` shows each revision's health state
 
 ### Database connection issues
 - Azure SQL auto-pauses after 60 minutes of inactivity — first request may take ~30 seconds to resume
-- Verify firewall rule allows Azure services: `AllowAzureServices` rule should be present
-- Check connection string in Container App environment variables
+- Verify the SQL firewall has the `AllowAzureServices` rule (`0.0.0.0`) and nothing broader (see section 3)
+- Check the `sql-connection-string` secret: `az containerapp secret show --name ffxiv-prod-api --resource-group rg-ffxiv-crafting --secret-name sql-connection-string`
 
 ### CORS errors
 - Verify `CORS_ORIGINS` secret matches your exact Vercel URL (including `https://`)
