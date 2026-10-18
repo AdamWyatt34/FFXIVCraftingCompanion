@@ -5,6 +5,7 @@ using FFXIV.Domain.Enums;
 using FFXIV.Domain.Interfaces;
 using FFXIV.Domain.Models;
 using FFXIV.Domain.Repositories;
+using FFXIV.Domain.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace FFXIV.Tests.Notifications;
@@ -71,7 +72,7 @@ public class NotificationServiceTests
             GatheringInfoId = 1,
             ItemId = 100,
             IsTimed = true,
-            SpawnTimes = $"{startHour}-{endHour}",
+            SpawnTimes = SpawnWindows.Serialize([new SpawnWindow(startHour, endHour)]),
             ZoneName = "Eastern La Noscea",
             GatheringType = GatheringType.Mining,
             ClassJob = "Miner",
@@ -120,7 +121,7 @@ public class NotificationServiceTests
             GatheringInfoId = 1,
             ItemId = 100,
             IsTimed = true,
-            SpawnTimes = $"{startHour}-{endHour}",
+            SpawnTimes = SpawnWindows.Serialize([new SpawnWindow(startHour, endHour)]),
             ZoneName = "Test Zone",
             GatheringType = GatheringType.Mining,
             ClassJob = "Miner",
@@ -174,7 +175,7 @@ public class NotificationServiceTests
             GatheringInfoId = 1,
             ItemId = 100,
             IsTimed = true,
-            SpawnTimes = $"{startHour}-{endHour}",
+            SpawnTimes = SpawnWindows.Serialize([new SpawnWindow(startHour, endHour)]),
             ZoneName = "Test Zone",
             GatheringType = GatheringType.Mining,
             ClassJob = "Miner",
@@ -191,22 +192,6 @@ public class NotificationServiceTests
         // Assert — same itemId+startHour should produce only one notification
         var timedNotifications = result.Where(n => n.Type == NotificationType.TimedNode).ToList();
         timedNotifications.Select(n => n.Id).Should().OnlyHaveUniqueItems();
-    }
-
-    [Fact]
-    public void ParseSpawnTimes_ValidInput_ParsesCorrectly()
-    {
-        var result = NotificationService.ParseSpawnTimes("2-6,14-18");
-        result.Should().HaveCount(2);
-        result[0].Should().Be((2, 6));
-        result[1].Should().Be((14, 18));
-    }
-
-    [Fact]
-    public void ParseSpawnTimes_EmptyInput_ReturnsEmpty()
-    {
-        var result = NotificationService.ParseSpawnTimes("");
-        result.Should().BeEmpty();
     }
 
     private static CraftPlan CreatePlan(string id, string itemsJson) => new()

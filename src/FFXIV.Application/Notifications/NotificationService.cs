@@ -69,10 +69,11 @@ public sealed class NotificationService : INotificationService
 
             foreach (var (itemId, infos) in gatheringData)
             {
-                foreach (var info in infos.Where(g => g.IsTimed && !string.IsNullOrEmpty(g.SpawnTimes)))
+                foreach (var info in infos)
                 {
-                    var windows = ParseSpawnTimes(info.SpawnTimes!);
-                    foreach (var (startHour, endHour) in windows)
+                    // Nodes without a real window (including pre-fix rows that carry the 65535
+                    // sentinel) parse to nothing and are skipped.
+                    foreach (var (startHour, endHour) in SpawnWindows.Parse(info.SpawnTimes))
                     {
                         var isActive = EorzeanTime.IsWindowActive(startHour, endHour, currentEorzeanHour);
                         var timeUntil = EorzeanTime.TimeUntilWindow(startHour, endHour, currentEorzeanHour);
@@ -225,20 +226,6 @@ public sealed class NotificationService : INotificationService
             ActionUrl = "/recipes/plan",
             ExpiresAt = resetDate.AddHours(8),
         };
-    }
-
-    internal static List<(int Start, int End)> ParseSpawnTimes(string spawnTimes)
-    {
-        var result = new List<(int, int)>();
-        foreach (var part in spawnTimes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var range = part.Split('-', 2);
-            if (range.Length == 2 && int.TryParse(range[0], out var start) && int.TryParse(range[1], out var end))
-            {
-                result.Add((start, end));
-            }
-        }
-        return result;
     }
 
     private static double RemainingWindowSeconds(int startHour, int endHour, int currentHour)

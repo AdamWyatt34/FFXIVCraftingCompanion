@@ -298,6 +298,35 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     }
 
     [Fact]
+    public void Spawn_windows_golden_is_current()
+    {
+        // Every shape the stored spawnTimes column has carried: the canonical "H:MM" pairs, the
+        // pre-fix raw HHMM values and sentinel, multi-window lists, and junk the parser must drop.
+        string?[] inputs =
+        [
+            null, "", "[]",
+            "[\"65535:00\",\"65535:00\"]",
+            "[\"2000:00\",\"0:00\"]", "[\"0:00\",\"400:00\"]", "[\"400:00\",\"800:00\"]", "[\"1600:00\",\"2000:00\"]",
+            "[\"2:00\",\"4:00\"]", "[\"23:00\",\"1:00\"]", "[\"2:00\",\"4:00\",\"10:00\",\"12:00\"]",
+            "[\"65535:00\",\"65535:00\",\"10:00\",\"12:00\",\"18:00\"]",
+            "[\"2:30\",\"4:15\"]", "[2, 4]", "[2000, 0]",
+            "[\"25:00\",\"3:00\"]", "[\"2360:00\",\"100:00\"]", "[\"50:00\",\"100:00\"]", "[\"5:00\",\"5:00\"]",
+            "[\"a\",\"b\"]", "[\"2:60\",\"4:00\"]", "[\"-2:00\",\"4:00\"]", "not json", "2-6,14-18", "{\"start\":2}",
+        ];
+
+        var cases = inputs.Select(input =>
+        {
+            var windows = SpawnWindows.Parse(input);
+            return new SpawnWindowGolden(
+                input,
+                windows.Select(w => new SpawnWindowHours(w.StartHour, w.EndHour)).ToList(),
+                SpawnWindows.Serialize(windows));
+        }).ToList();
+
+        AssertOrWrite("spawn-windows.json", JsonSerializer.Serialize(cases, StaticDataExporter.Json) + "\n");
+    }
+
+    [Fact]
     public async Task Gathering_guide_golden_is_current()
     {
         using var scope = _db.CreateScope();
@@ -473,6 +502,10 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     private sealed record EorzeanHourGolden(long UnixSeconds, int Hour);
 
     private sealed record WindowGolden(int StartHour, int EndHour, int CurrentHour, bool IsActive, long SecondsUntil, string TimeUntil);
+
+    private sealed record SpawnWindowGolden(string? Input, List<SpawnWindowHours> Windows, string? Serialized);
+
+    private sealed record SpawnWindowHours(int StartHour, int EndHour);
 
     private sealed record GatheringGuideGolden(string Name, List<GatheredMaterialInput> Items, int CurrentHour, GatheringGuideDto Result);
 

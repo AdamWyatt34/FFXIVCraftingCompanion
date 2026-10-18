@@ -1,8 +1,8 @@
-using System.Text.Json;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
 using FFXIV.Domain.Models;
 using FFXIV.Domain.Repositories;
+using FFXIV.Domain.Utilities;
 
 namespace FFXIV.Application.Gathering;
 
@@ -82,7 +82,9 @@ public class GatheringGuideService : IGatheringGuideService
 
             guideItems.Add((guideItem, preferred.ZoneName));
 
-            if (preferred.IsTimed && timeWindow is not null)
+            // "Timed" follows from a usable window, not the stored flag: rows written before the
+            // spawn-time fix carry IsTimed = true with the sentinel for every node.
+            if (timeWindow is not null)
             {
                 timedNodes.Add(new TimedNodeEntry
                 {
@@ -171,34 +173,15 @@ public class GatheringGuideService : IGatheringGuideService
             .ToList();
     }
 
+    /// <summary>
+    /// The guide shows one window per node: the first stored one. Nodes whose stored times carry
+    /// no usable window (pre-fix rows with the 65535 sentinel included) get none.
+    /// </summary>
     private static EorzeanTimeWindow? ParseTimeWindow(string? spawnTimes)
     {
-        if (string.IsNullOrEmpty(spawnTimes))
-            return null;
-
-        try
-        {
-            var times = JsonSerializer.Deserialize<string[]>(spawnTimes);
-            if (times is null || times.Length < 2)
-                return null;
-
-            var startHour = ParseHour(times[0]);
-            var endHour = ParseHour(times[1]);
-
-            if (startHour < 0 || endHour < 0)
-                return null;
-
-            return new EorzeanTimeWindow { StartHour = startHour, EndHour = endHour };
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static int ParseHour(string timeString)
-    {
-        var parts = timeString.Split(':');
-        return parts.Length > 0 && int.TryParse(parts[0], out var hour) ? hour : -1;
+        var windows = SpawnWindows.Parse(spawnTimes);
+        return windows.Count == 0
+            ? null
+            : new EorzeanTimeWindow { StartHour = windows[0].StartHour, EndHour = windows[0].EndHour };
     }
 }
