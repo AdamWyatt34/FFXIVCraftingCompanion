@@ -43,7 +43,9 @@ pub fn validate(
         ("CP", stats.cp, i32::from(i16::MAX)),
     ] {
         if value > max {
-            return Err(format!("{field} {value} is above the engine's maximum of {max}."));
+            return Err(format!(
+                "{field} {value} is above the engine's maximum of {max}."
+            ));
         }
     }
     Ok(starting_quality.clamp(0, recipe.quality))
@@ -57,10 +59,9 @@ pub fn initial_state(
 ) -> Result<CraftingStateDto, String> {
     let starting_quality = validate(recipe, stats, starting_quality)?;
     let recipe = recipe.to_recipe(starting_quality);
-    Ok(CraftingStateDto::from_state(&CraftingState::create_initial(
-        &recipe,
-        &stats.to_stats(),
-    )))
+    Ok(CraftingStateDto::from_state(
+        &CraftingState::create_initial(&recipe, &stats.to_stats()),
+    ))
 }
 
 /// `ExecuteSingleActionCommand`.
@@ -282,7 +283,11 @@ impl Session {
             .map_err(|e| e.to_string())
     }
 
-    pub fn run(&mut self, max_iterations: u64, now_ms: Clock<'_>) -> Result<SearchProgressDto, String> {
+    pub fn run(
+        &mut self,
+        max_iterations: u64,
+        now_ms: Clock<'_>,
+    ) -> Result<SearchProgressDto, String> {
         self.solver
             .run(max_iterations, now_ms)
             .map(progress_dto)

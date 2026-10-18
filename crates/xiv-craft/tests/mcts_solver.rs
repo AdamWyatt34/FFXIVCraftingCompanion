@@ -10,12 +10,12 @@ use xiv_craft::solver::greedy;
 use xiv_craft::solver::mcts::calculate_reward;
 use xiv_craft::solver::mcts::tree::{Arena, NONE};
 use xiv_craft::solver::ActionSet;
+use xiv_craft::SolverError;
 use xiv_craft::{
     simulate, Action, CraftStatus, CrafterStats, CraftingState, GreedySolverConfig, MctsConfig,
     MctsSolver, Recipe, SolverAlgorithm, SolverConstraints, SolverResult, SolverSettings,
     SolverStatus,
 };
-use xiv_craft::SolverError;
 
 fn solver() -> MctsSolver {
     MctsSolver::new(MctsConfig::default(), GreedySolverConfig::default())
@@ -298,7 +298,10 @@ fn finish_after_a_partial_run_reports_the_best_so_far() {
     assert_eq!(progress.iterations, 200);
     assert!(!progress.done);
     assert!(progress.best_steps > 0, "the greedy seed is a best-so-far");
-    assert_eq!(solver.progress(&mut frozen_clock()).expect("progress"), progress);
+    assert_eq!(
+        solver.progress(&mut frozen_clock()).expect("progress"),
+        progress
+    );
 
     let result = solver.finish(&mut frozen_clock()).expect("finish");
 

@@ -32,9 +32,14 @@ pub enum SolverError {
 impl core::fmt::Display for SolverError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            SolverError::NoSearchInProgress => f.write_str("no search in progress: call begin first"),
+            SolverError::NoSearchInProgress => {
+                f.write_str("no search in progress: call begin first")
+            }
             SolverError::StateDoesNotFit { field, value } => {
-                write!(f, "{field} = {value} is outside the range the solver can represent")
+                write!(
+                    f,
+                    "{field} = {value} is outside the range the solver can represent"
+                )
             }
         }
     }

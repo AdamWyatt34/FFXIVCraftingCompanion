@@ -94,11 +94,23 @@ fn initial_state_matches_the_api_shape() {
 #[test]
 fn initial_state_clamps_a_manual_starting_quality() {
     assert_eq!(
-        engine::initial_state(&recipe(), &stats(), 9000).expect("valid input").quality,
+        engine::initial_state(&recipe(), &stats(), 9000)
+            .expect("valid input")
+            .quality,
         7200
     );
-    assert_eq!(engine::initial_state(&recipe(), &stats(), 500).expect("valid input").quality, 500);
-    assert_eq!(engine::initial_state(&recipe(), &stats(), -5).expect("valid input").quality, 0);
+    assert_eq!(
+        engine::initial_state(&recipe(), &stats(), 500)
+            .expect("valid input")
+            .quality,
+        500
+    );
+    assert_eq!(
+        engine::initial_state(&recipe(), &stats(), -5)
+            .expect("valid input")
+            .quality,
+        0
+    );
 }
 
 #[test]
@@ -389,7 +401,8 @@ fn greedy_solve_reports_the_api_metrics() {
         0,
         &SolverConstraintsDto::default(),
         &mut frozen(),
-    ).expect("valid input");
+    )
+    .expect("valid input");
     assert_eq!(result.metrics.algorithm_used, "Greedy");
     assert!(result.metrics.craft_completed);
     assert_eq!(result.action_ids.len() as i32, result.metrics.total_steps);
@@ -416,7 +429,8 @@ fn greedy_solve_on_an_expert_recipe_fails_like_the_api() {
         0,
         &SolverConstraintsDto::default(),
         &mut frozen(),
-    ).expect("valid input");
+    )
+    .expect("valid input");
     assert_eq!(
         result.error_message.as_deref(),
         Some("Expert recipes require the MCTS solver.")
@@ -437,25 +451,28 @@ fn greedy_solve_honours_the_request_constraints() {
             ..Default::default()
         },
         &mut frozen(),
-    ).expect("valid input");
+    )
+    .expect("valid input");
     assert_eq!(capped.action_ids.len(), 5);
 }
 
 #[test]
 fn session_runs_in_slices_and_finishes_with_the_best_rotation() {
     let mut session = engine::Session::new(100_000, None);
-    session.begin(
-        &recipe(),
-        &stats(),
-        0,
-        &SolverConstraintsDto::default(),
-        &SolverSettingsDto {
-            time_budget_ms: f64::INFINITY,
-            max_iterations: Some(3_000),
-            random_seed: Some(42),
-        },
-        &mut frozen(),
-    ).expect("begin");
+    session
+        .begin(
+            &recipe(),
+            &stats(),
+            0,
+            &SolverConstraintsDto::default(),
+            &SolverSettingsDto {
+                time_budget_ms: f64::INFINITY,
+                max_iterations: Some(3_000),
+                random_seed: Some(42),
+            },
+            &mut frozen(),
+        )
+        .expect("begin");
 
     let first = session.run(1_000, &mut frozen()).expect("run");
     assert_eq!(first.iterations, 1_000.0);
@@ -491,15 +508,20 @@ fn a_raised_early_termination_threshold_keeps_the_search_running() {
     };
     let run = |threshold: Option<u64>| {
         let mut session = engine::Session::new(100_000, threshold);
-        session.begin(
-            &recipe(),
-            &stats(),
-            0,
-            &SolverConstraintsDto::default(),
-            &settings,
-            &mut frozen(),
-        ).expect("begin");
-        session.run(u64::MAX, &mut frozen()).expect("run").iterations
+        session
+            .begin(
+                &recipe(),
+                &stats(),
+                0,
+                &SolverConstraintsDto::default(),
+                &settings,
+                &mut frozen(),
+            )
+            .expect("begin");
+        session
+            .run(u64::MAX, &mut frozen())
+            .expect("run")
+            .iterations
     };
 
     let default_stop = run(None);
@@ -529,34 +551,59 @@ fn validate_mirrors_the_request_rules_and_the_engine_bounds() {
     let r = recipe();
     let ok = stats();
     assert_eq!(engine::validate(&r, &ok, 0), Ok(0));
-    assert_eq!(engine::validate(&r, &ok, 99_999), Ok(r.quality), "starting quality is clamped");
+    assert_eq!(
+        engine::validate(&r, &ok, 99_999),
+        Ok(r.quality),
+        "starting quality is clamped"
+    );
     assert_eq!(engine::validate(&r, &ok, -5), Ok(0));
 
     let level = CrafterStatsDto { level: 0, ..ok };
-    assert_eq!(engine::validate(&r, &level, 0), Err("Level must be between 1 and 100.".into()));
+    assert_eq!(
+        engine::validate(&r, &level, 0),
+        Err("Level must be between 1 and 100.".into())
+    );
     let level = CrafterStatsDto { level: 101, ..ok };
-    assert_eq!(engine::validate(&r, &level, 0), Err("Level must be between 1 and 100.".into()));
+    assert_eq!(
+        engine::validate(&r, &level, 0),
+        Err("Level must be between 1 and 100.".into())
+    );
     let cp = CrafterStatsDto { cp: 0, ..ok };
-    assert_eq!(engine::validate(&r, &cp, 0), Err("Craftsmanship and CP must be positive.".into()));
+    assert_eq!(
+        engine::validate(&r, &cp, 0),
+        Err("Craftsmanship and CP must be positive.".into())
+    );
     let control = CrafterStatsDto { control: -1, ..ok };
-    assert_eq!(engine::validate(&r, &control, 0), Err("Control must be non-negative.".into()));
+    assert_eq!(
+        engine::validate(&r, &control, 0),
+        Err("Control must be non-negative.".into())
+    );
     let huge_cp = CrafterStatsDto { cp: 40_000, ..ok };
     assert_eq!(
         engine::validate(&r, &huge_cp, 0),
         Err("CP 40000 is above the engine's maximum of 32767.".into())
     );
 
-    let divider = RecipeParametersDto { progress_divider: 0, ..recipe() };
+    let divider = RecipeParametersDto {
+        progress_divider: 0,
+        ..recipe()
+    };
     assert_eq!(
         engine::validate(&divider, &ok, 0),
         Err("Recipe level data is unavailable for this recipe.".into())
     );
-    let difficulty = RecipeParametersDto { difficulty: 70_000, ..recipe() };
+    let difficulty = RecipeParametersDto {
+        difficulty: 70_000,
+        ..recipe()
+    };
     assert_eq!(
         engine::validate(&difficulty, &ok, 0),
         Err("Difficulty 70000 is above the engine's maximum of 65535.".into())
     );
-    let durability = RecipeParametersDto { durability: 0, ..recipe() };
+    let durability = RecipeParametersDto {
+        durability: 0,
+        ..recipe()
+    };
     assert_eq!(
         engine::validate(&durability, &ok, 0),
         Err("Recipe difficulty, quality and durability must be positive.".into())
@@ -567,21 +614,55 @@ fn validate_mirrors_the_request_rules_and_the_engine_bounds() {
 fn every_entry_point_refuses_invalid_input() {
     let bad = CrafterStatsDto { cp: 0, ..stats() };
     let expected = Err::<(), String>("Craftsmanship and CP must be positive.".into());
-    assert_eq!(engine::initial_state(&recipe(), &bad, 0).map(|_| ()), expected);
-    let state = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
-    assert_eq!(engine::execute_action(&state, 100_001, &bad, &recipe()).map(|_| ()), expected);
-    assert_eq!(engine::available_actions(&state, &bad, &recipe()).map(|_| ()), expected);
     assert_eq!(
-        engine::simulate(&recipe(), &bad, &[100_001], &SimulationOptionsDto::default(), &[]).map(|_| ()),
+        engine::initial_state(&recipe(), &bad, 0).map(|_| ()),
+        expected
+    );
+    let state = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
+    assert_eq!(
+        engine::execute_action(&state, 100_001, &bad, &recipe()).map(|_| ()),
         expected
     );
     assert_eq!(
-        engine::greedy_solve(&recipe(), &bad, 0, &SolverConstraintsDto::default(), &mut frozen()).map(|_| ()),
+        engine::available_actions(&state, &bad, &recipe()).map(|_| ()),
+        expected
+    );
+    assert_eq!(
+        engine::simulate(
+            &recipe(),
+            &bad,
+            &[100_001],
+            &SimulationOptionsDto::default(),
+            &[]
+        )
+        .map(|_| ()),
+        expected
+    );
+    assert_eq!(
+        engine::greedy_solve(
+            &recipe(),
+            &bad,
+            0,
+            &SolverConstraintsDto::default(),
+            &mut frozen()
+        )
+        .map(|_| ()),
         expected
     );
     let mut session = engine::Session::new(10_000, None);
     assert_eq!(
-        session.begin(&recipe(), &bad, 0, &SolverConstraintsDto::default(), &SolverSettingsDto { time_budget_ms: 1.0, max_iterations: Some(10), random_seed: Some(1) }, &mut frozen()),
+        session.begin(
+            &recipe(),
+            &bad,
+            0,
+            &SolverConstraintsDto::default(),
+            &SolverSettingsDto {
+                time_budget_ms: 1.0,
+                max_iterations: Some(10),
+                random_seed: Some(1)
+            },
+            &mut frozen()
+        ),
         expected
     );
 }
@@ -590,16 +671,46 @@ fn every_entry_point_refuses_invalid_input() {
 fn a_session_step_without_a_search_is_an_error_not_a_panic() {
     let mut session = engine::Session::new(10_000, None);
     let expected = "no search in progress: call begin first".to_string();
-    assert_eq!(session.run(10, &mut frozen()).map(|_| ()), Err(expected.clone()));
-    assert_eq!(session.progress(&mut frozen()).map(|_| ()), Err(expected.clone()));
+    assert_eq!(
+        session.run(10, &mut frozen()).map(|_| ()),
+        Err(expected.clone())
+    );
+    assert_eq!(
+        session.progress(&mut frozen()).map(|_| ()),
+        Err(expected.clone())
+    );
     assert_eq!(session.finish(&mut frozen()).map(|_| ()), Err(expected));
 }
 
 #[test]
 fn hq_counts_are_clamped_to_the_ingredient_quantity() {
     let r = recipe();
-    let all_two = engine::starting_quality(&r, &[HqIngredientDto { item_id: 1, hq_quantity: 2 }]);
+    let all_two = engine::starting_quality(
+        &r,
+        &[HqIngredientDto {
+            item_id: 1,
+            hq_quantity: 2,
+        }],
+    );
     assert!(all_two > 0);
-    assert_eq!(engine::starting_quality(&r, &[HqIngredientDto { item_id: 1, hq_quantity: 99 }]), all_two);
-    assert_eq!(engine::starting_quality(&r, &[HqIngredientDto { item_id: 1, hq_quantity: -3 }]), 0);
+    assert_eq!(
+        engine::starting_quality(
+            &r,
+            &[HqIngredientDto {
+                item_id: 1,
+                hq_quantity: 99
+            }]
+        ),
+        all_two
+    );
+    assert_eq!(
+        engine::starting_quality(
+            &r,
+            &[HqIngredientDto {
+                item_id: 1,
+                hq_quantity: -3
+            }]
+        ),
+        0
+    );
 }

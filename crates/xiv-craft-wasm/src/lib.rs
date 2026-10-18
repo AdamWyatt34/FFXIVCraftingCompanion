@@ -24,7 +24,9 @@ extern "C" {
 /// where the worker's error path would otherwise only see "unreachable executed".
 #[wasm_bindgen(start)]
 pub fn start() {
-    std::panic::set_hook(Box::new(|info| error(&format!("xiv-craft panicked: {info}"))));
+    std::panic::set_hook(Box::new(|info| {
+        error(&format!("xiv-craft panicked: {info}"))
+    }));
 }
 
 // The TypeScript the bindings publish: the frontend's own DTO types, imported relative to

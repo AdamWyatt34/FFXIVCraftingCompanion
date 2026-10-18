@@ -38,7 +38,11 @@ pub struct PackError {
 
 impl core::fmt::Display for PackError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} = {} does not fit the packed state", self.field, self.value)
+        write!(
+            f,
+            "{} = {} does not fit the packed state",
+            self.field, self.value
+        )
     }
 }
 
@@ -227,7 +231,16 @@ mod tests {
             ..CraftingState::default()
         })
         .unwrap_err();
-        assert_eq!(error, PackError { field: "progress", value: 70_000 });
-        assert_eq!(error.to_string(), "progress = 70000 does not fit the packed state");
+        assert_eq!(
+            error,
+            PackError {
+                field: "progress",
+                value: 70_000
+            }
+        );
+        assert_eq!(
+            error.to_string(),
+            "progress = 70000 does not fit the packed state"
+        );
     }
 }

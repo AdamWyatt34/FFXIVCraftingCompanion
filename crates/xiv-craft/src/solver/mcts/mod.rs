@@ -13,8 +13,8 @@ use crate::state::{CraftStatus, CrafterStats, CraftingState, Recipe};
 use super::greedy::{self, GreedySolverConfig};
 use super::rng::Xoshiro256;
 use super::{
-    ActionSet, Clock, SolverAlgorithm, SolverConstraints, SolverError, SolverMetrics,
-    SolverResult, SolverSettings, SolverStatus,
+    ActionSet, Clock, SolverAlgorithm, SolverConstraints, SolverError, SolverMetrics, SolverResult,
+    SolverSettings, SolverStatus,
 };
 use packed::PackedState;
 use tree::Arena;
@@ -310,7 +310,10 @@ impl MctsSolver {
     ///
     /// [`SolverError::NoSearchInProgress`] without a [`MctsSolver::begin`].
     pub fn progress(&self, now_ms: Clock<'_>) -> Result<SearchProgress, SolverError> {
-        let session = self.session.as_ref().ok_or(SolverError::NoSearchInProgress)?;
+        let session = self
+            .session
+            .as_ref()
+            .ok_or(SolverError::NoSearchInProgress)?;
         Ok(self.snapshot(session, now_ms() - session.started_ms))
     }
 
