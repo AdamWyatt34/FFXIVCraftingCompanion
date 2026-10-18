@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FFXIV.Application.Profile.DTOs;
 using FFXIV.Domain.Constants;
 using FFXIV.Domain.Entities;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FFXIV.Application.Profile.Commands;
 
-public sealed class ImportLodestoneCommandHandler
+public sealed partial class ImportLodestoneCommandHandler
     : IRequestHandler<ImportLodestoneCommand, ImportLodestoneResult>
 {
     private readonly ICharacterProfileRepository _profileRepo;
@@ -55,6 +56,21 @@ public sealed class ImportLodestoneCommandHandler
 
         if (lodestoneData is null)
             return new ImportLodestoneResult(null, false, "Character not found on Lodestone.", 404);
+
+        // The id comes from a scraped page and is stored in a unique 64-char column; only a plain
+        // numeric id is accepted.
+        if (!LodestoneIdPattern().IsMatch(lodestoneData.LodestoneId))
+        {
+            _logger.LogWarning("Lodestone returned a malformed character id {LodestoneId} for {Name} on {Server}",
+                lodestoneData.LodestoneId, request.CharacterName, request.ServerName);
+            return new ImportLodestoneResult(null, false, "Lodestone returned an unexpected character id.", 502);
+        }
+
+        // One Lodestone character belongs to one account; without this check the unique index
+        // would fail the save and the user would see a 500.
+        var linked = await _profileRepo.GetByLodestoneIdAsync(lodestoneData.LodestoneId, cancellationToken);
+        if (linked is not null && linked.UserId != request.UserId)
+            return new ImportLodestoneResult(null, false, "This character is already linked to another account.", 409);
 
         // Match gear
         var (gearDict, gearSlots) = await MatchGearAsync(lodestoneData, cancellationToken);
@@ -178,6 +194,9 @@ public sealed class ImportLodestoneCommandHandler
 
         return (gearDict, gearSlots);
     }
+
+    [GeneratedRegex(@"^\d{1,20}$")]
+    private static partial Regex LodestoneIdPattern();
 
     private static void ApplyStats(
         CharacterProfile profile,

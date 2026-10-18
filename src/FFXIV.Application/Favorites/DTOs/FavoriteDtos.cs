@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace FFXIV.Application.Favorites.DTOs;
 
 public sealed record FavoriteRecipeDto(
@@ -14,5 +16,7 @@ public sealed record FavoriteStatusDto(
 
 public sealed class ToggleFavoriteRequest
 {
+    /// <summary>Mirrors the 1024-character FavoriteRecipes.Note column.</summary>
+    [MaxLength(1024, ErrorMessage = "Note must be 1024 characters or fewer.")]
     public string? Note { get; set; }
 }

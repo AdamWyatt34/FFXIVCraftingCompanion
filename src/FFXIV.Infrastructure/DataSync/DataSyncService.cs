@@ -11,6 +11,7 @@ namespace FFXIV.Infrastructure.DataSync;
 public sealed class DataSyncService : BackgroundService, IDataSyncTrigger
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<DataSyncService> _logger;
     private readonly DataSyncOptions _options;
     private readonly CronExpression _cronExpression;
@@ -21,25 +22,32 @@ public sealed class DataSyncService : BackgroundService, IDataSyncTrigger
 
     public DataSyncService(
         IServiceScopeFactory scopeFactory,
+        IHostApplicationLifetime lifetime,
         IOptions<DataSyncOptions> options,
         ILogger<DataSyncService> logger)
     {
         _scopeFactory = scopeFactory;
+        _lifetime = lifetime;
         _logger = logger;
         _options = options.Value;
         _cronExpression = CronExpression.Parse(_options.SyncScheduleCron);
     }
 
-    public async Task TriggerSyncAsync(CancellationToken cancellationToken = default)
+    public bool TriggerSync()
     {
+        if (IsSyncRunning)
+            return false;
+
         if (_manualTrigger is { Task.IsCompleted: false })
         {
             _manualTrigger.TrySetResult();
-            return;
+            return true;
         }
 
-        // If the loop hasn't set up a trigger yet, run directly
-        await RunSyncWithLockAsync(isManual: true, cancellationToken);
+        // The loop has not armed a trigger yet (startup delay or startup sync). A sync takes
+        // minutes, so it must not run on the caller's request: it would die with the HTTP timeout.
+        _ = Task.Run(() => RunSyncWithLockAsync(isManual: true, _lifetime.ApplicationStopping), CancellationToken.None);
+        return true;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

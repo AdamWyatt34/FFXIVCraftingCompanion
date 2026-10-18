@@ -5,6 +5,7 @@ using FFXIV.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FFXIV.Api.Controllers;
 
@@ -112,6 +113,7 @@ public class CraftPlansController : ControllerBase
     /// <response code="404">Plan not found.</response>
     [HttpGet("{id}/items")]
     [AllowAnonymous]
+    [EnableRateLimiting("public-read")]
     [ProducesResponseType(typeof(CraftPlanDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetItems(string id)

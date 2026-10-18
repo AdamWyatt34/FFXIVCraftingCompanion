@@ -6,6 +6,7 @@ using FFXIV.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FFXIV.Api.Controllers;
 
@@ -56,22 +57,11 @@ public class ProfileController : ControllerBase
     public async Task<IActionResult> CreateProfile(
         [FromBody] CreateProfileRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.CharacterName))
-            return BadRequest(new { error = "Character name is required." });
-
-        if (string.IsNullOrWhiteSpace(request.ActiveJob))
-            return BadRequest(new { error = "Active job is required." });
-
+        // Required fields, lengths, the level range and stat bounds are DataAnnotations on the
+        // request type; the job and job-level semantics are checked here.
         var normalizedJob = request.ActiveJob.ToUpperInvariant();
         if (!JobClassification.IsDoH(normalizedJob) && !JobClassification.IsDoL(normalizedJob))
             return BadRequest(new { error = $"'{request.ActiveJob}' is not a valid DoH/DoL job." });
-
-        if (request.ActiveJobLevel is < 1 or > 100)
-            return BadRequest(new { error = "Active job level must be between 1 and 100." });
-
-        if (request.Craftsmanship < 0 || request.Control < 0 || request.CP < 0 ||
-            request.Gathering < 0 || request.Perception < 0 || request.GP < 0)
-            return BadRequest(new { error = "Stats must be non-negative." });
 
         if (request.JobLevels is not null)
         {
@@ -85,8 +75,6 @@ public class ProfileController : ControllerBase
             request.CharacterName.Trim(),
             request.ServerName?.Trim(),
             request.DataCenter?.Trim(),
-            request.LodestoneId?.Trim(),
-            request.AvatarUrl?.Trim(),
             normalizedJob,
             request.ActiveJobLevel,
             request.JobLevels,
@@ -123,24 +111,14 @@ public class ProfileController : ControllerBase
                 return BadRequest(new { error = $"'{request.ActiveJob}' is not a valid DoH/DoL job." });
         }
 
-        if (request.ActiveJobLevel.HasValue && request.ActiveJobLevel is < 1 or > 100)
-            return BadRequest(new { error = "Active job level must be between 1 and 100." });
-
-        if ((request.Craftsmanship.HasValue && request.Craftsmanship < 0) ||
-            (request.Control.HasValue && request.Control < 0) ||
-            (request.CP.HasValue && request.CP < 0) ||
-            (request.Gathering.HasValue && request.Gathering < 0) ||
-            (request.Perception.HasValue && request.Perception < 0) ||
-            (request.GP.HasValue && request.GP < 0))
-            return BadRequest(new { error = "Stats must be non-negative." });
+        if (request.CharacterName is not null && string.IsNullOrWhiteSpace(request.CharacterName))
+            return BadRequest(new { error = "Character name must not be blank." });
 
         var result = await _mediator.Send(new UpdateProfileCommand(
             _currentUser.UserId!,
             request.CharacterName?.Trim(),
             request.ServerName?.Trim(),
             request.DataCenter?.Trim(),
-            request.LodestoneId?.Trim(),
-            request.AvatarUrl?.Trim(),
             request.ActiveJob?.ToUpperInvariant(),
             request.ActiveJobLevel,
             request.Craftsmanship,
@@ -200,10 +178,13 @@ public class ProfileController : ControllerBase
         if (request.Slots.Count == 0)
             return BadRequest(new { error = "At least one gear slot must be provided." });
 
-        foreach (var slotKey in request.Slots.Keys)
+        foreach (var (slotKey, equipmentId) in request.Slots)
         {
-            if (!ValidSlotKeys.Contains(slotKey))
-                return BadRequest(new { error = $"'{slotKey}' is not a valid gear slot. Valid slots: {string.Join(", ", ValidSlotKeys)}" });
+            if (!GearSlotKeys.IsValid(slotKey))
+                return BadRequest(new { error = $"'{slotKey}' is not a valid gear slot. Valid slots: {GearSlotKeys.Describe()}" });
+
+            if (equipmentId <= 0)
+                return BadRequest(new { error = $"Equipment id for '{slotKey}' must be a positive integer." });
         }
 
         var result = await _mediator.Send(new UpdateCurrentGearCommand(
@@ -255,23 +236,22 @@ public class ProfileController : ControllerBase
     /// <response code="200">Character imported successfully.</response>
     /// <response code="400">Invalid server name.</response>
     /// <response code="404">Character not found on Lodestone.</response>
+    /// <response code="409">The character is already linked to another account.</response>
     /// <response code="429">Rate limited — wait before importing again.</response>
+    /// <response code="502">Lodestone returned a malformed character id.</response>
     /// <response code="503">Lodestone is currently unavailable.</response>
     [HttpPost("import-lodestone")]
     [ProducesResponseType(typeof(CharacterProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ImportLodestone(
         [FromBody] ImportLodestoneRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.CharacterName))
-            return BadRequest(new { error = "Character name is required." });
-
-        if (string.IsNullOrWhiteSpace(request.ServerName))
-            return BadRequest(new { error = "Server name is required." });
-
+        // Presence and length of both fields are DataAnnotations on the request type.
         var result = await _mediator.Send(new ImportLodestoneCommand(
             _currentUser.UserId!,
             request.CharacterName.Trim(),
@@ -312,6 +292,7 @@ public class ProfileController : ControllerBase
     /// <response code="400">Missing or invalid parameters.</response>
     /// <response code="404">Character not found on Lodestone.</response>
     [AllowAnonymous]
+    [EnableRateLimiting("public-read")]
     [HttpGet("lodestone-preview")]
     [ProducesResponseType(typeof(LodestonePreviewDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -325,20 +306,15 @@ public class ProfileController : ControllerBase
         if (string.IsNullOrWhiteSpace(server))
             return BadRequest(new { error = "Server query parameter is required." });
 
+        if (name.Length > ProfileLimits.MaxCharacterNameLength || server.Length > 64)
+            return BadRequest(new { error = "Name or server is too long." });
+
         var result = await _mediator.Send(new PreviewLodestoneQuery(name.Trim(), server.Trim()), ct);
 
         return result is not null
             ? Ok(result)
             : NotFound(new { error = "Character not found on Lodestone." });
     }
-
-    private static readonly HashSet<string> ValidSlotKeys =
-    [
-        "Head", "Body", "Hands", "Legs", "Feet",
-        "MainHand", "OffHand",
-        "Earring", "Necklace", "Bracelet",
-        "Ring1", "Ring2"
-    ];
 
     private static string? ValidateJobLevels(Dictionary<string, int> jobLevels)
     {

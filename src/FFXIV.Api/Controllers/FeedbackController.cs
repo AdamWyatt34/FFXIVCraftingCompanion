@@ -25,25 +25,17 @@ public class FeedbackController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SubmitFeedback([FromBody] SubmitFeedbackRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Category) || !ValidCategories.Contains(request.Category))
+        // Lengths and the email format are DataAnnotations on the request type.
+        if (!ValidCategories.Contains(request.Category))
             return BadRequest(new { error = $"Category must be one of: {string.Join(", ", ValidCategories)}" });
-
-        if (string.IsNullOrWhiteSpace(request.Message))
-            return BadRequest(new { error = "Message is required." });
-
-        if (request.Message.Length > 5000)
-            return BadRequest(new { error = "Message must be 5000 characters or less." });
-
-        if (request.Email is not null && request.Email.Length > 320)
-            return BadRequest(new { error = "Email must be 320 characters or less." });
 
         var userAgent = Request.Headers.UserAgent.ToString();
 
         var result = await _mediator.Send(new SubmitFeedbackCommand(
             request.Category,
-            request.Message,
-            request.Email,
-            request.PageUrl,
+            request.Message.Trim(),
+            string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
+            string.IsNullOrWhiteSpace(request.PageUrl) ? null : request.PageUrl.Trim(),
             userAgent.Length > 512 ? userAgent[..512] : userAgent));
 
         return StatusCode(StatusCodes.Status201Created, result);

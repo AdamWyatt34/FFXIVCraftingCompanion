@@ -43,10 +43,18 @@ This takes several minutes. Monitor with `GET /api/admin/sync/status`.
 ## Health Check
 
 ```
-GET http://localhost:5159/health
+GET http://localhost:5159/health/live
 ```
 
-Returns JSON with database, XIVAPI, and Redis connectivity status.
+Returns 200 with no checks run (the container liveness probe). The full readiness report, which
+opens the database and calls XIVAPI, needs the admin key:
+
+```
+GET http://localhost:5159/health
+X-Admin-Key: <Admin:ApiKey>
+```
+
+Returns JSON with database, XIVAPI, and Redis connectivity status; 401 without the key.
 
 ---
 
@@ -818,4 +826,5 @@ Anonymous recommendations, profiles and equipment search come from the static ga
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/health` | No | Health check (DB, XIVAPI, Redis) |
+| GET | `/health/live` | No | Liveness probe (no checks run) |
+| GET | `/health` | `X-Admin-Key` | Readiness report (DB, XIVAPI, Redis) |

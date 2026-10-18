@@ -8,8 +8,6 @@ public sealed record UpdateProfileCommand(
     string? CharacterName,
     string? ServerName,
     string? DataCenter,
-    string? LodestoneId,
-    string? AvatarUrl,
     string? ActiveJob,
     int? ActiveJobLevel,
     int? Craftsmanship,

@@ -29,25 +29,32 @@ public class FavoriteRecipeRepository : IFavoriteRecipeRepository
             .AnyAsync(f => f.UserId == userId && f.RecipeId == recipeId, cancellationToken);
     }
 
-    public async Task<FavoriteRecipe> AddAsync(
+    public async Task<bool> AddAsync(
         FavoriteRecipe favorite, CancellationToken cancellationToken = default)
     {
         _db.FavoriteRecipes.Add(favorite);
-        await _db.SaveChangesAsync(cancellationToken);
-        return favorite;
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // The (UserId, RecipeId) index is unique: a concurrent toggle already stored it.
+            _db.Entry(favorite).State = EntityState.Detached;
+            if (await IsFavoritedAsync(favorite.UserId, favorite.RecipeId, cancellationToken))
+                return false;
+            throw;
+        }
     }
 
-    public async Task RemoveAsync(
+    public async Task<bool> RemoveAsync(
         string userId, int recipeId, CancellationToken cancellationToken = default)
     {
-        var entity = await _db.FavoriteRecipes
-            .FirstOrDefaultAsync(f => f.UserId == userId && f.RecipeId == recipeId, cancellationToken);
-
-        if (entity is not null)
-        {
-            _db.FavoriteRecipes.Remove(entity);
-            await _db.SaveChangesAsync(cancellationToken);
-        }
+        var removed = await _db.FavoriteRecipes
+            .Where(f => f.UserId == userId && f.RecipeId == recipeId)
+            .ExecuteDeleteAsync(cancellationToken);
+        return removed > 0;
     }
 
     public async Task<int> GetCountByUserAsync(

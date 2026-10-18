@@ -34,8 +34,16 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Azure SQL's free tier auto-pauses; the first command after a pause fails while it resumes.
+        // The retrying strategy turns that into a delay instead of a 500. Nothing opens an explicit
+        // transaction, so no caller needs the execution-strategy wrapper.
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlServer(
+                configuration.GetConnectionString("DefaultConnection"),
+                sql => sql.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null)));
 
         AddCaching(services, configuration);
         AddSolverServices(services);
