@@ -2,7 +2,8 @@
 
 /**
  * A resumable MCTS search. `begin`, then `run` in slices until the progress says `done` (or the
- * caller decides to stop), then `finish`. The tree is kept between searches.
+ * caller decides to stop), then `finish`. The tree is kept between searches. Bad input is an
+ * error from `begin` and leaves the session as it was; a step without a search is an error too.
  */
 export class SolverSession {
     __destroy_into_raw() {
@@ -16,11 +17,11 @@ export class SolverSession {
         wasm.__wbg_solversession_free(ptr, 0);
     }
     /**
-     * @param {any} recipe
-     * @param {any} stats
+     * @param {RecipeCraftingParametersDto} recipe
+     * @param {CrafterStatsInput} stats
      * @param {number} starting_quality
-     * @param {any} constraints
-     * @param {any} settings
+     * @param {SolverConstraints | null | undefined} constraints
+     * @param {SolverSessionSettings} settings
      */
     begin(recipe, stats, starting_quality, constraints, settings) {
         const ret = wasm.solversession_begin(this.__wbg_ptr, recipe, stats, starting_quality, constraints, settings);
@@ -29,7 +30,7 @@ export class SolverSession {
         }
     }
     /**
-     * @returns {any}
+     * @returns {SolverResult}
      */
     finish() {
         const ret = wasm.solversession_finish(this.__wbg_ptr);
@@ -51,7 +52,7 @@ export class SolverSession {
         return this;
     }
     /**
-     * @returns {any}
+     * @returns {SearchProgress}
      */
     progress() {
         const ret = wasm.solversession_progress(this.__wbg_ptr);
@@ -62,7 +63,7 @@ export class SolverSession {
     }
     /**
      * @param {number} max_iterations
-     * @returns {any}
+     * @returns {SearchProgress}
      */
     run(max_iterations) {
         const ret = wasm.solversession_run(this.__wbg_ptr, max_iterations);
@@ -83,7 +84,7 @@ if (Symbol.dispose) SolverSession.prototype[Symbol.dispose] = SolverSession.prot
 
 /**
  * @param {number | null} [level]
- * @returns {any}
+ * @returns {ActionInfo[]}
  */
 export function action_catalog(level) {
     const ret = wasm.action_catalog(isLikeNone(level) ? Number.MAX_SAFE_INTEGER : (level) >> 0);
@@ -94,10 +95,10 @@ export function action_catalog(level) {
 }
 
 /**
- * @param {any} state
- * @param {any} stats
- * @param {any} recipe
- * @returns {any}
+ * @param {CraftingState} state
+ * @param {CrafterStatsInput} stats
+ * @param {RecipeCraftingParametersDto} recipe
+ * @returns {ActionAvailability[]}
  */
 export function available_actions(state, stats, recipe) {
     const ret = wasm.available_actions(state, stats, recipe);
@@ -108,11 +109,11 @@ export function available_actions(state, stats, recipe) {
 }
 
 /**
- * @param {any} state
+ * @param {CraftingState} state
  * @param {number} action_id
- * @param {any} stats
- * @param {any} recipe
- * @returns {any}
+ * @param {CrafterStatsInput} stats
+ * @param {RecipeCraftingParametersDto} recipe
+ * @returns {StepResult}
  */
 export function execute_action(state, action_id, stats, recipe) {
     const ret = wasm.execute_action(state, action_id, stats, recipe);
@@ -124,8 +125,8 @@ export function execute_action(state, action_id, stats, recipe) {
 
 /**
  * @param {Int32Array} action_ids
- * @param {any} options
- * @returns {any}
+ * @param {MacroOptions | null | undefined} options
+ * @returns {ExportMacroResult}
  */
 export function export_macro(action_ids, options) {
     const ptr0 = passArray32ToWasm0(action_ids, wasm.__wbindgen_malloc);
@@ -139,11 +140,11 @@ export function export_macro(action_ids, options) {
 
 /**
  * The greedy solver; `constraints` may be null for the API's quick-solve defaults.
- * @param {any} recipe
- * @param {any} stats
+ * @param {RecipeCraftingParametersDto} recipe
+ * @param {CrafterStatsInput} stats
  * @param {number} starting_quality
- * @param {any} constraints
- * @returns {any}
+ * @param {SolverConstraints | null | undefined} constraints
+ * @returns {SolverResult}
  */
 export function greedy_solve(recipe, stats, starting_quality, constraints) {
     const ret = wasm.greedy_solve(recipe, stats, starting_quality, constraints);
@@ -154,10 +155,10 @@ export function greedy_solve(recipe, stats, starting_quality, constraints) {
 }
 
 /**
- * @param {any} recipe
- * @param {any} stats
+ * @param {RecipeCraftingParametersDto} recipe
+ * @param {CrafterStatsInput} stats
  * @param {number} starting_quality
- * @returns {any}
+ * @returns {CraftingState}
  */
 export function initial_state(recipe, stats, starting_quality) {
     const ret = wasm.initial_state(recipe, stats, starting_quality);
@@ -168,12 +169,12 @@ export function initial_state(recipe, stats, starting_quality) {
 }
 
 /**
- * @param {any} recipe
- * @param {any} stats
+ * @param {RecipeCraftingParametersDto} recipe
+ * @param {CrafterStatsInput} stats
  * @param {Int32Array} action_ids
- * @param {any} options
- * @param {any} hq_ingredients
- * @returns {any}
+ * @param {SimulationOptions | null | undefined} options
+ * @param {HQIngredientInput[] | null | undefined} hq_ingredients
+ * @returns {WasmSimulationResult}
  */
 export function simulate(recipe, stats, action_ids, options, hq_ingredients) {
     const ptr0 = passArray32ToWasm0(action_ids, wasm.__wbindgen_malloc);
@@ -186,8 +187,17 @@ export function simulate(recipe, stats, action_ids, options, hq_ingredients) {
 }
 
 /**
- * @param {any} recipe
- * @param {any} hq_ingredients
+ * The crate is built with `panic = "abort"`, so a panic ends in an unreachable trap and the
+ * instance's memory is no longer trusted; the hook writes the message to the console first,
+ * where the worker's error path would otherwise only see "unreachable executed".
+ */
+export function start() {
+    wasm.start();
+}
+
+/**
+ * @param {RecipeCraftingParametersDto} recipe
+ * @param {HQIngredientInput[] | null | undefined} hq_ingredients
  * @returns {number}
  */
 export function starting_quality(recipe, hq_ingredients) {
@@ -290,6 +300,9 @@ function __wbg_get_imports() {
         __wbg_done_cffed884d87aa22e: function(arg0) {
             const ret = arg0.done;
             return ret;
+        },
+        __wbg_error_c500a3a49d7187c5: function(arg0, arg1) {
+            console.error(getStringFromWasm0(arg0, arg1));
         },
         __wbg_get_6cf5a4d4d8ad3c5a: function() { return handleError(function (arg0, arg1) {
             const ret = Reflect.get(arg0, arg1);

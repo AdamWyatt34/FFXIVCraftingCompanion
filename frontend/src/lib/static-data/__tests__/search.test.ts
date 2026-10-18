@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ItemSearchResultDto } from "@/types/api";
-import type { ItemExport, RecipeExport, SearchIndexEntry } from "../types";
+import type { CompactSearchIndex, ItemExport, RecipeExport, SearchIndexEntry } from "../types";
 import { QUICK_FILTERS, searchIndex } from "../search";
-import { readGoldenLines } from "./goldens";
+import { inflateSearchIndex } from "../search-compact";
+import { readGoldenJson, readGoldenLines } from "./goldens";
 
 interface ItemSearchGolden {
   query: string | null;
@@ -77,4 +78,36 @@ describe("quick filters", () => {
     expect(result.items.map((i) => i.name)).toEqual(["Claro Walnut Lumber"]);
     expect(result.totalCount).toBe(1);
   });
+});
+
+describe("compact index", () => {
+  const compact = readGoldenJson<CompactSearchIndex>("search-compact.json");
+  const inflated = inflateSearchIndex(compact);
+  const cases = readGoldenLines<ItemSearchGolden>("item-search.jsonl");
+
+  it("rebuilds the exporter's entries", () => {
+    // The item-export golden carries no equipment slot and no class job level for recipes outside
+    // the fixture roots, so those two fields stay out of the comparison.
+    const stable = (entries: SearchIndexEntry[]) =>
+      entries.map((e) => ({
+        itemId: e.itemId,
+        name: e.name,
+        icon: e.icon,
+        itemLevel: e.itemLevel,
+        category: e.category,
+        canBeHQ: e.canBeHQ,
+        recipes: e.recipes.map((r) => `${r.recipeId}:${r.craftType}`).sort(),
+        equipment: e.equipment ? `${e.equipment.equipLevel}:${e.equipment.classJobCategory}` : null,
+      }));
+    expect(stable(inflated)).toEqual(stable(indexFromGolden()));
+    expect(compact.slots.length).toBeGreaterThan(0);
+    expect(compact.categories.length).toBeLessThan(compact.itemIds.length);
+  });
+
+  it.each(cases.map((c) => [`${c.query ?? "(none)"} ${c.craftType ?? ""} p${c.page}/${c.pageSize}`, c] as const))(
+    "matches the C# handler for %s through the compact index",
+    (_name, golden) => {
+      expect(searchIndex(inflated, golden.query, golden.page, golden.pageSize, golden.craftType)).toEqual(golden.result);
+    },
+  );
 });

@@ -101,3 +101,25 @@ public sealed record SearchIndexEntry(
 public sealed record SearchIndexRecipe(int RecipeId, string CraftType, int Level);
 
 public sealed record SearchIndexEquipment(string Slot, int EquipLevel, string ClassJobCategory);
+
+/// <summary>
+/// search/compact.json: the same index as search/items.json as interned tables and typed columns,
+/// about a third of the bytes, which the frontend parses and searches in a worker
+/// (src/lib/static-data/search-compact.ts rebuilds <see cref="SearchIndexEntry"/> from it).
+/// Column i describes item i.
+/// </summary>
+/// <param name="Recipes">Per item, [recipeId, index into CraftTypes, class job level] triples.</param>
+/// <param name="Equipment">Per item, [index into Slots, equip level, index into ClassJobCategories], or null.</param>
+public sealed record CompactSearchIndex(
+    IReadOnlyList<string> CraftTypes,
+    IReadOnlyList<string> Categories,
+    IReadOnlyList<string> Slots,
+    IReadOnlyList<string> ClassJobCategories,
+    IReadOnlyList<int> ItemIds,
+    IReadOnlyList<string> Names,
+    IReadOnlyList<int> Icons,
+    IReadOnlyList<int> ItemLevels,
+    IReadOnlyList<int> CategoryIndexes,
+    IReadOnlyList<bool> CanBeHQ,
+    IReadOnlyList<IReadOnlyList<int[]>> Recipes,
+    IReadOnlyList<int[]?> Equipment);

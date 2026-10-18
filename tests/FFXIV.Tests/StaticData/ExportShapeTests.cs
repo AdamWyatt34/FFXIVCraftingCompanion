@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FFXIV.Application.Recipes.DTOs;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
@@ -22,6 +23,32 @@ public class ExportShapeTests
     {
         var act = () => IconUrl.ToId("https://v2.xivapi.com/api/asset?path=ui%2Ficon%2F035000%2F036649.tex&format=png");
         act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Compact_search_index_round_trips_through_json()
+    {
+        var entries = new List<SearchIndexEntry>
+        {
+            new(10, "Dark Chestnut Lumber", 21234, 133, "Material", true,
+                [new SearchIndexRecipe(2240, "Carpenter", 50)], null),
+            new(11, "Ra'Kaznar Saw", 31000, 700, "Other", true,
+                [new SearchIndexRecipe(35000, "Blacksmith", 100), new SearchIndexRecipe(35001, "Carpenter", 100)],
+                new SearchIndexEquipment("MainHand", 100, "CRP")),
+            new(12, "Saw of Stars", 31001, 710, "Other", false, [], new SearchIndexEquipment("MainHand", 100, "CRP")),
+            new(13, "Fire Crystal", 20012, 1, "Other", false, [], null),
+        };
+
+        var compact = SearchIndexExport.Compact(entries);
+        var json = JsonSerializer.Serialize(compact, StaticDataExporter.Json);
+        var parsed = JsonSerializer.Deserialize<CompactSearchIndex>(json, StaticDataExporter.Json)!;
+
+        compact.CraftTypes.Should().Equal("Carpenter", "Blacksmith");
+        compact.Categories.Should().Equal("Material", "Other");
+        compact.Slots.Should().Equal("MainHand");
+        compact.ClassJobCategories.Should().Equal("CRP");
+        SearchIndexExport.Inflate(parsed).Should().BeEquivalentTo(entries, options => options.WithStrictOrdering());
+        json.Should().Contain("\"canBeHQ\":[true,true,false,false]");
     }
 
     [Fact]

@@ -52,6 +52,7 @@ param registryUsername string = ''
 param registryPassword string = ''
 
 var prefix = 'ffxiv-${environment}'
+var databaseName = '${prefix}-db'
 
 module logAnalytics 'modules/log-analytics.bicep' = {
   name: 'logAnalytics'
@@ -66,13 +67,16 @@ module sqlServer 'modules/sql-server.bicep' = if (deploySql) {
   params: {
     location: location
     serverName: '${prefix}-sql'
-    databaseName: '${prefix}-db'
+    databaseName: databaseName
     adminLogin: sqlAdminLogin
     adminPassword: sqlAdminPassword
   }
 }
 
-var effectiveConnectionString = deploySql ? sqlServer.outputs.connectionString : sqlConnectionString
+// Assembled here from secure parameters rather than output by the SQL module: deployment outputs
+// are readable in the deployment history, secure parameters are not.
+var deployedConnectionString = 'Server=tcp:${deploySql ? sqlServer!.outputs.serverFqdn : ''},1433;Database=${databaseName};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;'
+var effectiveConnectionString = deploySql ? deployedConnectionString : sqlConnectionString
 
 module containerApps 'modules/container-apps.bicep' = {
   name: 'containerApps'
@@ -85,19 +89,11 @@ module containerApps 'modules/container-apps.bicep' = {
     registryServer: 'ghcr.io'
     registryUsername: registryUsername
     registryPassword: registryPassword
+    sqlConnectionString: effectiveConnectionString
+    jwtSecretKey: jwtSecretKey
+    adminApiKey: adminApiKey
+    discordClientSecret: discordClientSecret
     envVars: [
-      {
-        name: 'ConnectionStrings__DefaultConnection'
-        value: effectiveConnectionString
-      }
-      {
-        name: 'Jwt__SecretKey'
-        value: jwtSecretKey
-      }
-      {
-        name: 'Admin__ApiKey'
-        value: adminApiKey
-      }
       {
         name: 'Cors__AllowedOrigins__0'
         value: corsOrigins
@@ -105,10 +101,6 @@ module containerApps 'modules/container-apps.bicep' = {
       {
         name: 'Discord__ClientId'
         value: discordClientId
-      }
-      {
-        name: 'Discord__ClientSecret'
-        value: discordClientSecret
       }
       {
         name: 'Discord__RedirectUri'
@@ -126,4 +118,4 @@ module containerApps 'modules/container-apps.bicep' = {
 output apiUrl string = containerApps.outputs.appUrl
 
 @description('Fully qualified domain name of the SQL Server (only when deploySql is true).')
-output sqlServerFqdn string = deploySql ? sqlServer.outputs.serverFqdn : 'manually-provisioned'
+output sqlServerFqdn string = deploySql ? sqlServer!.outputs.serverFqdn : 'manually-provisioned'

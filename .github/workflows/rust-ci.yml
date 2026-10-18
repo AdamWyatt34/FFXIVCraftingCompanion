@@ -8,26 +8,42 @@ on:
     branches: [main]
     paths: ['crates/**', 'frontend/src/wasm/**', 'frontend/scripts/wasm-*.mjs', '.github/workflows/rust-ci.yml']
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # The version crates/rust-toolchain.toml pins; the committed wasm artifact is built with it.
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master, 2026-10
         with:
+          toolchain: 1.98.1
           targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             crates/xiv-craft/target
             crates/xiv-craft-wasm/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('crates/**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-1.98.1-${{ hashFiles('crates/**/Cargo.lock', 'crates/rust-toolchain.toml') }}
+
+      - name: Formatting
+        working-directory: crates
+        run: cargo fmt --manifest-path xiv-craft/Cargo.toml --check && cargo fmt --manifest-path xiv-craft-wasm/Cargo.toml --check
+
+      - name: Clippy
+        working-directory: crates
+        run: |
+          cargo clippy --manifest-path xiv-craft/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path xiv-craft-wasm/Cargo.toml --all-targets -- -D warnings
 
       - name: Test the engine and solvers
         working-directory: crates/xiv-craft
@@ -41,14 +57,35 @@ jobs:
         working-directory: crates/xiv-craft-wasm
         run: cargo test
 
+  audit:
+    # RustSec advisories for the crates' dependency trees; the action posts a check run.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: RustSec advisories (xiv-craft)
+        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: crates/xiv-craft
+
+      - name: RustSec advisories (xiv-craft-wasm)
+        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: crates/xiv-craft-wasm
+
   artifact:
     # The frontend ships a committed wasm-pack build; fail when crates/ moved without a rebuild.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
 

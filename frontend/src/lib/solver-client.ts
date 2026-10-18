@@ -9,7 +9,9 @@
  * 422 stat-minimum check.
  */
 
+import * as Sentry from "@sentry/nextjs";
 import { ApiClientError } from "@/lib/api-client";
+import { FATAL_MESSAGE } from "@/lib/solver-runner";
 import { SOLVER_CONSTANTS } from "@/lib/constants";
 import { getRecipeParameters } from "@/lib/crafting-engine";
 import type { RecipeCraftingParametersDto } from "@/types/api";
@@ -75,6 +77,15 @@ function getWorker(): Worker {
     if (message.type === "error" && message.id === "") {
       // The engine failed to load; nothing queued can succeed.
       failAll(reject(500, message.message));
+      created.terminate();
+      worker = null;
+      return;
+    }
+    if (message.type === "fatal") {
+      // The WASM instance trapped: its memory is gone. Every queued solve fails, the worker is
+      // dropped, and the next solve starts a fresh one. A trap is a bug in the engine, so Sentry hears.
+      Sentry.captureException(new Error(`Solver worker fatal: ${message.message}`));
+      failAll(reject(500, FATAL_MESSAGE));
       created.terminate();
       worker = null;
       return;

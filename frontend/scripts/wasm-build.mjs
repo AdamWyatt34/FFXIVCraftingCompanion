@@ -44,8 +44,23 @@ export function cratesTreeHash() {
   }
 }
 
-function run(command, args, cwd) {
-  execFileSync(command, args, { cwd, stdio: "inherit", shell: process.platform === "win32" });
+function run(command, args, cwd, env = {}) {
+  execFileSync(command, args, {
+    cwd,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+    env: { ...process.env, ...env },
+  });
+}
+
+/**
+ * rustc embeds source paths in panic messages and debug info; remapped, the artifact no longer
+ * carries the building machine's directories and two machines produce the same bytes.
+ */
+function reproducibleRustflags() {
+  const cargoHome = process.env.CARGO_HOME ?? join(process.env.HOME ?? process.env.USERPROFILE ?? "", ".cargo");
+  const flags = [`--remap-path-prefix=${repoDir}=/xiv`, `--remap-path-prefix=${cargoHome}=/cargo`];
+  return [process.env.RUSTFLAGS, ...flags].filter(Boolean).join(" ");
 }
 
 export function build() {
@@ -65,6 +80,7 @@ export function build() {
       "xiv_craft",
     ],
     frontendDir,
+    { RUSTFLAGS: reproducibleRustflags() },
   );
 
   // wasm-pack writes an npm package around the artifact; only the loader, the types and the
@@ -73,7 +89,8 @@ export function build() {
     rmSync(join(outDir, generated), { force: true });
   }
 
-  const rustc = execFileSync("rustc", ["--version"], { encoding: "utf8" }).trim();
+  // From the crate directory, so crates/rust-toolchain.toml picks the toolchain the build used.
+  const rustc = execFileSync("rustc", ["--version"], { cwd: crateDir, encoding: "utf8" }).trim();
   const wasmBytes = readFileSync(join(outDir, "xiv_craft_bg.wasm")).length;
   const build = {
     cratesTreeHash: cratesTreeHash(),
