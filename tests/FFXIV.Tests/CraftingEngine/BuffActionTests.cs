@@ -56,7 +56,7 @@ public class BuffActionTests
 
     // --- Test Double ---
 
-    private class TestBuffAction : BuffAction
+    private sealed class TestBuffAction : BuffAction
     {
         public override int Id => 1002;
         public override string Name => "TestBuff";

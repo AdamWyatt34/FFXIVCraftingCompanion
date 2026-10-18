@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"%USERPROFILE%\\.claude\\skills\\onboard\\scripts\\brief-start.js\"",
+            "command": "node -e \"const p=require('path').join(process.env.USERPROFILE||process.env.HOME||'','.claude','skills','onboard','scripts','brief-start.js');if(require('fs').existsSync(p))require('child_process').execFileSync(process.execPath,[p],{stdio:'inherit'})\"",
             "timeout": 10
           }
         ]

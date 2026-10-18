@@ -1,0 +1,9 @@
+<Project>
+  <!-- Shared by every project under this directory (src/, tests/); per-project settings live in the .csproj.
+       Analyzer severities are tuned in .editorconfig. -->
+  <PropertyGroup>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

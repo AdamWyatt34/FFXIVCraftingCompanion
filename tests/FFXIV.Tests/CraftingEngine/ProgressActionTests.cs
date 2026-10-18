@@ -126,7 +126,7 @@ public class ProgressActionTests
 
     // --- Test Double ---
 
-    private class TestProgressAction : ProgressAction
+    private sealed class TestProgressAction : ProgressAction
     {
         public override int Id => 1000;
         public override string Name => "TestProgress";

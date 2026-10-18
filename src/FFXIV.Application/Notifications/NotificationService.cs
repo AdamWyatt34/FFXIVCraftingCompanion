@@ -6,11 +6,14 @@ using FFXIV.Domain.Models;
 using FFXIV.Domain.Repositories;
 using FFXIV.Domain.Utilities;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace FFXIV.Application.Notifications;
 
 public sealed class NotificationService : INotificationService
 {
+    private static readonly JsonSerializerOptions PlanItemsJson = new() { PropertyNameCaseInsensitive = true };
+
     private static readonly TimeSpan ResolvedPlanCacheTtl = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan DismissedCacheTtl = TimeSpan.FromHours(24);
 
@@ -109,10 +112,10 @@ public sealed class NotificationService : INotificationService
                                 : DateTime.UtcNow.Add(timeUntil).AddSeconds(WindowDurationSeconds(startHour, endHour)),
                             Metadata = new Dictionary<string, string>
                             {
-                                ["itemId"] = itemId.ToString(),
+                                ["itemId"] = itemId.ToString(CultureInfo.InvariantCulture),
                                 ["zoneName"] = info.ZoneName,
-                                ["startHour"] = startHour.ToString(),
-                                ["endHour"] = endHour.ToString(),
+                                ["startHour"] = startHour.ToString(CultureInfo.InvariantCulture),
+                                ["endHour"] = endHour.ToString(CultureInfo.InvariantCulture),
                                 ["isActive"] = isActive.ToString(),
                             }
                         });
@@ -170,8 +173,7 @@ public sealed class NotificationService : INotificationService
 
         try
         {
-            var inputs = JsonSerializer.Deserialize<List<CraftPlanInput>>(itemsJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var inputs = JsonSerializer.Deserialize<List<CraftPlanInput>>(itemsJson, PlanItemsJson);
             if (inputs is null || inputs.Count == 0)
                 return null;
 

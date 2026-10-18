@@ -3,6 +3,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
 
 # Copy project files for restore (not the solution — tests/ is dockerignored)
+# The shared build settings (analyzers, warnings as errors) apply inside the image build too.
+COPY Directory.Build.props .editorconfig ./
 COPY src/FFXIV.Domain/FFXIV.Domain.csproj src/FFXIV.Domain/
 COPY src/FFXIV.Application/FFXIV.Application.csproj src/FFXIV.Application/
 COPY src/FFXIV.Infrastructure/FFXIV.Infrastructure.csproj src/FFXIV.Infrastructure/
