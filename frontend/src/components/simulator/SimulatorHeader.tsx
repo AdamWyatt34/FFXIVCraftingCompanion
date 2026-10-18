@@ -60,7 +60,7 @@ export function SimulatorHeader({
 
         {/* Journey link */}
         <Link
-          href={recipeJourneyPath(recipe.recipeId)}
+          href={recipeJourneyPath(recipe.recipeId, fullRecipe?.resultItem.name)}
           className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-gold/15 text-gold text-xs font-medium hover:bg-gold/25 transition-colors shrink-0"
         >
           <Map size={14} />
