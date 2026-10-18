@@ -19,6 +19,15 @@ test("signed-out pages never call the API", async ({ page, request }) => {
   await page.goto(`/recipes/${RECIPE_ID}`);
   await expect(page.getByRole("heading", { name: RECIPE_NAME }).first()).toBeVisible();
 
+  // What a crawler gets: the recipe is in the HTML itself, not fetched by the page's JavaScript.
+  const html = await (await request.get(`/recipes/${RECIPE_ID}`)).text();
+  expect(html).toContain(`<h1 class="text-xl font-bold text-text-primary">${RECIPE_NAME}</h1>`);
+  expect(html).toContain("Oizys Rarities");
+  expect(html).toContain('rel="canonical"');
+  expect(html).toContain('"@type":"BreadcrumbList"');
+  expect((await request.get("/recipes/999999999")).status()).toBe(404);
+  expect((await request.get("/recipes/not-a-recipe")).status()).toBe(404);
+
   await page.goto(`/recipes/${RECIPE_ID}/journey`);
   await expect(page.getByRole("heading", { name: RECIPE_NAME }).first()).toBeVisible();
 

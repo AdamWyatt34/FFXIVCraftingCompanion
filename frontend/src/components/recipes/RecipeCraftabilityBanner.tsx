@@ -6,8 +6,14 @@ import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { RecipeDto, CraftType } from "@/types/api";
 import type { CharacterProfileDto } from "@/types/profile";
 
+/** The recipe fields the banner compares against the profile; recipeLevel is the class job level. */
+export type CraftabilityRecipe = Pick<
+  RecipeDto,
+  "craftType" | "recipeLevel" | "requiredCraftsmanship" | "requiredControl"
+>;
+
 interface RecipeCraftabilityBannerProps {
-  recipe: RecipeDto;
+  recipe: CraftabilityRecipe;
   profile: CharacterProfileDto;
 }
 
