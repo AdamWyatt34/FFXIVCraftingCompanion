@@ -24,6 +24,8 @@ export function itemBucketPath(itemId: number): string {
 }
 
 export const SEARCH_INDEX_PATH = "search/items.json";
+/** The same index as interned tables and columns; absent from data sets exported before it existed. */
+export const SEARCH_COMPACT_PATH = "search/compact.json";
 export const CRYSTALS_PATH = "materials/crystals.json";
 export const MANIFEST_PATH = "manifest.json";
 

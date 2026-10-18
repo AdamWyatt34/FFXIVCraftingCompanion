@@ -23,6 +23,7 @@ using FFXIV.Application.Recipes.DTOs;
 using FFXIV.Application.Recipes.Queries;
 using FFXIV.Domain.Repositories;
 using FFXIV.Export;
+using FFXIV.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -113,6 +114,20 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
         }
 
         AssertOrWrite("item-export.jsonl", text.ToString());
+    }
+
+    [Fact]
+    public async Task Search_compact_golden_is_current()
+    {
+        using var scope = _db.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var itemIds = _db.Fixture.Items.Select(i => i.ItemId).ToHashSet();
+        var entries = await SearchIndexExport.BuildEntriesAsync(db, itemIds, CancellationToken.None);
+        var compact = SearchIndexExport.Compact(entries);
+
+        SearchIndexExport.Inflate(compact).Should().BeEquivalentTo(entries, options => options.WithStrictOrdering());
+        AssertOrWrite("search-compact.json", JsonSerializer.Serialize(compact, StaticDataExporter.Json));
     }
 
     [Fact]
