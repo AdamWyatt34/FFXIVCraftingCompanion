@@ -153,7 +153,9 @@ public class EquipmentRepository : IEquipmentRepository
 
         return await _db.Equipment
             .AsNoTracking()
+#pragma warning disable CA1304, CA1311 // ToLower() translates to SQL LOWER(); the invariant overloads do not translate.
             .Where(e => lowerNames.Contains(e.Name.ToLower()))
+#pragma warning restore CA1304, CA1311
             .ToListAsync(cancellationToken);
     }
 }

@@ -31,6 +31,14 @@ describe("security headers", () => {
     expect(csp.endsWith("report-uri https://o4506.ingest.us.sentry.io/api/4507/security/?sentry_key=abc123")).toBe(true);
   });
 
+  it("allows the game data CDN when the build recorded one, and ignores the deployment's own path", () => {
+    const cdn = buildContentSecurityPolicy({ dataBase: "https://cdn.jsdelivr.net/gh/AdamWyatt34/FFXIVCraftingCompanion@b84169d7" });
+    expect(cdn).toMatch(/connect-src 'self' https:\/\/cdn\.jsdelivr\.net /);
+    const own = buildContentSecurityPolicy({ dataBase: "/data/v/7.57-20261017-2035" });
+    expect(own).toContain("connect-src 'self' https://universalis.app");
+    expect(own).not.toContain("/data/v/");
+  });
+
   it("works without an API origin or a DSN", () => {
     const csp = buildContentSecurityPolicy({});
     expect(csp).toContain("connect-src 'self' https://universalis.app");

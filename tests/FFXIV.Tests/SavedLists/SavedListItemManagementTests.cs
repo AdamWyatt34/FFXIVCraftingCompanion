@@ -17,7 +17,7 @@ public class SavedListItemManagementTests
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private SavedList CreateTestList(string userId = "user-1", object? data = null)
+    private static SavedList CreateTestList(string userId = "user-1", object? data = null)
     {
         var defaultData = new
         {
