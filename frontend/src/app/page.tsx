@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ChefHat,
@@ -12,6 +13,10 @@ import {
   ArrowRight,
   Package,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const FEATURES = [
   {
