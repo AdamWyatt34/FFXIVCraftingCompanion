@@ -88,7 +88,8 @@ secrets.json
 *.pfx
 *.p12
 
-# Node.js / Next.js (frontend)
+# Node.js / Next.js (frontend), and the root package.json's own node_modules
+node_modules/
 frontend/node_modules/
 frontend/.next/
 frontend/out/

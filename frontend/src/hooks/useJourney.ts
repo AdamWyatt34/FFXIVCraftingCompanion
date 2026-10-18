@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getCraftingJourney, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getCraftingJourney } from "@/lib/game-data";
 import { wasmSufficiencyEngine } from "@/lib/sufficiency-engine";
 import { viewerFromProfile } from "@/lib/static-data/sufficiency";
 import { useProfile } from "@/hooks/useProfile";

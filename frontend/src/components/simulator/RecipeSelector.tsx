@@ -6,7 +6,8 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useItemSearch } from "@/hooks/useItemSearch";
-import { getRecipe, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getRecipe } from "@/lib/game-data";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import type { RecipeDto, CraftType, ItemDto } from "@/types/api";
 

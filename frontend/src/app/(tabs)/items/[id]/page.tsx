@@ -13,7 +13,7 @@ import {
   Sparkles,
   Map,
 } from "lucide-react";
-import { getItem, getItemContext } from "@/lib/api-client";
+import { getItem, getItemContext } from "@/lib/game-data";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import {
   ItemIcon,

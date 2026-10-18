@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { getRecipe, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getRecipe } from "@/lib/game-data";
 import {
   getCraftingActions,
   getAvailableActions as fetchAvailableActions,

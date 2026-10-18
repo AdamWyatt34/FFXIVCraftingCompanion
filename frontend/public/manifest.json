@@ -1,12 +1,18 @@
 {
+  "id": "/",
   "name": "FFXIV Crafting Companion",
   "short_name": "FFXIV Craft",
-  "description": "A crafting companion app for Final Fantasy XIV",
+  "description": "Recipes, material trees, gear and a rotation simulator and solver for Final Fantasy XIV crafters.",
+  "lang": "en",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#e6b422",
-  "orientation": "portrait-primary",
+  "categories": [
+    "games",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/icons/apple-icon-180.png",

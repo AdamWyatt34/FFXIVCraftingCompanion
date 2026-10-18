@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { FlaskConical, Map, Shield, Sparkles } from "lucide-react";
-import { getCrystalsServer } from "@/lib/static-data/server";
+import { getCrystalsServer, listRecipesServer } from "@/lib/static-data/server";
+import { recipeSlug } from "@/lib/static-data/slug";
 import { directIngredients } from "@/lib/static-data/materials";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { itemPath, recipeJourneyPath, recipePath, recipesByJobPath, simulatorPath } from "@/lib/routes";
@@ -21,14 +22,23 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-// Rendered on first request from the exported data and cached for the deployment's lifetime.
-// Prerendering all ~14k recipes measured 1.4 GB of build output (about 100 KB a page), too much
-// to upload on every deploy for pages that are static anyway; the API is never involved.
+// The newest recipes (the latest patch's content, what people search for right after a patch)
+// are prerendered at deploy time so they are served from the static output the moment a deploy
+// goes live; every other recipe renders on first request from the exported data and is cached
+// for the deployment's lifetime. The API is never involved. Measured on the 7.57 export: a
+// prerendered recipe is ~133 KB of build output in six files (HTML, RSC, segments, meta), so
+// all 2,922 level 91–100 recipes would add 385 MB and 17,900 files to every deploy, and all
+// ~14k recipes 1.4 GB; 500 is a warm set that costs ~65 MB.
 export const dynamicParams = true;
 export const revalidate = false;
 
-export function generateStaticParams(): { slug: string }[] {
-  return [];
+const PRERENDERED_RECIPES = 500;
+
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const recipes = await listRecipesServer();
+  return recipes
+    .slice(-PRERENDERED_RECIPES) // listRecipesServer() is ascending by id; the highest ids are the newest
+    .map((recipe) => ({ slug: recipeSlug(recipe.recipeId, recipe.itemName) }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { getWorldList, getRecipeCost, ApiClientError } from "@/lib/api-client";
+import { ApiClientError } from "@/lib/api-client";
+import { getWorldList, getRecipeCost } from "@/lib/game-data";
 import { MARKET_CONSTANTS } from "@/lib/constants";
 import type { WorldGroupDto, CostEstimateDto } from "@/types/market";
 
