@@ -10,6 +10,14 @@ updates:
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # The runtime is Node 22 in CI and 24 on Vercel; the types must not run ahead of it.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 (the native compiler) is rejected by typescript-eslint as shipped in
+      # eslint-config-next (see #37); 6.x still fits that tooling's peer range.
+      - dependency-name: typescript
+        versions: [">=7"]
 
   - package-ecosystem: nuget
     directory: /
