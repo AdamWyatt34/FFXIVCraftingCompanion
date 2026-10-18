@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChefHat, X, ClipboardList } from "lucide-react";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import {
@@ -18,12 +18,19 @@ import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useCraftPlanContext } from "@/contexts/CraftPlanContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { MIN_SEARCH_LENGTH, CRAFT_TYPE_INFO } from "@/lib/constants";
-import { QUICK_FILTERS, type QuickFilter } from "@/lib/static-data/search";
+import { QUICK_FILTERS, isQuickFilter } from "@/lib/static-data/search";
 import type { CraftType } from "@/types/api";
 
 function RecipesPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
+  // ?craftType= and ?quickFilter= come from the browse links; they are client-side filters and
+  // the page stays canonical to /recipes.
+  const craftTypeParam = searchParams.get("craftType");
+  const urlCraftType = craftTypeParam && craftTypeParam in CRAFT_TYPE_INFO ? craftTypeParam : null;
+  const quickFilterParam = searchParams.get("quickFilter");
+  const urlQuickFilter = isQuickFilter(quickFilterParam) ? quickFilterParam : null;
 
   const { setBreadcrumbs } = useBreadcrumbs();
   useEffect(() => {
@@ -48,7 +55,13 @@ function RecipesPageContent() {
     hasMore,
     loadMore,
     retry,
-  } = useItemSearch(initialQuery);
+  } = useItemSearch(initialQuery, urlCraftType, urlQuickFilter);
+
+  // A later navigation to a filter link (the chips below the results) applies that filter.
+  useEffect(() => {
+    if (urlQuickFilter) setQuickFilter(urlQuickFilter);
+    else if (urlCraftType) setCraftType(urlCraftType);
+  }, [urlQuickFilter, urlCraftType, setQuickFilter, setCraftType]);
 
   const sentinelRef = useInfiniteScroll({
     onLoadMore: loadMore,
@@ -70,8 +83,14 @@ function RecipesPageContent() {
     : null;
   const activeFilterLabel = activeCraftInfo?.fullName ?? (quickFilter ? QUICK_FILTERS[quickFilter].label : null);
 
+  function clearFilter() {
+    if (activeCraftInfo) setCraftType(null);
+    else setQuickFilter(null);
+    if (craftTypeParam || quickFilterParam) router.replace("/recipes", { scroll: false });
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Sticky search bar */}
       <div className="sticky top-14 z-30 bg-bg-primary p-4 border-b border-border">
         <div className="flex items-center gap-2">
@@ -101,7 +120,7 @@ function RecipesPageContent() {
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs text-text-muted">Filtered by:</span>
             <button
-              onClick={() => (activeCraftInfo ? setCraftType(null) : setQuickFilter(null))}
+              onClick={clearFilter}
               className={`inline-flex items-center gap-1 px-2.5 py-1 text-sm rounded-full bg-bg-surface border border-border-focus ${activeCraftInfo?.colorClass ?? "text-text-primary"}`}
             >
               {activeFilterLabel}
@@ -117,47 +136,13 @@ function RecipesPageContent() {
         )}
       </div>
 
-      {/* Welcome state */}
+      {/* Welcome state: the job hubs and quick filters are rendered by the page below the search */}
       {showWelcome && (
-        <div className="flex flex-col items-center gap-6 p-8 text-center">
-          <ChefHat className="text-gold" size={48} />
-          <div>
-            <h1 className="text-xl font-bold text-text-primary">
-              Recipe Search
-            </h1>
-            <p className="text-text-secondary text-sm mt-2">
-              Search for any FFXIV item, recipe, or material
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {(
-              Object.entries(CRAFT_TYPE_INFO) as [
-                CraftType,
-                (typeof CRAFT_TYPE_INFO)[CraftType],
-              ][]
-            ).map(([key, info]) => (
-              <button
-                key={key}
-                onClick={() => setCraftType(key)}
-                className={`px-3 py-1.5 text-sm rounded-full bg-bg-surface border border-border hover:border-border-focus transition-colors ${info.colorClass}`}
-              >
-                {info.fullName}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap justify-center gap-2 mt-2">
-            {(Object.entries(QUICK_FILTERS) as [QuickFilter, { label: string }][]).map(
-              ([key, { label }]) => (
-                <button
-                  key={key}
-                  onClick={() => setQuickFilter(key)}
-                  className="px-3 py-1.5 text-sm rounded-full bg-bg-elevated text-text-secondary border border-border hover:border-border-focus hover:text-text-primary transition-colors"
-                >
-                  {label}
-                </button>
-              ),
-            )}
-          </div>
+        <div className="flex flex-col items-center gap-3 p-8 text-center">
+          <ChefHat className="text-gold" size={40} />
+          <p className="text-text-secondary text-sm">
+            Type an item name to search, or browse by job and level below
+          </p>
         </div>
       )}
 

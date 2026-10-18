@@ -23,10 +23,14 @@ interface UseItemSearchReturn {
   retry: () => void;
 }
 
-export function useItemSearch(initialQuery = ""): UseItemSearchReturn {
+export function useItemSearch(
+  initialQuery = "",
+  initialCraftType: string | null = null,
+  initialQuickFilter: QuickFilter | null = null,
+): UseItemSearchReturn {
   const [query, setQueryRaw] = useState(initialQuery);
-  const [craftType, setCraftTypeRaw] = useState<string | null>(null);
-  const [quickFilter, setQuickFilterRaw] = useState<QuickFilter | null>(null);
+  const [craftType, setCraftTypeRaw] = useState<string | null>(initialCraftType);
+  const [quickFilter, setQuickFilterRaw] = useState<QuickFilter | null>(initialQuickFilter);
   const debouncedQuery = useDebounce(query, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [page, setPage] = useState(1);
