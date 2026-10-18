@@ -24,6 +24,11 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   }
 }
 
+// 0.0.0.0 is the portal's "Allow Azure services and resources to access this server" switch: any
+// Azure-hosted client, from any tenant, may reach port 1433 with valid credentials. The Container
+// App has no fixed outbound address on the consumption plan, so a tighter rule needs a private
+// endpoint or a VNet-integrated environment. Production (deploySql = false) uses a portal-managed
+// server; keep it on this rule and nothing broader.
 resource firewallRule 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
   parent: sqlServer
   name: 'AllowAzureServices'
@@ -52,9 +57,6 @@ resource database 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
     zoneRedundant: false
   }
 }
-
-@description('ADO.NET connection string for the SQL database.')
-output connectionString string = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${databaseName};User ID=${adminLogin};Password=${adminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;'
 
 @description('Fully qualified domain name of the SQL Server.')
 output serverFqdn string = sqlServer.properties.fullyQualifiedDomainName

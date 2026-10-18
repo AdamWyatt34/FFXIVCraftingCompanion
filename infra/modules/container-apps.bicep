@@ -13,7 +13,7 @@ param containerImage string
 @description('Resource ID of the Log Analytics workspace.')
 param logAnalyticsWorkspaceId string
 
-@description('Environment variables for the container.')
+@description('Non-secret environment variables for the container; secrets arrive through the parameters below.')
 param envVars array = []
 
 @description('Container registry server (e.g. ghcr.io).')
@@ -25,6 +25,37 @@ param registryUsername string = ''
 @secure()
 @description('Container registry password or PAT.')
 param registryPassword string = ''
+
+@secure()
+@description('SQL connection string, exposed to the API as ConnectionStrings__DefaultConnection.')
+param sqlConnectionString string = ''
+
+@secure()
+@description('JWT signing key, exposed as Jwt__SecretKey.')
+param jwtSecretKey string = ''
+
+@secure()
+@description('Key that gates /api/admin/*, exposed as Admin__ApiKey; empty keeps the admin endpoints closed.')
+param adminApiKey string = ''
+
+@secure()
+@description('Discord OAuth client secret, exposed as Discord__ClientSecret.')
+param discordClientSecret string = ''
+
+// Secrets live in the app's secret store and reach the container through secretRef variables, so
+// the resource (az containerapp show, the portal) and the deployment history carry names, not
+// values. A secret is declared only when it has a value; its variable is then absent, which the
+// API reads like an empty setting.
+var appSecrets = filter(
+  [
+    { name: 'sql-connection-string', variable: 'ConnectionStrings__DefaultConnection', value: sqlConnectionString }
+    { name: 'jwt-secret-key', variable: 'Jwt__SecretKey', value: jwtSecretKey }
+    { name: 'admin-api-key', variable: 'Admin__ApiKey', value: adminApiKey }
+    { name: 'discord-client-secret', variable: 'Discord__ClientSecret', value: discordClientSecret }
+  ],
+  secret => !empty(secret.value)
+)
+var registrySecrets = empty(registryPassword) ? [] : [{ name: 'registry-password', value: registryPassword }]
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: last(split(logAnalyticsWorkspaceId, '/'))
@@ -62,12 +93,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           passwordSecretRef: 'registry-password'
         }
       ]
-      secrets: empty(registryPassword) ? [] : [
-        {
-          name: 'registry-password'
-          value: registryPassword
-        }
-      ]
+      secrets: concat(registrySecrets, map(appSecrets, secret => { name: secret.name, value: secret.value }))
     }
     template: {
       containers: [
@@ -78,8 +104,20 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
-          env: envVars
+          env: concat(envVars, map(appSecrets, secret => { name: secret.variable, secretRef: secret.name }))
           probes: [
+            {
+              // A cold start on 0.25 vCPU gets up to 150 s (10 x 15 s) before the liveness probe
+              // starts counting; the platform caps failureThreshold at 10.
+              type: 'Startup'
+              httpGet: {
+                path: '/health/live'
+                port: 8080
+              }
+              periodSeconds: 15
+              failureThreshold: 10
+              timeoutSeconds: 5
+            }
             {
               type: 'Liveness'
               httpGet: {
@@ -87,6 +125,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
                 port: 8080
               }
               periodSeconds: 30
+              timeoutSeconds: 5
             }
           ]
         }
