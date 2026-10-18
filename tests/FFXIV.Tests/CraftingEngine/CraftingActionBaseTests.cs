@@ -430,7 +430,7 @@ public class CraftingActionBaseTests
 
     // --- Test Double ---
 
-    private class TestAction : CraftingActionBase
+    private sealed class TestAction : CraftingActionBase
     {
         public override int Id => 999;
         public override string Name => "TestAction";

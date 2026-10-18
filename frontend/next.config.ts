@@ -6,11 +6,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { LEGACY_VERCEL_HOST, hostPattern, securityHeaders } from "./src/lib/security-headers";
 
-// scripts/data-fetch.mjs (the prebuild step) records which data set it placed under public/data;
-// the version is baked into the bundle so every data URL names exactly one export.
-function currentDataSet(): { version: string; bucketSize: number } | null {
+// scripts/data-fetch.mjs (the prebuild step) records which data set it placed and where it is
+// read from: `base` is what the browser prefixes to a data path (a CDN URL for a locked data set,
+// or this deployment's /data/v/<version>), `dir` is where the build reads it from disk. The
+// version is baked into the bundle so every data URL names exactly one export.
+function currentDataSet(): { version: string; bucketSize: number; base: string; dir: string } | null {
   try {
-    return JSON.parse(readFileSync(join(__dirname, "public", "data", "current.json"), "utf8"));
+    return JSON.parse(readFileSync(join(__dirname, ".data", "current.json"), "utf8"));
   } catch {
     return null;
   }
@@ -37,16 +39,17 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   turbopack: {},
-  // The server loader (src/lib/static-data/server.ts) reads public/data from disk during the
-  // build and from the deployment's CDN inside a function, so the data set must not be traced
-  // into any function bundle: with it, the recipe page's function was 283 MB uncompressed,
-  // over Vercel's 250 MB limit.
+  // The server loader (src/lib/static-data/server.ts) reads the data set from disk during the
+  // build and over HTTP inside a function, so it must not be traced into any function bundle:
+  // with it, the recipe page's function was 283 MB uncompressed, over Vercel's 250 MB limit.
   outputFileTracingExcludes: {
-    "*": ["./public/data/**"],
+    "*": ["./public/data/**", "./.data/**"],
   },
   env: {
     NEXT_PUBLIC_DATA_VERSION: dataSet?.version ?? "",
     NEXT_PUBLIC_DATA_BUCKET_SIZE: String(dataSet?.bucketSize ?? 100),
+    NEXT_PUBLIC_DATA_BASE: dataSet?.base ?? "",
+    FFXIV_DATA_LOCAL_DIR: dataSet?.dir ?? "",
   },
   async headers() {
     return [
@@ -55,6 +58,7 @@ const nextConfig: NextConfig = {
         headers: securityHeaders({
           apiOrigin: process.env.NEXT_PUBLIC_API_URL,
           sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+          dataBase: dataSet?.base,
         }),
       },
       {

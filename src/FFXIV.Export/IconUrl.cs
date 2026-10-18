@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace FFXIV.Export;
 
@@ -17,7 +18,7 @@ public static partial class IconUrl
         var match = Template().Match(url);
         if (!match.Success)
             throw new InvalidOperationException($"Icon URL does not follow the XIVAPI template: {url}");
-        var icon = int.Parse(match.Groups[2].Value);
+        var icon = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
         if (FromId(icon) != url)
             throw new InvalidOperationException($"Icon URL folder does not match its id: {url}");
         return icon;

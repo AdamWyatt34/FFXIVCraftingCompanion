@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+The Next.js (App Router) and React PWA for [ffxivcrafting.app](https://ffxivcrafting.app). The
+repository's [README](../README.md) describes the whole system; this file is the frontend's own
+notes.
 
-First, run the development server:
+## Game data
+
+Pages read game data from the static export, never from the API. `npm run data:fetch` (also the
+`prebuild` step) places the data set under `public/data/v/<version>/`, from the commit pinned in
+`data.lock.json` (a tarball of the `data` branch) or from a local export in `FFXIV_DATA_DIR`.
+Without a data set the build has no recipe pages and no search. `src/lib/static-data/` holds the
+client, the search port and the DTO rebuilds; `src/lib/game-data.ts` keeps the API signatures
+over it, and `src/lib/api-client.ts` is the account API.
+
+## Engine
+
+The simulator, the solver and the signed-in stat check run from `src/wasm/`, a committed
+WebAssembly build of `crates/xiv-craft-wasm`. After any change under `crates/`, run
+`npm run wasm:build` here and commit `src/wasm/`; `npm run wasm:check` and the backend's
+`WasmArtifactTests` fail when it is stale.
+
+## Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm ci
+npm run data:fetch
+npm run dev            # http://localhost:3000
+npm run lint && npx tsc --noEmit
+npm test               # vitest, replays the C# goldens
+npm run build          # production build (runs data:fetch first)
+npm run test:e2e       # production build on the fixture data set + Playwright
+npm run analyze        # bundle analyzer report
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`NEXT_PUBLIC_API_URL` points account features at the API (unset: `http://localhost:5159`).
+`NEXT_PUBLIC_SITE_URL` is the canonical origin and is required for a production build.
+`NEXT_PUBLIC_SENTRY_DSN` turns on error reporting.

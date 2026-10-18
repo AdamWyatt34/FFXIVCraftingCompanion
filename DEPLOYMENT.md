@@ -51,11 +51,20 @@ Add these secrets in **Settings > Secrets and variables > Actions**:
 | `AZURE_CREDENTIALS` | Service principal JSON from step 1 |
 | `AZURE_RESOURCE_GROUP` | Resource group name (e.g., `rg-ffxiv-crafting`) |
 | `SQL_ADMIN_PASSWORD` | Strong password for Azure SQL admin |
+| `SQL_CONNECTION_STRING` | The API's connection string; the deploy workflow's `migrate` job also uses it to run EF Core migrations |
 | `JWT_SECRET_KEY` | 32+ byte secret key for JWT signing |
-| `CORS_ORIGINS` | Vercel production URL (e.g., `https://your-app.vercel.app`) |
+| `ADMIN_API_KEY` | Value of the `X-Admin-Key` header the admin endpoints require (`/api/admin/*`, `/health`) |
+| `CORS_ORIGINS` | The site's origin (e.g., `https://ffxivcrafting.app`) |
 | `DISCORD_CLIENT_ID` | Discord OAuth application client ID |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth application client secret |
-| `DISCORD_REDIRECT_URI` | Discord callback URL (e.g., `https://your-app.vercel.app/auth/discord/callback`) |
+| `DISCORD_REDIRECT_URI` | Discord callback URL (e.g., `https://ffxivcrafting.app/auth/discord/callback`) |
+| `GHCR_USERNAME`, `GHCR_PASSWORD` | Credentials the Container App pulls the image with (a token with `read:packages`) |
+
+And one repository **variable** (Settings > Secrets and variables > Actions > Variables):
+
+| Variable | Description |
+|----------|-------------|
+| `API_BASE_URL` | The API origin; the Data Export workflow posts `/api/admin/sync` there after publishing a new data set |
 
 ---
 
@@ -118,25 +127,31 @@ az containerapp update \
    - `NEXT_PUBLIC_API_URL` = your Azure Container Apps URL (e.g., `https://ffxiv-prod-api.kindgrass-abc123.eastus.azurecontainerapps.io`)
    - `NEXT_PUBLIC_SITE_URL` = the canonical origin (e.g., `https://ffxivcrafting.app`). Required for the Production environment: every canonical URL, sitemap entry and social image is published under it, and a production build fails without it. Requests to the project's `*.vercel.app` host are redirected (308) to this origin by `next.config.ts`.
    - `NEXT_PUBLIC_SENTRY_DSN` (optional) = the Sentry DSN; also the destination for Content-Security-Policy violation reports
+   - Game data needs no variable: the build downloads the data set pinned in `frontend/data.lock.json` (a commit of the `data` branch) for its server-side reads, and browsers and on-demand renders read the same commit from jsDelivr (`https://cdn.jsdelivr.net/gh/AdamWyatt34/FFXIVCraftingCompanion@<dataSha>/…`), so the deployment does not carry it. That needs the repository to be public; while it is private, or whenever the CDN cannot serve the locked data set, the build copies it under `public/data/` and serves it itself, which adds about 260 MB to the deployment (Hobby includes 10 GB of Deployment Storage; a CDN-served deployment is about 70 MB). The build log says which happened. `FFXIV_DATA_BASE_URL` points the site at another origin serving the data set with CORS; `FFXIV_DATA_SERVE=local` forces the fallback.
 5. Deploy
 
 Vercel will auto-deploy on pushes to `main` and create preview deployments for PRs.
 
-The simulator and solver run in the browser from a prebuilt WASM module committed at `frontend/src/wasm/` (the Vercel build image has no Rust toolchain, so nothing is compiled at deploy time). After any change under `crates/`, run `npm run wasm:build` in `frontend/` and commit the result; the `WasmArtifactTests` test in backend CI fails when the artifact is stale. `NEXT_PUBLIC_ENGINE_MODE=api` switches every browser back to the .NET crafting endpoints; a single browser can do the same with `?engine=api`.
+The simulator and solver run in the browser from a prebuilt WASM module committed at `frontend/src/wasm/` (the Vercel build image has no Rust toolchain, so nothing is compiled at deploy time). After any change under `crates/`, run `npm run wasm:build` in `frontend/` and commit the result; the `WasmArtifactTests` test in backend CI fails when the artifact is stale.
 
 ---
 
 ## 6. Initial Data Sync
 
-After the backend is running, trigger a data sync to populate the database:
+After the backend is running, trigger a data sync to populate the database. The admin endpoints
+answer 401 unless the `X-Admin-Key` header matches the `Admin:ApiKey` setting (the `ADMIN_API_KEY`
+secret in production); with no key configured they are closed.
 
 ```bash
-curl -X POST https://YOUR_API_URL/api/admin/sync
+curl -X POST https://YOUR_API_URL/api/admin/sync -H "X-Admin-Key: $ADMIN_API_KEY" -H "Content-Length: 0"
 ```
 
-Or via the admin API if authentication is required.
+The sync runs in the background and the call returns at once (a second call while one is running
+says so). The scheduled daily sync is off by default (`DataSync:EnableAutoSync`); the Data Export
+workflow calls this endpoint once per game patch, which is what keeps the account database's game
+tables current.
 
-**Note:** The first sync may take several minutes due to the volume of XIVAPI data. The free-tier database batch size is configured at 50 to be gentle on resources.
+**Note:** The first sync may take several minutes due to the volume of XIVAPI data.
 
 ---
 
@@ -148,7 +163,7 @@ Or via the admin API if authentication is required.
 | Azure SQL Database | 1 free database per subscription (auto-pauses) |
 | Container Apps | 180K vCPU-sec, 360K GiB-sec, 2M requests/month |
 | GitHub Container Registry | Unlimited for public repos |
-| Vercel | 100GB bandwidth, unlimited deployments |
+| Vercel | 100GB bandwidth, 10GB Deployment Storage (retained build output; a deployment is ~70MB with the data set on jsDelivr, ~330MB with the fallback) |
 
 ### Monitoring
 - **Azure Portal:** Cost Management + Billing > Cost analysis
@@ -207,6 +222,10 @@ The backend runs on `http://localhost:5159` and the frontend on `http://localhos
 - The backend reads allowed origins from `Cors:AllowedOrigins:0` environment variable
 
 ### EF migrations not applying
-- Check `ApplyMigrationsOnStartup` is `true` in production config
-- Review container logs for migration errors
-- For manual migration: connect to Azure SQL and run `dotnet ef database update`
+- Migrations run in the **Backend Deploy** workflow's `migrate` job (`dotnet ef database update`
+  against `SQL_CONNECTION_STRING`, through a firewall rule opened for the runner), not at
+  application start (`ApplyMigrationsOnStartup` is `false` in production)
+- If the job failed (for example while the serverless database was paused or its free quota was
+  exhausted), re-run the workflow from **Actions > Backend Deploy > Run workflow** once the
+  database is back
+- For a manual migration: connect to Azure SQL and run `dotnet ef database update` from `src/FFXIV.Api`

@@ -99,6 +99,9 @@ frontend/public/sw.js.map
 # AIOS inner-loop task workspaces (per-machine scratch)
 .aios/tasks/
 
+# Claude Code per-machine permission grants
+.claude/settings.local.json
+
 # Rust (crates/)
 crates/**/target/
 

@@ -1,14 +1,20 @@
 // Where the exported game data lives. The version is baked in at build time from data.lock.json
 // (or the local data set fed to scripts/data-fetch.mjs), so one deployment references exactly one
-// data version and the service worker can cache /data/v/* immutably.
+// data version and the service worker can cache its files immutably.
 
 export const DATA_VERSION = process.env.NEXT_PUBLIC_DATA_VERSION ?? "";
 export const DATA_BUCKET_SIZE = Number(process.env.NEXT_PUBLIC_DATA_BUCKET_SIZE ?? 100);
 
 export const DATA_ROOT = "/data/v";
 
+/**
+ * What the browser prefixes to a data path: the CDN URL of the locked data set when the build
+ * found it there (see scripts/data-fetch.mjs), else this deployment's own /data/v/<version>.
+ */
+export const DATA_BASE = process.env.NEXT_PUBLIC_DATA_BASE || `${DATA_ROOT}/${DATA_VERSION}`;
+
 export function dataBasePath(): string {
-  return `${DATA_ROOT}/${DATA_VERSION}`;
+  return DATA_BASE;
 }
 
 export function bucketOf(id: number, bucketSize = DATA_BUCKET_SIZE): number {

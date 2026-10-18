@@ -2,17 +2,20 @@ import "server-only";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CrystalTable } from "./materials";
-import { CRYSTALS_PATH, DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
+import { CRYSTALS_PATH, DATA_BASE, DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
 import type { Bucket, Manifest, RecipeExport } from "./types";
 
-// Server-side reads of the data set. At build time (sitemap, any prerender) it is on disk under
-// public/data/v/<version>/, placed by scripts/data-fetch.mjs. A recipe page rendered on demand
-// runs in a function without that directory, so it reads the same file from the deployment's own
-// static assets instead; the result is cached per deployment like any static route.
+// Server-side reads of the data set. At build time (sitemap, any prerender) it is on disk in the
+// directory scripts/data-fetch.mjs placed it. A recipe page rendered on demand runs in a function
+// without that directory, so it reads the same file over HTTP instead: from the CDN when the data
+// set is served from one, else from the deployment's own static assets. The result is cached per
+// deployment like any static route.
 
 function dataDir(): string {
-  return join(process.cwd(), "public", DATA_ROOT, DATA_VERSION);
+  return process.env.FFXIV_DATA_LOCAL_DIR || join(process.cwd(), "public", DATA_ROOT, DATA_VERSION);
 }
+
+const remoteBase = /^https?:\/\//.test(DATA_BASE) ? DATA_BASE : null;
 
 // Vercel's deployment protection covers every generated deployment URL (VERCEL_URL), production
 // ones included; only the production domain is public. So production reads through that domain,
@@ -24,9 +27,16 @@ function deploymentOrigin(): string | null {
   return process.env.NEXT_PUBLIC_SITE_URL ?? null;
 }
 
-async function fetchFromDeployment<T>(relativePath: string): Promise<T | null> {
+async function fetchOverHttp<T>(relativePath: string): Promise<T | null> {
+  if (DATA_VERSION === "") return null;
+  if (remoteBase) {
+    const response = await fetch(`${remoteBase}/${relativePath}`, { cache: "force-cache" });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Game data ${relativePath} answered ${response.status} from ${remoteBase}`);
+    return (await response.json()) as T;
+  }
   const origin = deploymentOrigin();
-  if (!origin || DATA_VERSION === "") return null;
+  if (!origin) return null;
   const headers: Record<string, string> = {};
   // Preview deployments can sit behind Vercel's deployment protection.
   if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET)
@@ -51,7 +61,7 @@ function readJson<T>(relativePath: string): Promise<T | null> {
     promise = readFile(join(dataDir(), relativePath), "utf8")
       .then((text) => JSON.parse(text) as T)
       .catch((err: NodeJS.ErrnoException) => {
-        if (err.code === "ENOENT") return fetchFromDeployment<T>(relativePath);
+        if (err.code === "ENOENT") return fetchOverHttp<T>(relativePath);
         throw err;
       });
     cache.set(relativePath, promise);

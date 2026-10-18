@@ -2,6 +2,7 @@
 name = "xiv-craft-wasm"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.98"
 description = "wasm-bindgen bindings over xiv-craft with the FFXIV.Api DTO shapes; built into frontend/src/wasm"
 publish = false
 
@@ -17,6 +18,9 @@ serde-wasm-bindgen = "0.6"
 
 [dev-dependencies]
 serde_json = { version = "1", features = ["float_roundtrip"] }
+
+[lints.clippy]
+all = "warn"
 
 [profile.release]
 opt-level = 3

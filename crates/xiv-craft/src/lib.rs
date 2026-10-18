@@ -24,7 +24,7 @@ pub use simulator::{
     SimulationOptions, SimulationResult, StepResult, DEFAULT_SEED,
 };
 pub use solver::{
-    GreedySolverConfig, MctsConfig, MctsSolver, SolverAlgorithm, SolverConstraints, SolverMetrics,
-    SolverResult, SolverSettings, SolverStatus,
+    GreedySolverConfig, MctsConfig, MctsSolver, SolverAlgorithm, SolverConstraints, SolverError,
+    SolverMetrics, SolverResult, SolverSettings, SolverStatus,
 };
 pub use state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};
