@@ -168,7 +168,7 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
         {
             // Single item lookup (will be batch-prefetched for siblings)
             var recipes = await _recipeRepo.GetByResultItemIdsAsync([itemId], ct);
-            recipe = recipes.FirstOrDefault();
+            recipe = recipes.Count > 0 ? recipes[0] : null;
             recipeCache[itemId] = recipe;
         }
 
@@ -241,7 +241,7 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
         return node;
     }
 
-    private void AttachSourcesAndAggregate(
+    private static void AttachSourcesAndAggregate(
         MaterialTreeNode node,
         Dictionary<int, List<ItemSource>> sourcesByItem,
         Dictionary<int, List<GatheringInfo>> gatheringByItem,

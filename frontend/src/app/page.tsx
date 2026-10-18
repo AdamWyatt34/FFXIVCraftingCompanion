@@ -190,6 +190,12 @@ export default function HomePage() {
           FFXIV Crafting Companion is open source and free to use.
           Contributions, feedback, and bug reports are always welcome.
         </p>
+        <a
+          href="https://github.com/AdamWyatt34/FFXIVCraftingCompanion"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gold underline underline-offset-2 hover:text-gold-light transition-colors"
+        >
+          View the source on GitHub
+        </a>
       </section>
 
     </div>

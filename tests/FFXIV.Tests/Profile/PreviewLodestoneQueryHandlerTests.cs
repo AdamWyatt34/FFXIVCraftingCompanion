@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FFXIV.Tests.Profile;
 
-public sealed class PreviewLodestoneQueryHandlerTests
+public sealed class PreviewLodestoneQueryHandlerTests : IDisposable
 {
     private readonly ILodestoneService _lodestone = Substitute.For<ILodestoneService>();
     private readonly InMemoryCacheService _cache = new();
@@ -16,6 +16,8 @@ public sealed class PreviewLodestoneQueryHandlerTests
         _handler = new PreviewLodestoneQueryHandler(
             _lodestone, _cache, Substitute.For<ILogger<PreviewLodestoneQueryHandler>>());
     }
+
+    public void Dispose() => _cache.Dispose();
 
     [Theory]
     [InlineData("Robert'); DROP TABLE", "Cactuar")]
