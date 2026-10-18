@@ -13,6 +13,11 @@ declare const self: ServiceWorkerGlobalScope & {
   __SW_MANIFEST: (PrecacheEntry | string)[];
 };
 
+/** The CDN base of the game data when the build found it there; the deployment's own path otherwise. */
+const DATA_BASE_URL = /^https?:\/\//.test(process.env.NEXT_PUBLIC_DATA_BASE ?? "")
+  ? (process.env.NEXT_PUBLIC_DATA_BASE as string)
+  : null;
+
 const cacheableResponse: SerwistPlugin = new CacheableResponsePlugin({
   statuses: [0, 200],
 });
@@ -36,10 +41,13 @@ const runtimeCaching = [
       ],
     }),
   },
-  // Exported game data — versioned, immutable: cache-first, 30 day TTL
+  // Exported game data — versioned, immutable: cache-first, 30 day TTL. Served by the deployment
+  // under /data/v/, or by the CDN the build pointed the site at (see scripts/data-fetch.mjs).
   {
     matcher: ({ request, url }: { request: Request; url: URL }) =>
-      request.destination === "" && url.pathname.startsWith("/data/v/"),
+      request.destination === "" &&
+      ((url.origin === self.location.origin && url.pathname.startsWith("/data/v/")) ||
+        (DATA_BASE_URL !== null && url.href.startsWith(`${DATA_BASE_URL}/`))),
     handler: new CacheFirst({
       cacheName: "game-data",
       plugins: [

@@ -127,6 +127,7 @@ az containerapp update \
    - `NEXT_PUBLIC_API_URL` = your Azure Container Apps URL (e.g., `https://ffxiv-prod-api.kindgrass-abc123.eastus.azurecontainerapps.io`)
    - `NEXT_PUBLIC_SITE_URL` = the canonical origin (e.g., `https://ffxivcrafting.app`). Required for the Production environment: every canonical URL, sitemap entry and social image is published under it, and a production build fails without it. Requests to the project's `*.vercel.app` host are redirected (308) to this origin by `next.config.ts`.
    - `NEXT_PUBLIC_SENTRY_DSN` (optional) = the Sentry DSN; also the destination for Content-Security-Policy violation reports
+   - Game data needs no variable: the build downloads the data set pinned in `frontend/data.lock.json` (a commit of the `data` branch) for its server-side reads, and browsers and on-demand renders read the same commit from jsDelivr (`https://cdn.jsdelivr.net/gh/AdamWyatt34/FFXIVCraftingCompanion@<dataSha>/…`), so the deployment does not carry it. That needs the repository to be public; while it is private, or whenever the CDN cannot serve the locked data set, the build copies it under `public/data/` and serves it itself, which adds about 260 MB to the deployment (Hobby includes 10 GB of Deployment Storage; a CDN-served deployment is about 70 MB). The build log says which happened. `FFXIV_DATA_BASE_URL` points the site at another origin serving the data set with CORS; `FFXIV_DATA_SERVE=local` forces the fallback.
 5. Deploy
 
 Vercel will auto-deploy on pushes to `main` and create preview deployments for PRs.
@@ -162,7 +163,7 @@ tables current.
 | Azure SQL Database | 1 free database per subscription (auto-pauses) |
 | Container Apps | 180K vCPU-sec, 360K GiB-sec, 2M requests/month |
 | GitHub Container Registry | Unlimited for public repos |
-| Vercel | 100GB bandwidth, unlimited deployments |
+| Vercel | 100GB bandwidth, 10GB Deployment Storage (retained build output; a deployment is ~70MB with the data set on jsDelivr, ~330MB with the fallback) |
 
 ### Monitoring
 - **Azure Portal:** Cost Management + Billing > Cost analysis
