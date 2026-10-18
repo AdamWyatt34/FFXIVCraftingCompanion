@@ -3,13 +3,11 @@
 import { Search } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function Header() {
-  const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
@@ -18,13 +16,13 @@ export function Header() {
         {APP_NAME}
       </Link>
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => router.push("/recipes")}
+        <Link
+          href="/recipes"
           className="p-2 rounded-lg text-text-secondary hover:text-gold hover:bg-bg-elevated transition-colors"
           aria-label="Search"
         >
           <Search size={20} />
-        </button>
+        </Link>
 
         {isAuthenticated && <NotificationBell />}
 

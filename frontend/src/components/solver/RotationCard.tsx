@@ -9,10 +9,10 @@ import { CRAFT_TYPE_INFO, ROTATION_SOURCE_INFO } from "@/lib/constants";
 import { exportCraftingMacro } from "@/lib/crafting-engine";
 import type { RotationListItem } from "@/types/solver";
 import type { CraftType } from "@/types/api";
+import { recipeJourneyPath, rotationPath } from "@/lib/routes";
 
 interface RotationCardProps {
   rotation: RotationListItem;
-  onView: (id: number) => void;
   onLoad: (rotation: RotationListItem) => void;
   onUpvote?: (id: number) => void;
   compact?: boolean;
@@ -32,7 +32,6 @@ function isNew(createdAt: string): boolean {
 
 export function RotationCard({
   rotation,
-  onView,
   onLoad,
   onUpvote,
   compact = false,
@@ -78,12 +77,12 @@ export function RotationCard({
         <span className="text-sm text-text-secondary truncate flex-1">
           {rotation.recipeName}
         </span>
-        <button
-          onClick={() => onView(rotation.id)}
+        <Link
+          href={rotationPath(rotation.id)}
           className="text-xs text-gold hover:text-gold-light transition-colors"
         >
           View
-        </button>
+        </Link>
       </div>
     );
   }
@@ -169,13 +168,13 @@ export function RotationCard({
 
       {/* Action buttons */}
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-center">
-        <button
-          onClick={() => onView(rotation.id)}
+        <Link
+          href={rotationPath(rotation.id)}
           className="flex items-center gap-1 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-text-primary border border-border transition-colors text-xs"
         >
           <Eye size={14} />
           View
-        </button>
+        </Link>
         <button
           onClick={handleCopyMacro}
           className="flex items-center gap-1 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-text-primary border border-border transition-colors text-xs"
@@ -191,7 +190,7 @@ export function RotationCard({
           Load in Simulator
         </button>
         <Link
-          href={`/recipes/${rotation.recipeId}/journey`}
+          href={recipeJourneyPath(rotation.recipeId, rotation.recipeName)}
           className="flex items-center gap-1 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-gold border border-border transition-colors text-xs"
         >
           <Map size={14} />

@@ -76,8 +76,27 @@ export async function getRecipeExportServer(recipeId: number): Promise<RecipeExp
   return bucket?.[String(recipeId)] ?? null;
 }
 
-/** Every recipe id in the data set, ascending, read from the bucket files themselves. */
-export async function listRecipeIdsServer(): Promise<number[]> {
+/** What the sitemap and the listing pages need about a recipe, without the recipe itself. */
+export interface RecipeListEntry {
+  recipeId: number;
+  itemName: string;
+  craftType: string;
+  /** The recipe level (rlvl). */
+  recipeLevel: number;
+  /** The class job level the recipe unlocks at. */
+  classJobLevel: number;
+  stars: number;
+}
+
+let recipeListPromise: Promise<RecipeListEntry[]> | null = null;
+
+/** Every recipe in the data set, ascending by id, read from the bucket files themselves. */
+export function listRecipesServer(): Promise<RecipeListEntry[]> {
+  recipeListPromise ??= readRecipeList();
+  return recipeListPromise;
+}
+
+async function readRecipeList(): Promise<RecipeListEntry[]> {
   if (!(await hasStaticData())) return [];
   const dir = join(dataDir(), "recipes");
   let files: string[];
@@ -86,11 +105,26 @@ export async function listRecipeIdsServer(): Promise<number[]> {
   } catch {
     return [];
   }
-  const ids: number[] = [];
+  const entries: RecipeListEntry[] = [];
   for (const file of files) {
     if (!file.endsWith(".json")) continue;
-    const bucket = await readJson<Bucket<unknown>>(`recipes/${file}`);
-    if (bucket) ids.push(...Object.keys(bucket).map(Number));
+    const bucket = await readJson<Bucket<RecipeExport>>(`recipes/${file}`);
+    if (!bucket) continue;
+    for (const data of Object.values(bucket)) {
+      entries.push({
+        recipeId: data.recipe.recipeId,
+        itemName: data.recipe.resultItem.name,
+        craftType: data.recipe.craftType,
+        recipeLevel: data.recipe.recipeLevel,
+        classJobLevel: data.craftingParameters.classJobLevel,
+        stars: data.craftingParameters.stars,
+      });
+    }
   }
-  return ids.sort((a, b) => a - b);
+  return entries.sort((a, b) => a.recipeId - b.recipeId);
+}
+
+/** Every recipe id in the data set, ascending. */
+export async function listRecipeIdsServer(): Promise<number[]> {
+  return (await listRecipesServer()).map((entry) => entry.recipeId);
 }

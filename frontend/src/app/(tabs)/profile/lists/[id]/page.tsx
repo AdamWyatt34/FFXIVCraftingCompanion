@@ -16,6 +16,7 @@ import {
 import { useSavedListDetail } from "@/hooks/useSavedListDetail";
 import { ItemLink } from "@/components/ui/ItemLink";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { recipePath } from "@/lib/routes";
 import type {
   ShoppingListData,
   ShoppingListMaterial,
@@ -178,7 +179,7 @@ function ShoppingListContent({
             <span className="text-sm text-text-secondary">Source: </span>
             {data.sourceRecipeId ? (
               <Link
-                href={`/recipes/${data.sourceRecipeId}`}
+                href={recipePath(data.sourceRecipeId, data.sourceItemName)}
                 className="text-sm text-gold hover:text-gold-light transition-colors"
               >
                 {data.sourceItemName}
@@ -442,7 +443,7 @@ function CraftingPlanContent({ data }: { data: CraftingPlanData }) {
               className="flex items-center justify-between p-2 rounded-lg bg-bg-surface border border-border"
             >
               <Link
-                href={`/recipes/${item.recipeId}`}
+                href={recipePath(item.recipeId)}
                 className="text-sm text-gold hover:text-gold-light transition-colors"
               >
                 Recipe #{item.recipeId}

@@ -13,13 +13,6 @@ export function ProfileRotationsList() {
   const router = useRouter();
   const library = useRotationLibrary({ source: "User", pageSize: 6 });
 
-  const handleView = useCallback(
-    (id: number) => {
-      router.push(`/simulator/library/${id}`);
-    },
-    [router],
-  );
-
   const handleLoad = useCallback(
     (rotation: RotationListItem) => {
       const params = new URLSearchParams({
@@ -58,7 +51,6 @@ export function ProfileRotationsList() {
           <RotationCard
             key={rotation.id}
             rotation={rotation}
-            onView={handleView}
             onLoad={handleLoad}
             compact
           />

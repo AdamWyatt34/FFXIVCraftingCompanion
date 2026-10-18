@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, ArrowUp, Map } from "lucide-react";
 import type { GearUpgradeSuggestionDto } from "@/types/journey";
+import { recipeJourneyPath } from "@/lib/routes";
 
 interface GearUpgradesProps {
   upgrades: GearUpgradeSuggestionDto[];
@@ -68,7 +69,7 @@ export function GearUpgrades({ upgrades }: GearUpgradesProps) {
               </div>
               {upgrade.recipeId && (
                 <Link
-                  href={`/recipes/${upgrade.recipeId}/journey`}
+                  href={recipeJourneyPath(upgrade.recipeId)}
                   className="inline-flex items-center gap-1 text-xs text-gold hover:text-gold-light transition-colors"
                 >
                   <Map size={12} />

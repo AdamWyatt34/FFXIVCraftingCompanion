@@ -25,6 +25,7 @@ import {
 import type { ItemDto, CraftType } from "@/types/api";
 import type { ItemContextDto } from "@/types/journey";
 import { formatSpawnWindows, parseSpawnWindows } from "@/lib/static-data/spawn-windows";
+import { recipeJourneyPath, recipePath, simulatorPath } from "@/lib/routes";
 
 export default function ItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -145,13 +146,13 @@ export default function ItemDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/recipes/${recipe.recipeId}`}
+                      href={recipePath(recipe.recipeId, item.name)}
                       className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:text-gold transition-colors"
                     >
                       Recipe
                     </Link>
                     <Link
-                      href={`/recipes/${recipe.recipeId}/journey`}
+                      href={recipeJourneyPath(recipe.recipeId, item.name)}
                       className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:text-gold transition-colors"
                     >
                       <span className="flex items-center gap-1">
@@ -159,7 +160,7 @@ export default function ItemDetailPage() {
                       </span>
                     </Link>
                     <Link
-                      href={`/simulator?recipeId=${recipe.recipeId}`}
+                      href={simulatorPath(recipe.recipeId)}
                       className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:text-gold transition-colors"
                     >
                       <span className="flex items-center gap-1">
@@ -186,7 +187,7 @@ export default function ItemDetailPage() {
               return (
                 <Link
                   key={recipe.recipeId}
-                  href={`/recipes/${recipe.recipeId}`}
+                  href={recipePath(recipe.recipeId, recipe.resultItemName)}
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elevated transition-colors group"
                 >
                   <ItemIcon iconUrl={recipe.iconUrl} alt={recipe.resultItemName} size="sm" />

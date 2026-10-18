@@ -6,6 +6,7 @@ import { ItemIcon } from "@/components/ui/ItemIcon";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 import type { EquipmentDto } from "@/types/gear";
 import { RARITY_COLOR_CLASS, JOB_INFO, DOH_JOBS, DOL_JOBS, type GearJob } from "@/lib/gear-constants";
+import { recipePath } from "@/lib/routes";
 
 interface EquipmentSearchCardProps {
   equipment: EquipmentDto;
@@ -133,7 +134,7 @@ export function EquipmentSearchCard({
         <div className="flex items-center gap-2">
           {equipment.source.hasRecipe && equipment.source.recipeId ? (
             <Link
-              href={`/recipes/${equipment.source.recipeId}?from=gear`}
+              href={`${recipePath(equipment.source.recipeId, equipment.name)}?from=gear`}
               onClick={(e) => e.stopPropagation()}
             >
               <span className="inline-flex items-center gap-1 group">

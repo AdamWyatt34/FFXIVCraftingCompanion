@@ -28,6 +28,7 @@ import type { GearSlotDto, EquipmentDto } from "@/types/gear";
 import type { SlotComparisonDto } from "@/types/gear-comparison";
 import { RARITY_COLOR_CLASS } from "@/lib/gear-constants";
 import type { LucideIcon } from "lucide-react";
+import { recipeJourneyPath, recipePath } from "@/lib/routes";
 
 const SLOT_ICONS: Record<string, LucideIcon> = {
   MainHand: Sword,
@@ -299,7 +300,7 @@ export function GearSlotCard({
           {item.source.hasRecipe && item.source.recipeId && (
             <div className="flex items-center gap-1 shrink-0">
               <Link
-                href={`/recipes/${item.source.recipeId}?from=gear`}
+                href={`${recipePath(item.source.recipeId, item.name)}?from=gear`}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gold/15 text-gold text-xs font-medium hover:bg-gold/25 transition-colors"
               >
@@ -307,7 +308,7 @@ export function GearSlotCard({
                 Craft
               </Link>
               <Link
-                href={`/recipes/${item.source.recipeId}/journey`}
+                href={recipeJourneyPath(item.source.recipeId, item.name)}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-bg-elevated text-text-secondary text-xs font-medium hover:text-gold transition-colors"
               >

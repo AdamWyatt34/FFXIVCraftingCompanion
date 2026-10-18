@@ -34,13 +34,6 @@ function LibraryContent() {
 
   const library = useRotationLibrary(initialFilters);
 
-  const handleView = useCallback(
-    (id: number) => {
-      router.push(`/simulator/library/${id}`);
-    },
-    [router],
-  );
-
   const handleLoad = useCallback(
     (rotation: RotationListItem) => {
       const params = new URLSearchParams({
@@ -134,7 +127,6 @@ function LibraryContent() {
               <RotationCard
                 key={rotation.id}
                 rotation={rotation}
-                onView={handleView}
                 onLoad={handleLoad}
               />
             ))}

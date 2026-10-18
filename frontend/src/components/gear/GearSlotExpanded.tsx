@@ -19,6 +19,7 @@ import type { GearSlotDto, EquipmentDto } from "@/types/gear";
 import type { SlotComparisonDto } from "@/types/gear-comparison";
 import { GearComparisonView } from "./GearComparisonView";
 import { RARITY_COLOR_CLASS } from "@/lib/gear-constants";
+import { recipeJourneyPath, recipePath } from "@/lib/routes";
 
 interface GearSlotExpandedProps {
   slot: GearSlotDto;
@@ -190,7 +191,7 @@ export function GearSlotExpandedContent({
           {item.source.hasRecipe && item.source.recipeId && (
             <div className="space-y-2">
               <Link
-                href={`/recipes/${item.source.recipeId}?from=gear`}
+                href={`${recipePath(item.source.recipeId, item.name)}?from=gear`}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-gold/15 text-gold font-medium hover:bg-gold/25 transition-colors text-sm"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -199,7 +200,7 @@ export function GearSlotExpandedContent({
               </Link>
               <div className="flex gap-2">
                 <Link
-                  href={`/recipes/${item.source.recipeId}/journey`}
+                  href={recipeJourneyPath(item.source.recipeId, item.name)}
                   className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg bg-bg-elevated text-text-secondary font-medium hover:text-gold transition-colors text-sm border border-border"
                   onClick={(e) => e.stopPropagation()}
                 >
