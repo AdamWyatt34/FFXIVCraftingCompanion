@@ -11,46 +11,24 @@ import type { CraftingJourneyDto, ItemContextDto, StatSufficiencyResultDto } fro
 import type { EquipmentDto, GearSetDto, StatWeightProfileDto } from "@/types/gear";
 import type { EorzeanTimeResponse, GatheringGuideDto, GatheringGuideItemInput } from "@/types/gathering";
 import type { CostEstimateDto, WorldGroupDto } from "@/types/market";
-import { CRYSTALS_PATH, dataBasePath, GEAR_PROFILES_PATH, gearJobPath, itemBucketPath, recipeBucketPath, SEARCH_INDEX_PATH } from "./paths";
-import { searchIndex, type QuickFilter } from "./search";
+import { CRYSTALS_PATH, GEAR_PROFILES_PATH, gearJobPath, itemBucketPath, recipeBucketPath } from "./paths";
+import type { QuickFilter } from "./search";
+import { getSearchIndex, searchGearItemIds, searchItemsIndexed } from "./search-client";
+import { loadJson } from "./fetch";
 import { toRecipeDto } from "./recipes";
 import { expandMaterialTree, type CrystalTable } from "./materials";
 import { aggregateCraftPlan, exportCraftPlanContent, validatePlanItems, type ExportFormat, type PlanEntry } from "./craft-plans";
 import { composeJourney } from "./journey";
 import { analyzeSufficiency, type GearSource, type JourneyViewer } from "./sufficiency";
-import { availableProfiles, isEquipSlot, recommendGear, searchGearIndex, toSearchResultDto } from "./gear";
+import { availableProfiles, isEquipSlot, recommendGear, toSearchResultDto } from "./gear";
 import { ALL_JOBS, isKnownJob } from "./jobs";
 import { buildGatheringGuide, validateGuideItems, type GatheringItemData } from "./gathering";
 import { estimateCost, fetchUniversalisPrices, isValidWorldOrDc, marketBoardItemIds, worldGroups, type CostEstimationOptions } from "./market";
 import { getCurrentEorzeanHour } from "@/lib/eorzean-time";
-import type { Bucket, GearJobExport, ItemExport, RecipeExport, SearchIndexEntry, StatWeightProfileExport } from "./types";
+import type { Bucket, GearJobExport, ItemExport, RecipeExport, StatWeightProfileExport } from "./types";
 
-// Browser-side reads of the exported game data. Buckets are fetched once per page load and kept;
-// the service worker keeps them across loads.
-
-const inflight = new Map<string, Promise<unknown>>();
-
-export function loadJson<T>(relativePath: string, signal?: AbortSignal): Promise<T> {
-  const existing = inflight.get(relativePath);
-  if (existing) return existing as Promise<T>;
-
-  const promise = fetchJson<T>(relativePath, signal).catch((err) => {
-    inflight.delete(relativePath);
-    throw err;
-  });
-  inflight.set(relativePath, promise);
-  return promise;
-}
-
-async function fetchJson<T>(relativePath: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${dataBasePath()}/${relativePath}`, { signal, headers: { Accept: "application/json" } });
-  if (!response.ok) {
-    throw new ApiClientError(response.status, {
-      error: response.status === 404 ? "Not found" : `Game data request failed (${response.status})`,
-    });
-  }
-  return (await response.json()) as T;
-}
+// Browser-side reads of the exported game data; the fetch and its per-load cache live in ./fetch.
+export { loadJson };
 
 function notFound(what: string): ApiClientError {
   return new ApiClientError(404, { error: `${what} not found` });
@@ -239,9 +217,8 @@ export async function searchEquipment(
   if ((query.trim() === "" || query.length < 2) && !job && !slot)
     throw badRequest("Provide a search query (min 2 characters) or a filter.");
   if (slot && !isEquipSlot(slot)) throw badRequest(`'${slot}' is not a valid equipment slot.`);
-  const index = await getSearchIndex(signal);
-  const matches = searchGearIndex(index, { query, job, slot, minLevel, maxLevel });
-  const exports = await Promise.all(matches.map((m) => getItemExport(m.itemId, signal)));
+  const itemIds = await searchGearItemIds({ query, job, slot, minLevel, maxLevel }, signal);
+  const exports = await Promise.all(itemIds.map((id) => getItemExport(id, signal)));
   return exports.flatMap((e) => (e.equipment ? [toSearchResultDto(e.equipment)] : []));
 }
 
@@ -297,11 +274,9 @@ export async function getRecipeCost(
   return estimateCost(materials, finalItemId, world, options, prices, Date.now(), warnings);
 }
 
-export function getSearchIndex(signal?: AbortSignal): Promise<SearchIndexEntry[]> {
-  return loadJson<SearchIndexEntry[]>(SEARCH_INDEX_PATH, signal);
-}
+export { getSearchIndex };
 
-export async function searchItems(
+export function searchItems(
   query: string | null,
   page = 1,
   pageSize = 20,
@@ -309,7 +284,5 @@ export async function searchItems(
   craftType?: string,
   quickFilter?: QuickFilter | null,
 ): Promise<ItemSearchResultDto> {
-  const index = await getSearchIndex(signal);
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  return searchIndex(index, query, page, pageSize, craftType ?? null, quickFilter ?? null);
+  return searchItemsIndexed({ query, page, pageSize, craftType: craftType ?? null, quickFilter: quickFilter ?? null }, signal);
 }

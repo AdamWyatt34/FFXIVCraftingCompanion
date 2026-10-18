@@ -15,6 +15,7 @@ export const solversession_new: (a: number, b: number) => number;
 export const solversession_progress: (a: number) => [number, number, number];
 export const solversession_run: (a: number, b: number) => [number, number, number];
 export const solversession_tree_memory_bytes: (a: number) => number;
+export const start: () => void;
 export const starting_quality: (a: any, b: any) => [number, number, number];
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
