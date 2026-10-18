@@ -4,6 +4,7 @@ import withBundleAnalyzerInit from "@next/bundle-analyzer";
 import type { NextConfig } from "next";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { LEGACY_VERCEL_HOST, hostPattern, securityHeaders } from "./src/lib/security-headers";
 
 // scripts/data-fetch.mjs (the prebuild step) records which data set it placed under public/data;
 // the version is baked into the bundle so every data URL names exactly one export.
@@ -29,8 +30,12 @@ const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === "true",
 });
 
+// The canonical origin. Unset for local and e2e builds, which then get no host redirect.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ? new URL(process.env.NEXT_PUBLIC_SITE_URL) : null;
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   turbopack: {},
   // The server loader (src/lib/static-data/server.ts) reads public/data from disk during the
   // build and from the deployment's CDN inside a function, so the data set must not be traced
@@ -46,8 +51,29 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/:path*",
+        headers: securityHeaders({
+          apiOrigin: process.env.NEXT_PUBLIC_API_URL,
+          sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+        }),
+      },
+      {
         source: "/data/v/:version/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
+  async redirects() {
+    // The project's *.vercel.app host still serves the whole site, which gives search engines a
+    // duplicate of every page. Send it to the canonical host; previews have their own hosts and
+    // never match.
+    if (!siteUrl || siteUrl.host === LEGACY_VERCEL_HOST) return [];
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host" as const, value: hostPattern(LEGACY_VERCEL_HOST) }],
+        destination: `${siteUrl.origin}/:path*`,
+        permanent: true,
       },
     ];
   },

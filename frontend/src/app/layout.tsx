@@ -6,31 +6,19 @@ import Script from "next/script";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CraftPlanProvider } from "@/contexts/CraftPlanContext";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
+import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
+// No canonical here on purpose: metadata is inherited by every nested page without its own, so a
+// root canonical would point every client-rendered page at "/". Each indexable page sets its own.
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  ),
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "FFXIV Crafting Companion — Recipe Explorer, Simulator & Solver",
-    template: "%s | FFXIV Crafting Companion",
+    template: "%s | FFXIV Craft",
   },
   description:
     "Free crafting companion for Final Fantasy XIV. Browse recipes, simulate rotations, auto-solve macros, plan shopping lists, and find best-in-slot gear for every crafter and gatherer.",
-  keywords: [
-    "FFXIV",
-    "Final Fantasy XIV",
-    "crafting",
-    "simulator",
-    "rotation solver",
-    "macro",
-    "recipe",
-    "gear",
-    "Dawntrail",
-    "shopping list",
-    "material tree",
-  ],
   openGraph: {
     type: "website",
     siteName: "FFXIV Crafting Companion",
@@ -64,7 +52,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#e6b422",
 };
 
