@@ -123,6 +123,7 @@ function CraftPlanContent() {
       <div className="flex items-center gap-2 text-xs text-text-muted">
         <Link
           href="/recipes"
+          aria-label="Back to recipes"
           className="flex items-center gap-1 text-text-secondary hover:text-gold transition-colors text-sm"
         >
           <ArrowLeft size={16} />
@@ -189,6 +190,7 @@ function CraftPlanContent() {
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   placeholder="Plan name..."
+                  aria-label="Plan name"
                   className="px-3 py-2 text-sm bg-bg-elevated border border-border rounded-md text-text-primary w-36"
                 />
                 <button

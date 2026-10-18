@@ -171,7 +171,7 @@ export function CraftingStepsView({
               >
                 <ItemIcon
                   iconUrl={step.iconUrl}
-                  alt={step.itemName}
+                  alt=""
                   size="md"
                 />
                 <div className="flex-1 min-w-0">

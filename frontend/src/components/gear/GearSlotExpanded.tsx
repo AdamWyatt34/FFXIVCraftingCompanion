@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
@@ -409,8 +410,11 @@ export function BottomSheet({
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(sheetRef, true);
+
   return createPortal(
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Gear details">
+    <div ref={sheetRef} className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Gear details">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 animate-fade-in"

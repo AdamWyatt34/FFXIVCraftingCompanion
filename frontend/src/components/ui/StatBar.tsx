@@ -13,9 +13,13 @@ export function StatBar({ label, value, required }: StatBarProps) {
       <div className="flex items-center justify-between text-sm">
         <span className="text-text-secondary">{label}</span>
         <span className={meetsRequirement ? "text-rarity-uncommon" : "text-red-400"}>
-          {value.toLocaleString()}
+          {/* A fixed locale: this renders on the server too, and a visitor's locale would mismatch. */}
+          {value.toLocaleString("en-US")}
           {required !== undefined && (
-            <span className="text-text-muted"> / {required.toLocaleString()}</span>
+            <>
+              <span className="text-text-muted"> / {required.toLocaleString("en-US")}</span>
+              <span className="sr-only">{meetsRequirement ? " (requirement met)" : " (below requirement)"}</span>
+            </>
           )}
         </span>
       </div>

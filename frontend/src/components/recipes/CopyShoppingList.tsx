@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { Copy, ChevronDown, ClipboardList, FileText, CheckSquare, X } from "lucide-react";
 import { useToast } from "@/components/ui";
 import { formatShoppingListText } from "@/lib/tree-utils";
@@ -52,6 +53,16 @@ export function CopyShoppingList({
   const { toast } = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
   const [fallbackText, setFallbackText] = useState<string | null>(null);
+  const fallbackRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(fallbackRef, fallbackText !== null);
+  useEffect(() => {
+    if (fallbackText === null) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setFallbackText(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [fallbackText]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,14 +145,22 @@ export function CopyShoppingList({
 
       {/* Fallback modal */}
       {fallbackText && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div
+          ref={fallbackRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="copy-fallback-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        >
           <div className="bg-bg-surface border border-border rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold text-text-primary">
+              <h3 id="copy-fallback-title" className="text-sm font-semibold text-text-primary">
                 Copy Shopping List
               </h3>
               <button
+                type="button"
                 onClick={() => setFallbackText(null)}
+                aria-label="Close"
                 className="text-text-muted hover:text-text-secondary transition-colors"
               >
                 <X size={16} />

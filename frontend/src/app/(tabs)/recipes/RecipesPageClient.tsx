@@ -99,7 +99,6 @@ function RecipesPageContent() {
               value={query}
               onChange={setQuery}
               isLoading={isLoading}
-              autoFocus
             />
           </div>
           <Link

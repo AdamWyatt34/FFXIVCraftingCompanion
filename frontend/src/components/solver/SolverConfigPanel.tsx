@@ -74,10 +74,10 @@ export function SolverConfigPanel({
       {isExpanded && (
         <div className="px-4 pb-4 space-y-4 animate-expand-down">
           {/* Algorithm selector */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+          <div role="group" aria-labelledby="solver-algorithm-label">
+            <span id="solver-algorithm-label" className="block text-sm font-medium text-text-secondary mb-2">
               Algorithm
-            </label>
+            </span>
             <div className="flex flex-wrap gap-1.5">
               {ALGORITHMS.map((alg) => {
                 const label = ALGORITHM_LABELS[alg];
@@ -143,10 +143,10 @@ export function SolverConfigPanel({
           )}
 
           {/* Objective toggle */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
+          <div role="group" aria-labelledby="solver-objective-label">
+            <span id="solver-objective-label" className="block text-sm font-medium text-text-secondary mb-2">
               Objective
-            </label>
+            </span>
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
                 onClick={() => onObjectiveChange("quality")}

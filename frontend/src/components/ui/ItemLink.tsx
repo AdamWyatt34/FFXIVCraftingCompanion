@@ -100,7 +100,7 @@ export function ItemLink({
         onContextMenu={handleContextMenu}
       >
         {showIcon && iconUrl && (
-          <ItemIcon iconUrl={iconUrl} alt={itemName} size={iconSize} />
+          <ItemIcon iconUrl={iconUrl} alt="" size={iconSize} />
         )}
         <span className="truncate">{itemName}</span>
       </Link>

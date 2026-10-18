@@ -549,7 +549,7 @@ function SimulatorPageContent() {
   return (
     <div className="p-4">
       {/* Screen reader live region */}
-      <div className="sr-only" aria-live="assertive" aria-atomic="true">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
         {srAnnouncement}
       </div>
 

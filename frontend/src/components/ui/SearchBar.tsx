@@ -10,6 +10,8 @@ interface SearchBarProps {
   isLoading?: boolean;
   autoFocus?: boolean;
   placeholder?: string;
+  /** The accessible name of the field; the visible hint is the placeholder. */
+  label?: string;
 }
 
 export function SearchBar({
@@ -18,6 +20,7 @@ export function SearchBar({
   isLoading = false,
   autoFocus = false,
   placeholder = "Search items, recipes, materials...",
+  label = "Search items",
 }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +46,7 @@ export function SearchBar({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full h-11 pl-10 pr-10 bg-bg-secondary text-text-primary placeholder:text-text-muted rounded-lg border border-border focus:border-border-focus focus:outline-none transition-colors"
-        aria-label="Search items"
+        aria-label={label}
       />
       {value && (
         <button

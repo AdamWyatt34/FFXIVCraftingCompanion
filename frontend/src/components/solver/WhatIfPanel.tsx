@@ -185,15 +185,17 @@ function ResultCard({
       className={`p-3 bg-bg-surface border rounded-lg space-y-2 ${
         isBase ? "border-gold/50" : "border-border"
       } ${!result.isLoading && !result.error ? "animate-row-highlight" : ""}`}
-      onClick={() => !result.isLoading && !result.error && onNavigate(result.stats)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && !result.isLoading && !result.error) onNavigate(result.stats);
-      }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-text-primary">{result.label}</span>
+        <button
+          type="button"
+          onClick={() => onNavigate(result.stats)}
+          disabled={result.isLoading || !!result.error}
+          className="text-sm font-medium text-text-primary text-left hover:text-gold transition-colors disabled:hover:text-text-primary disabled:cursor-default"
+        >
+          {result.label}
+          <span className="sr-only">: apply these stats in the simulator</span>
+        </button>
         {result.isLoading ? (
           <LoadingSpinner size={14} />
         ) : result.error ? (

@@ -79,10 +79,13 @@ function ToastNotification({
   item: ToastItem;
   onDismiss: () => void;
 }) {
+  // Auto-dismiss waits while the pointer or keyboard focus is on the toast.
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
+    if (paused) return;
     const timer = setTimeout(onDismiss, item.duration);
     return () => clearTimeout(timer);
-  }, [item.duration, onDismiss]);
+  }, [item.duration, onDismiss, paused]);
 
   const Icon =
     item.type === "success"
@@ -100,16 +103,23 @@ function ToastNotification({
 
   return (
     <div
+      role={item.type === "error" ? "alert" : "status"}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
       className={`pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-lg bg-bg-elevated border border-border shadow-lg min-w-[280px] max-w-[90vw] transition-all duration-300 ${
         item.exiting
           ? "opacity-0 translate-y-2"
           : "opacity-100 translate-y-0 animate-slide-up"
       }`}
     >
-      <Icon size={18} className={iconColor} />
+      <Icon size={18} className={iconColor} aria-hidden="true" />
       <span className="text-sm text-text-primary flex-1">{item.message}</span>
       <button
+        type="button"
         onClick={onDismiss}
+        aria-label="Dismiss notification"
         className="text-text-muted hover:text-text-secondary transition-colors shrink-0"
       >
         <X size={14} />

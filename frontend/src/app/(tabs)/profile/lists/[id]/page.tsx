@@ -319,6 +319,7 @@ function AddItemForm({
         <input
           type="number"
           placeholder="Item ID"
+          aria-label="Item ID"
           value={itemId}
           onChange={(e) => setItemId(e.target.value)}
           className="h-9 px-3 text-sm bg-bg-secondary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus"
@@ -328,6 +329,7 @@ function AddItemForm({
         <input
           type="text"
           placeholder="Item Name"
+          aria-label="Item name"
           value={itemName}
           onChange={(e) => setItemName(e.target.value)}
           className="h-9 px-3 text-sm bg-bg-secondary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus"
@@ -338,6 +340,7 @@ function AddItemForm({
         <input
           type="number"
           placeholder="Quantity"
+          aria-label="Quantity"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           className="h-9 px-3 text-sm bg-bg-secondary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-focus"
@@ -345,6 +348,7 @@ function AddItemForm({
           min={1}
         />
         <select
+          aria-label="Category"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className="h-9 px-3 text-sm bg-bg-secondary border border-border rounded-lg text-text-primary focus:outline-none focus:border-border-focus"

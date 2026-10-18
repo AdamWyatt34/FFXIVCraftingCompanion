@@ -146,7 +146,8 @@ function TreeNode({
           <button
             onClick={() => onToggle(key)}
             className="w-6 h-6 flex items-center justify-center shrink-0 text-text-muted hover:text-gold transition-colors"
-            aria-label={isExpanded ? "Collapse" : "Expand"}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.itemName}`}
+            aria-expanded={isExpanded}
           >
             {isExpanded ? (
               <ChevronDown size={16} />
@@ -158,7 +159,7 @@ function TreeNode({
           <div className="w-6 shrink-0" />
         )}
 
-        <ItemIcon iconUrl={node.iconUrl} alt={node.itemName} size="sm" />
+        <ItemIcon iconUrl={node.iconUrl} alt="" size="sm" />
 
         <ItemLink
           itemId={node.itemId}

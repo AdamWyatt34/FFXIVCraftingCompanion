@@ -146,26 +146,8 @@ export function GearSlotCard({
 
   return (
     <div
-      className={`rounded-lg border bg-bg-surface p-3 space-y-2 cursor-pointer transition-all relative
+      className={`rounded-lg border bg-bg-surface p-3 space-y-2 transition-all relative
         ${isUpgrade ? "border-l-4 border-l-emerald-500 " : ""}${isExpanded ? "border-gold ring-1 ring-gold/30" : "border-border hover:border-gold/50 hover:bg-bg-elevated/50"}`}
-      onClick={onToggleExpand}
-      role="button"
-      tabIndex={0}
-      aria-expanded={isExpanded}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onToggleExpand();
-        }
-        if (hasAlternatives && e.key === "ArrowLeft") {
-          e.preventDefault();
-          setSelectedIdx((prev) => (prev <= 0 ? allItems.length - 1 : prev - 1));
-        }
-        if (hasAlternatives && e.key === "ArrowRight") {
-          e.preventDefault();
-          setSelectedIdx((prev) => (prev >= allItems.length - 1 ? 0 : prev + 1));
-        }
-      }}
     >
       {/* Comparison badge */}
       {isUpgrade && (
@@ -208,19 +190,35 @@ export function GearSlotCard({
             <ChevronLeft size={16} />
           </button>
         )}
-        <ItemIcon iconUrl={item.iconUrl} alt={item.name} size="lg" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className={`font-medium truncate ${rarityClass}`}>
+        <ItemIcon iconUrl={item.iconUrl} alt="" size="lg" />
+        {/* The item name is the control that expands the card; the arrows and links beside it stay their own controls. */}
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          aria-expanded={isExpanded}
+          onKeyDown={(e) => {
+            if (hasAlternatives && e.key === "ArrowLeft") {
+              e.preventDefault();
+              setSelectedIdx((prev) => (prev <= 0 ? allItems.length - 1 : prev - 1));
+            }
+            if (hasAlternatives && e.key === "ArrowRight") {
+              e.preventDefault();
+              setSelectedIdx((prev) => (prev >= allItems.length - 1 ? 0 : prev + 1));
+            }
+          }}
+          className="flex-1 min-w-0 text-left rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+        >
+          <span className="flex items-center gap-2">
+            <span className={`block font-medium truncate ${rarityClass}`}>
               {item.name}
-            </p>
+            </span>
             {item.canBeHQ && (
               <span title={item.hqNote ?? "HQ version available with higher stats"}>
                 <Sparkles size={14} className="text-gold shrink-0" />
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
+          </span>
+          <span className="flex items-center gap-2 text-xs text-text-secondary">
             <span className="bg-bg-elevated px-1.5 py-0.5 rounded text-text-primary">
               iLv {item.itemLevel}
             </span>
@@ -239,8 +237,8 @@ export function GearSlotCard({
                 ))}
               </span>
             )}
-          </div>
-        </div>
+          </span>
+        </button>
         {/* Right arrow */}
         {hasAlternatives && (
           <button

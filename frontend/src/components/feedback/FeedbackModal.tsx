@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useId, useRef } from "react";
 import { X, Send, CheckCircle } from "lucide-react";
 import { submitFeedback, ApiClientError } from "@/lib/api-client";
 
@@ -18,6 +17,7 @@ interface FeedbackModalProps {
   onClose: () => void;
 }
 
+/** A native modal dialog (top layer, Escape, focus trap and focus return are the browser's). */
 export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
   const [category, setCategory] = useState("General");
   const [message, setMessage] = useState("");
@@ -25,19 +25,23 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    else if (!open && dialog.open) dialog.close();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open]);
 
   function reset() {
     setCategory("General");
@@ -86,26 +90,31 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
     }
   }
 
-  if (!open) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60"
-        onClick={isSubmitting ? undefined : handleClose}
-      />
-
-      {/* Dialog */}
-      <div className="relative bg-bg-surface border border-border rounded-xl shadow-2xl max-w-md w-full animate-slide-up">
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!isSubmitting) handleClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !isSubmitting) handleClose();
+      }}
+      className="m-auto w-full max-w-md bg-transparent p-0 text-inherit backdrop:bg-black/60"
+    >
+      {open && (
+      <div className="bg-bg-surface border border-border rounded-xl shadow-2xl w-full animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-lg font-semibold text-text-primary">
+          <h3 id={titleId} className="text-lg font-semibold text-text-primary">
             Send Feedback
           </h3>
           <button
+            type="button"
             onClick={handleClose}
             disabled={isSubmitting}
+            aria-label="Close"
             className="text-text-muted hover:text-text-secondary transition-colors disabled:opacity-50"
           >
             <X size={18} />
@@ -219,7 +228,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
           </form>
         )}
       </div>
-    </div>,
-    document.body,
+      )}
+    </dialog>
   );
 }

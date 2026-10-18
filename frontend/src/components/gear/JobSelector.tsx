@@ -58,12 +58,13 @@ function JobRow({
               className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-all ${
                 isSelected
                   ? "border-gold bg-bg-elevated shadow-[0_0_8px_rgba(230,180,34,0.3)]"
-                  : "border-border bg-bg-surface opacity-70 hover:opacity-100 hover:border-text-muted"
+                  : "border-border bg-bg-surface hover:border-text-muted"
               }`}
               title={info.fullName}
             >
               <ItemIcon
                 iconUrl={getJobIconUrl(info.classJobId)}
+                className={isSelected ? "" : "opacity-70"}
                 alt={info.fullName}
                 size="xl"
               />

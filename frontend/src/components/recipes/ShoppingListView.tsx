@@ -141,8 +141,9 @@ export function ShoppingListView({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <ArrowUpDown size={12} className="text-text-muted" />
+          <ArrowUpDown size={12} className="text-text-muted" aria-hidden="true" />
           <select
+            aria-label="Sort shopping list"
             value={sortMode}
             onChange={(e) => setSortMode(e.target.value as SortMode)}
             className="text-xs bg-bg-elevated border border-border rounded px-2 py-1 text-text-secondary"
