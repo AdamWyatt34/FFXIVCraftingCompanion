@@ -78,7 +78,7 @@ fn recipe_dto_accepts_a_minimal_payload() {
 
 #[test]
 fn initial_state_matches_the_api_shape() {
-    let state = engine::initial_state(&recipe(), &stats(), 0);
+    let state = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
     let json = serde_json::to_value(&state).unwrap();
 
     assert_eq!(json["maxCP"], 600);
@@ -94,11 +94,11 @@ fn initial_state_matches_the_api_shape() {
 #[test]
 fn initial_state_clamps_a_manual_starting_quality() {
     assert_eq!(
-        engine::initial_state(&recipe(), &stats(), 9000).quality,
+        engine::initial_state(&recipe(), &stats(), 9000).expect("valid input").quality,
         7200
     );
-    assert_eq!(engine::initial_state(&recipe(), &stats(), 500).quality, 500);
-    assert_eq!(engine::initial_state(&recipe(), &stats(), -5).quality, 0);
+    assert_eq!(engine::initial_state(&recipe(), &stats(), 500).expect("valid input").quality, 500);
+    assert_eq!(engine::initial_state(&recipe(), &stats(), -5).expect("valid input").quality, 0);
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn unknown_condition_and_status_names_fall_back_like_try_parse() {
 
 #[test]
 fn execute_action_returns_the_step_dto() {
-    let initial = engine::initial_state(&recipe(), &stats(), 0);
+    let initial = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
     let step =
         engine::execute_action(&initial, Action::BasicSynthesis.id(), &stats(), &recipe()).unwrap();
 
@@ -194,7 +194,7 @@ fn execute_action_returns_the_step_dto() {
 
 #[test]
 fn execute_action_reports_a_fail_reason_and_an_unknown_id() {
-    let initial = engine::initial_state(&recipe(), &stats(), 0);
+    let initial = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
     let step = engine::execute_action(&initial, Action::ByregotsBlessing.id(), &stats(), &recipe())
         .unwrap();
     assert!(!step.succeeded);
@@ -212,8 +212,8 @@ fn execute_action_reports_a_fail_reason_and_an_unknown_id() {
 
 #[test]
 fn available_actions_lists_every_action_in_registry_order() {
-    let initial = engine::initial_state(&recipe(), &stats(), 0);
-    let table = engine::available_actions(&initial, &stats(), &recipe());
+    let initial = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
+    let table = engine::available_actions(&initial, &stats(), &recipe()).expect("valid input");
 
     assert_eq!(table.len(), Action::ALL.len());
     assert_eq!(table[0].action_id, Action::BasicSynthesis.id());
@@ -389,7 +389,7 @@ fn greedy_solve_reports_the_api_metrics() {
         0,
         &SolverConstraintsDto::default(),
         &mut frozen(),
-    );
+    ).expect("valid input");
     assert_eq!(result.metrics.algorithm_used, "Greedy");
     assert!(result.metrics.craft_completed);
     assert_eq!(result.action_ids.len() as i32, result.metrics.total_steps);
@@ -416,7 +416,7 @@ fn greedy_solve_on_an_expert_recipe_fails_like_the_api() {
         0,
         &SolverConstraintsDto::default(),
         &mut frozen(),
-    );
+    ).expect("valid input");
     assert_eq!(
         result.error_message.as_deref(),
         Some("Expert recipes require the MCTS solver.")
@@ -437,7 +437,7 @@ fn greedy_solve_honours_the_request_constraints() {
             ..Default::default()
         },
         &mut frozen(),
-    );
+    ).expect("valid input");
     assert_eq!(capped.action_ids.len(), 5);
 }
 
@@ -455,22 +455,22 @@ fn session_runs_in_slices_and_finishes_with_the_best_rotation() {
             random_seed: Some(42),
         },
         &mut frozen(),
-    );
+    ).expect("begin");
 
-    let first = session.run(1_000, &mut frozen());
+    let first = session.run(1_000, &mut frozen()).expect("run");
     assert_eq!(first.iterations, 1_000.0);
     assert!(!first.done);
     assert!(first.best_steps > 0);
     assert!(first.best_quality_percent > 0.0);
-    assert_eq!(session.progress(&mut frozen()), first);
+    assert_eq!(session.progress(&mut frozen()).expect("progress"), first);
 
     let mut last = first;
     while !last.done {
-        last = session.run(1_000, &mut frozen());
+        last = session.run(1_000, &mut frozen()).expect("run");
     }
     assert_eq!(last.iterations, 3_000.0);
 
-    let result = session.finish(&mut frozen());
+    let result = session.finish(&mut frozen()).expect("finish");
     assert_eq!(result.metrics.algorithm_used, "MCTS");
     assert_eq!(result.metrics.iterations_completed, 3_000);
     assert_eq!(result.metrics.total_steps, last.best_steps);
@@ -498,8 +498,8 @@ fn a_raised_early_termination_threshold_keeps_the_search_running() {
             &SolverConstraintsDto::default(),
             &settings,
             &mut frozen(),
-        );
-        session.run(u64::MAX, &mut frozen()).iterations
+        ).expect("begin");
+        session.run(u64::MAX, &mut frozen()).expect("run").iterations
     };
 
     let default_stop = run(None);
@@ -520,4 +520,86 @@ fn metrics_dto_names_the_algorithm_like_the_enum() {
     assert_eq!(algorithm_name(None), "Auto");
     let recipe: Recipe = recipe().to_recipe(0);
     assert_eq!(recipe.material_quality_factor, 75);
+}
+
+// The boundary refuses what the C# requests refuse and what the engine itself cannot take, with
+// the API's messages; nothing here can abort the instance.
+#[test]
+fn validate_mirrors_the_request_rules_and_the_engine_bounds() {
+    let r = recipe();
+    let ok = stats();
+    assert_eq!(engine::validate(&r, &ok, 0), Ok(0));
+    assert_eq!(engine::validate(&r, &ok, 99_999), Ok(r.quality), "starting quality is clamped");
+    assert_eq!(engine::validate(&r, &ok, -5), Ok(0));
+
+    let level = CrafterStatsDto { level: 0, ..ok };
+    assert_eq!(engine::validate(&r, &level, 0), Err("Level must be between 1 and 100.".into()));
+    let level = CrafterStatsDto { level: 101, ..ok };
+    assert_eq!(engine::validate(&r, &level, 0), Err("Level must be between 1 and 100.".into()));
+    let cp = CrafterStatsDto { cp: 0, ..ok };
+    assert_eq!(engine::validate(&r, &cp, 0), Err("Craftsmanship and CP must be positive.".into()));
+    let control = CrafterStatsDto { control: -1, ..ok };
+    assert_eq!(engine::validate(&r, &control, 0), Err("Control must be non-negative.".into()));
+    let huge_cp = CrafterStatsDto { cp: 40_000, ..ok };
+    assert_eq!(
+        engine::validate(&r, &huge_cp, 0),
+        Err("CP 40000 is above the engine's maximum of 32767.".into())
+    );
+
+    let divider = RecipeParametersDto { progress_divider: 0, ..recipe() };
+    assert_eq!(
+        engine::validate(&divider, &ok, 0),
+        Err("Recipe level data is unavailable for this recipe.".into())
+    );
+    let difficulty = RecipeParametersDto { difficulty: 70_000, ..recipe() };
+    assert_eq!(
+        engine::validate(&difficulty, &ok, 0),
+        Err("Difficulty 70000 is above the engine's maximum of 65535.".into())
+    );
+    let durability = RecipeParametersDto { durability: 0, ..recipe() };
+    assert_eq!(
+        engine::validate(&durability, &ok, 0),
+        Err("Recipe difficulty, quality and durability must be positive.".into())
+    );
+}
+
+#[test]
+fn every_entry_point_refuses_invalid_input() {
+    let bad = CrafterStatsDto { cp: 0, ..stats() };
+    let expected = Err::<(), String>("Craftsmanship and CP must be positive.".into());
+    assert_eq!(engine::initial_state(&recipe(), &bad, 0).map(|_| ()), expected);
+    let state = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
+    assert_eq!(engine::execute_action(&state, 100_001, &bad, &recipe()).map(|_| ()), expected);
+    assert_eq!(engine::available_actions(&state, &bad, &recipe()).map(|_| ()), expected);
+    assert_eq!(
+        engine::simulate(&recipe(), &bad, &[100_001], &SimulationOptionsDto::default(), &[]).map(|_| ()),
+        expected
+    );
+    assert_eq!(
+        engine::greedy_solve(&recipe(), &bad, 0, &SolverConstraintsDto::default(), &mut frozen()).map(|_| ()),
+        expected
+    );
+    let mut session = engine::Session::new(10_000, None);
+    assert_eq!(
+        session.begin(&recipe(), &bad, 0, &SolverConstraintsDto::default(), &SolverSettingsDto { time_budget_ms: 1.0, max_iterations: Some(10), random_seed: Some(1) }, &mut frozen()),
+        expected
+    );
+}
+
+#[test]
+fn a_session_step_without_a_search_is_an_error_not_a_panic() {
+    let mut session = engine::Session::new(10_000, None);
+    let expected = "no search in progress: call begin first".to_string();
+    assert_eq!(session.run(10, &mut frozen()).map(|_| ()), Err(expected.clone()));
+    assert_eq!(session.progress(&mut frozen()).map(|_| ()), Err(expected.clone()));
+    assert_eq!(session.finish(&mut frozen()).map(|_| ()), Err(expected));
+}
+
+#[test]
+fn hq_counts_are_clamped_to_the_ingredient_quantity() {
+    let r = recipe();
+    let all_two = engine::starting_quality(&r, &[HqIngredientDto { item_id: 1, hq_quantity: 2 }]);
+    assert!(all_two > 0);
+    assert_eq!(engine::starting_quality(&r, &[HqIngredientDto { item_id: 1, hq_quantity: 99 }]), all_two);
+    assert_eq!(engine::starting_quality(&r, &[HqIngredientDto { item_id: 1, hq_quantity: -3 }]), 0);
 }

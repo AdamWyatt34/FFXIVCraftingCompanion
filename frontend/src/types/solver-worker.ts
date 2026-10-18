@@ -43,4 +43,10 @@ export type SolverWorkerResponse =
   | { type: "progress"; id: string; progress: SolverProgress }
   | { type: "result"; id: string; job: SolverJob }
   | { type: "cancelled"; id: string }
-  | { type: "error"; id: string; message: string };
+  | { type: "error"; id: string; message: string }
+  /**
+   * The WASM instance trapped (a panic, with `panic = "abort"`) or a session was re-entered: its
+   * memory is no longer trusted, every queued solve has failed, and the main thread terminates
+   * the worker and starts a fresh one on the next solve.
+   */
+  | { type: "fatal"; message: string };

@@ -19,6 +19,29 @@ pub use mcts::{MctsConfig, MctsSolver};
 /// Milliseconds from an arbitrary origin; only differences are read.
 pub type Clock<'a> = &'a mut dyn FnMut() -> f64;
 
+/// Why a search could not start, or why a step of one was refused.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SolverError {
+    /// `run`, `progress` or `finish` with no search begun.
+    NoSearchInProgress,
+    /// The initial state does not fit the tree's packed representation (`mcts::packed`): the
+    /// search is refused before it touches the arena instead of aborting part-way through.
+    StateDoesNotFit { field: &'static str, value: i32 },
+}
+
+impl core::fmt::Display for SolverError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SolverError::NoSearchInProgress => f.write_str("no search in progress: call begin first"),
+            SolverError::StateDoesNotFit { field, value } => {
+                write!(f, "{field} = {value} is outside the range the solver can represent")
+            }
+        }
+    }
+}
+
+impl std::error::Error for SolverError {}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SolverAlgorithm {
     Greedy,

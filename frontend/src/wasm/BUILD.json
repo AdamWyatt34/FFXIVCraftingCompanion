@@ -1,7 +1,7 @@
 {
-  "cratesTreeHash": "6ca9d3cd0e4de8d4bedbca86249bd1c7c266f84c",
+  "cratesTreeHash": "6a50040e9371e12d0778d5cd219b79566c6500c7",
   "wasmPack": "0.15.0",
   "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
   "target": "web",
-  "wasmBytes": 178657
+  "wasmBytes": 184622
 }

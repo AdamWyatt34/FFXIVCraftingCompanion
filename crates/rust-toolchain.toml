@@ -1,0 +1,6 @@
+# The toolchain both crates build and test with, and the one frontend/src/wasm is built by (its
+# BUILD.json records the rustc); rustup installs it on first use.
+[toolchain]
+channel = "1.98.1"
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

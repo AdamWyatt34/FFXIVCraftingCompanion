@@ -9,7 +9,7 @@ import {
   getRecipe,
   getRecipeCraftingParameters,
 } from "@/lib/api-client";
-import { loadWasmEngine } from "@/lib/wasm-engine";
+import { isFatalEngineError, loadWasmEngine, resetWasmEngine } from "@/lib/wasm-engine";
 import type {
   RecipeCraftingParametersDto,
   RecipeSummaryDto,
@@ -70,12 +70,21 @@ function validateLevel(level: number): void {
     throw badRequest("Level must be between 1 and 100.");
 }
 
-/** WASM raises plain errors carrying the API's messages; surface them as the API would. */
+/**
+ * WASM raises plain errors carrying the API's messages; surface them as the API would. A trap
+ * leaves the instance unusable, so it is forgotten and the next call instantiates a fresh one.
+ */
 function local<T>(compute: () => T): T {
   try {
     return compute();
   } catch (err) {
     if (err instanceof ApiClientError) throw err;
+    if (isFatalEngineError(err)) {
+      resetWasmEngine();
+      throw new ApiClientError(500, {
+        error: "The crafting engine hit an internal error and was reloaded. Please try again.",
+      });
+    }
     throw badRequest(err instanceof Error ? err.message : String(err));
   }
 }

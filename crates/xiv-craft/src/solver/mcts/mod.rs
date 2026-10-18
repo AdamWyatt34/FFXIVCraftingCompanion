@@ -13,9 +13,10 @@ use crate::state::{CraftStatus, CrafterStats, CraftingState, Recipe};
 use super::greedy::{self, GreedySolverConfig};
 use super::rng::Xoshiro256;
 use super::{
-    ActionSet, Clock, SolverAlgorithm, SolverConstraints, SolverMetrics, SolverResult,
-    SolverSettings, SolverStatus,
+    ActionSet, Clock, SolverAlgorithm, SolverConstraints, SolverError, SolverMetrics,
+    SolverResult, SolverSettings, SolverStatus,
 };
+use packed::PackedState;
 use tree::Arena;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -151,13 +152,28 @@ impl MctsSolver {
         settings: &SolverSettings,
         now_ms: Clock<'_>,
     ) -> SolverResult {
-        self.begin(recipe, stats, constraints, settings, &mut *now_ms);
-        self.run(u64::MAX, &mut *now_ms);
-        self.finish(now_ms)
+        let failed = |error: SolverError| {
+            SolverResult::failed(
+                SolverAlgorithm::Mcts,
+                &error.to_string(),
+                SolverMetrics::default(),
+            )
+        };
+        if let Err(error) = self.begin(recipe, stats, constraints, settings, &mut *now_ms) {
+            return failed(error);
+        }
+        // Begun just above, so neither step can report a missing search.
+        let _ = self.run(u64::MAX, &mut *now_ms);
+        self.finish(now_ms).unwrap_or_else(failed)
     }
 
     /// Seeds the search with the greedy rotation and builds the root. Drops any search in
     /// progress.
+    ///
+    /// # Errors
+    ///
+    /// [`SolverError::StateDoesNotFit`] when the initial state cannot be held by the tree, in
+    /// which case nothing has been touched: a search already in progress is still there.
     pub fn begin(
         &mut self,
         recipe: &Recipe,
@@ -165,9 +181,13 @@ impl MctsSolver {
         constraints: &SolverConstraints,
         settings: &SolverSettings,
         now_ms: Clock<'_>,
-    ) {
+    ) -> Result<(), SolverError> {
         let started_ms = now_ms();
         let initial = create_initial(recipe, stats);
+        PackedState::try_pack(&initial).map_err(|e| SolverError::StateDoesNotFit {
+            field: e.field,
+            value: e.value,
+        })?;
 
         self.best_sequence.clear();
         let mut best_reward = -1.0;
@@ -205,17 +225,22 @@ impl MctsSolver {
             without_improvement: 0,
             done: false,
         });
+        Ok(())
     }
 
     /// Runs up to `max_iterations` more iterations of the search begun by [`MctsSolver::begin`],
     /// stopping early at the budget, the settings' iteration cap, a perfect reward or the
     /// early-termination threshold. A worker calls this in slices and yields between them.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Without a search in progress.
-    pub fn run(&mut self, max_iterations: u64, now_ms: Clock<'_>) -> SearchProgress {
-        let mut session = self.session.take().expect("begin before run");
+    /// [`SolverError::NoSearchInProgress`] without a [`MctsSolver::begin`].
+    pub fn run(
+        &mut self,
+        max_iterations: u64,
+        now_ms: Clock<'_>,
+    ) -> Result<SearchProgress, SolverError> {
+        let mut session = self.session.take().ok_or(SolverError::NoSearchInProgress)?;
         let Session {
             recipe,
             stats,
@@ -228,7 +253,9 @@ impl MctsSolver {
         let mut ran: u64 = 0;
 
         while !session.done && ran < max_iterations {
-            if now_ms() - session.started_ms >= settings.time_budget_ms
+            // The clock is a host call (Date.now in WASM, ~100 ns and up): read every 64
+            // iterations, the budget overruns by well under a millisecond at the rates seen.
+            if ((ran & 63) == 0 && now_ms() - session.started_ms >= settings.time_budget_ms)
                 || session.iterations >= max_total
             {
                 session.done = true;
@@ -274,17 +301,17 @@ impl MctsSolver {
 
         let progress = self.snapshot(&session, now_ms() - session.started_ms);
         self.session = Some(session);
-        progress
+        Ok(progress)
     }
 
     /// The search so far, without advancing it.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Without a search in progress.
-    pub fn progress(&self, now_ms: Clock<'_>) -> SearchProgress {
-        let session = self.session.as_ref().expect("begin before progress");
-        self.snapshot(session, now_ms() - session.started_ms)
+    /// [`SolverError::NoSearchInProgress`] without a [`MctsSolver::begin`].
+    pub fn progress(&self, now_ms: Clock<'_>) -> Result<SearchProgress, SolverError> {
+        let session = self.session.as_ref().ok_or(SolverError::NoSearchInProgress)?;
+        Ok(self.snapshot(session, now_ms() - session.started_ms))
     }
 
     fn snapshot(&self, session: &Session, elapsed_ms: f64) -> SearchProgress {
@@ -308,16 +335,16 @@ impl MctsSolver {
     /// Ends the search begun by [`MctsSolver::begin`] and reports the best rotation found, which
     /// after a partial run is the best so far.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Without a search in progress.
-    pub fn finish(&mut self, now_ms: Clock<'_>) -> SolverResult {
-        let session = self.session.take().expect("begin before finish");
+    /// [`SolverError::NoSearchInProgress`] without a [`MctsSolver::begin`].
+    pub fn finish(&mut self, now_ms: Clock<'_>) -> Result<SolverResult, SolverError> {
+        let session = self.session.take().ok_or(SolverError::NoSearchInProgress)?;
         let solve_time_ms = now_ms() - session.started_ms;
         let nodes_explored = self.arena.len() as u64;
 
         if self.best_sequence.is_empty() {
-            return SolverResult::failed(
+            return Ok(SolverResult::failed(
                 SolverAlgorithm::Mcts,
                 "MCTS solver could not find a valid rotation.",
                 SolverMetrics {
@@ -326,14 +353,14 @@ impl MctsSolver {
                     nodes_explored,
                     ..SolverMetrics::default()
                 },
-            );
+            ));
         }
 
         let action_ids = self.best_sequence.clone();
         let simulation = simulate(&session.recipe, &session.stats, &action_ids);
         let macros = export_to_macro(&action_ids, &MacroOptions::default());
 
-        SolverResult {
+        Ok(SolverResult {
             status: SolverStatus::Completed,
             metrics: SolverMetrics {
                 algorithm_used: Some(SolverAlgorithm::Mcts),
@@ -349,7 +376,7 @@ impl MctsSolver {
             simulation: Some(simulation),
             macros,
             error_message: None,
-        }
+        })
     }
 
     fn legal(

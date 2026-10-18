@@ -29,12 +29,36 @@ pub struct PackedState {
     turns: [u8; 8],
 }
 
-fn narrow<T: TryFrom<i32>>(value: i32, field: &str) -> T {
-    T::try_from(value).unwrap_or_else(|_| panic!("{field} = {value} does not fit the packed state"))
+/// A state value outside the packed representation's range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PackError {
+    pub field: &'static str,
+    pub value: i32,
+}
+
+impl core::fmt::Display for PackError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{} = {} does not fit the packed state", self.field, self.value)
+    }
+}
+
+impl std::error::Error for PackError {}
+
+fn narrow<T: TryFrom<i32>>(value: i32, field: &'static str) -> Result<T, PackError> {
+    T::try_from(value).map_err(|_| PackError { field, value })
 }
 
 impl PackedState {
+    /// [`PackedState::try_pack`] for the states a begun search produces, which always fit (see
+    /// `MctsSolver::begin`); a state that does not is a broken invariant, not an input error.
     pub fn pack(state: &CraftingState) -> PackedState {
+        PackedState::try_pack(state).unwrap_or_else(|e| panic!("{e}"))
+    }
+
+    /// Packs a state, or says which field does not fit. Every state a search reaches from a
+    /// packable initial state is packable too: the engine caps progress, quality, durability and
+    /// CP at the recipe's and the crafter's maxima.
+    pub fn try_pack(state: &CraftingState) -> Result<PackedState, PackError> {
         let mut flags = 0;
         for (on, bit) in [
             (state.heart_and_soul_active, HEART_AND_SOUL_ACTIVE),
@@ -55,32 +79,32 @@ impl PackedState {
             id if id == Action::StandardTouch.id() => 2,
             other => panic!("combo_action {other} is not a combo touch"),
         };
-        PackedState {
-            progress: narrow(state.progress, "progress"),
-            quality: narrow(state.quality, "quality"),
-            durability: narrow(state.durability, "durability"),
-            cp: narrow(state.cp, "cp"),
-            step: narrow(state.step, "step"),
+        Ok(PackedState {
+            progress: narrow(state.progress, "progress")?,
+            quality: narrow(state.quality, "quality")?,
+            durability: narrow(state.durability, "durability")?,
+            cp: narrow(state.cp, "cp")?,
+            step: narrow(state.step, "step")?,
             condition: state.condition as u8,
             status: state.status as u8,
-            inner_quiet_stacks: narrow(state.inner_quiet_stacks, "inner_quiet_stacks"),
+            inner_quiet_stacks: narrow(state.inner_quiet_stacks, "inner_quiet_stacks")?,
             careful_observation_count: narrow(
                 state.careful_observation_count,
                 "careful_observation_count",
-            ),
+            )?,
             flags,
             combo,
             turns: [
-                narrow(state.waste_not_turns, "waste_not_turns"),
-                narrow(state.waste_not_ii_turns, "waste_not_ii_turns"),
-                narrow(state.veneration_turns, "veneration_turns"),
-                narrow(state.innovation_turns, "innovation_turns"),
-                narrow(state.great_strides_turns, "great_strides_turns"),
-                narrow(state.manipulation_turns, "manipulation_turns"),
-                narrow(state.final_appraisal_turns, "final_appraisal_turns"),
-                narrow(state.muscle_memory_turns, "muscle_memory_turns"),
+                narrow(state.waste_not_turns, "waste_not_turns")?,
+                narrow(state.waste_not_ii_turns, "waste_not_ii_turns")?,
+                narrow(state.veneration_turns, "veneration_turns")?,
+                narrow(state.innovation_turns, "innovation_turns")?,
+                narrow(state.great_strides_turns, "great_strides_turns")?,
+                narrow(state.manipulation_turns, "manipulation_turns")?,
+                narrow(state.final_appraisal_turns, "final_appraisal_turns")?,
+                narrow(state.muscle_memory_turns, "muscle_memory_turns")?,
             ],
-        }
+        })
     }
 
     /// `base` supplies the four maxima, which the pack does not carry.
@@ -197,11 +221,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "progress = 70000")]
     fn refuses_values_that_do_not_fit() {
-        PackedState::pack(&CraftingState {
+        let error = PackedState::try_pack(&CraftingState {
             progress: 70_000,
             ..CraftingState::default()
-        });
+        })
+        .unwrap_err();
+        assert_eq!(error, PackError { field: "progress", value: 70_000 });
+        assert_eq!(error.to_string(), "progress = 70000 does not fit the packed state");
     }
 }

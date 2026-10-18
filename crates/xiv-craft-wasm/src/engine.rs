@@ -12,19 +12,55 @@ use crate::dto::*;
 
 const MAX_ACTIONS: usize = 100;
 
+/// The request rules of `StartSolveCommand` and `SimulateCraftCommand`, plus what the engine
+/// itself cannot take: a divider of zero divides by it, and a value past the tree's packed
+/// representation would abort a search (and, in WASM, the instance). Returns the starting
+/// quality clamped to the recipe's maximum, as `GetInitialStateQuery` does.
+pub fn validate(
+    recipe: &RecipeParametersDto,
+    stats: &CrafterStatsDto,
+    starting_quality: i32,
+) -> Result<i32, String> {
+    if stats.level < 1 || stats.level > 100 {
+        return Err("Level must be between 1 and 100.".into());
+    }
+    if stats.craftsmanship <= 0 || stats.cp <= 0 {
+        return Err("Craftsmanship and CP must be positive.".into());
+    }
+    if stats.control < 0 {
+        return Err("Control must be non-negative.".into());
+    }
+    if recipe.progress_divider <= 0 || recipe.quality_divider <= 0 {
+        return Err("Recipe level data is unavailable for this recipe.".into());
+    }
+    if recipe.difficulty <= 0 || recipe.quality <= 0 || recipe.durability <= 0 {
+        return Err("Recipe difficulty, quality and durability must be positive.".into());
+    }
+    for (field, value, max) in [
+        ("Difficulty", recipe.difficulty, i32::from(u16::MAX)),
+        ("Quality", recipe.quality, i32::from(u16::MAX)),
+        ("Durability", recipe.durability, i32::from(i16::MAX)),
+        ("CP", stats.cp, i32::from(i16::MAX)),
+    ] {
+        if value > max {
+            return Err(format!("{field} {value} is above the engine's maximum of {max}."));
+        }
+    }
+    Ok(starting_quality.clamp(0, recipe.quality))
+}
+
 /// `GetInitialStateQuery`: a manual starting quality is clamped to the recipe's maximum.
 pub fn initial_state(
     recipe: &RecipeParametersDto,
     stats: &CrafterStatsDto,
     starting_quality: i32,
-) -> CraftingStateDto {
-    let starting_quality = if starting_quality > 0 {
-        starting_quality.min(recipe.quality)
-    } else {
-        0
-    };
+) -> Result<CraftingStateDto, String> {
+    let starting_quality = validate(recipe, stats, starting_quality)?;
     let recipe = recipe.to_recipe(starting_quality);
-    CraftingStateDto::from_state(&CraftingState::create_initial(&recipe, &stats.to_stats()))
+    Ok(CraftingStateDto::from_state(&CraftingState::create_initial(
+        &recipe,
+        &stats.to_stats(),
+    )))
 }
 
 /// `ExecuteSingleActionCommand`.
@@ -34,6 +70,7 @@ pub fn execute_action(
     stats: &CrafterStatsDto,
     recipe: &RecipeParametersDto,
 ) -> Result<StepResultDto, String> {
+    validate(recipe, stats, 0)?;
     if Action::from_id(action_id).is_none() {
         return Err(format!("Action ID {action_id} not found."));
     }
@@ -51,16 +88,35 @@ pub fn available_actions(
     state: &CraftingStateDto,
     stats: &CrafterStatsDto,
     recipe: &RecipeParametersDto,
-) -> Vec<ActionAvailabilityDto> {
-    action_availability(&state.to_state(), &stats.to_stats(), &recipe.to_recipe(0))
-        .iter()
-        .map(ActionAvailabilityDto::from_availability)
-        .collect()
+) -> Result<Vec<ActionAvailabilityDto>, String> {
+    validate(recipe, stats, 0)?;
+    Ok(
+        action_availability(&state.to_state(), &stats.to_stats(), &recipe.to_recipe(0))
+            .iter()
+            .map(ActionAvailabilityDto::from_availability)
+            .collect(),
+    )
 }
 
-/// `HQCalculator.CalculateStartingQuality` over the recipe's own ingredient list.
+/// `HQCalculator.CalculateStartingQuality` over the recipe's own ingredient list. An HQ count
+/// above the ingredient's quantity (or below zero) counts as the quantity (or zero).
 pub fn starting_quality(recipe: &RecipeParametersDto, hq_ingredients: &[HqIngredientDto]) -> i32 {
-    let inputs: Vec<_> = hq_ingredients.iter().map(|h| h.to_input()).collect();
+    let inputs: Vec<_> = hq_ingredients
+        .iter()
+        .map(|h| {
+            let quantity = recipe
+                .ingredients
+                .iter()
+                .find(|i| i.item_id == h.item_id)
+                .map_or(h.hq_quantity, |i| i.quantity)
+                .max(0);
+            HqIngredientDto {
+                item_id: h.item_id,
+                hq_quantity: h.hq_quantity.clamp(0, quantity),
+            }
+            .to_input()
+        })
+        .collect();
     calculate_starting_quality(
         recipe.quality,
         recipe.material_quality_factor,
@@ -94,6 +150,7 @@ pub fn simulate(
     options: &SimulationOptionsDto,
     hq_ingredients: &[HqIngredientDto],
 ) -> Result<SimulationResultDto, String> {
+    validate(recipe, stats, 0)?;
     validate_action_ids(action_ids)?;
     let starting = if hq_ingredients.is_empty() {
         0
@@ -166,7 +223,8 @@ pub fn greedy_solve(
     starting_quality: i32,
     constraints: &SolverConstraintsDto,
     now_ms: Clock<'_>,
-) -> SolverResultDto {
+) -> Result<SolverResultDto, String> {
+    let starting_quality = validate(recipe, stats, starting_quality)?;
     let result = xiv_craft::solver::greedy::solve(
         &recipe.to_recipe(starting_quality),
         &stats.to_stats(),
@@ -174,7 +232,7 @@ pub fn greedy_solve(
         &GreedySolverConfig::default(),
         now_ms,
     );
-    SolverResultDto::from_result(&result)
+    Ok(SolverResultDto::from_result(&result))
 }
 
 /// One MCTS search at a time, sliced so a Web Worker can yield between slices.
@@ -207,30 +265,42 @@ impl Session {
         constraints: &SolverConstraintsDto,
         settings: &SolverSettingsDto,
         now_ms: Clock<'_>,
-    ) {
-        self.solver.begin(
-            &recipe.to_recipe(starting_quality),
-            &stats.to_stats(),
-            &constraints.to_constraints(),
-            &SolverSettings {
-                time_budget_ms: settings.time_budget_ms,
-                max_iterations: settings.max_iterations,
-                random_seed: settings.random_seed,
-            },
-            now_ms,
-        );
+    ) -> Result<(), String> {
+        let starting_quality = validate(recipe, stats, starting_quality)?;
+        self.solver
+            .begin(
+                &recipe.to_recipe(starting_quality),
+                &stats.to_stats(),
+                &constraints.to_constraints(),
+                &SolverSettings {
+                    time_budget_ms: settings.time_budget_ms,
+                    max_iterations: settings.max_iterations,
+                    random_seed: settings.random_seed,
+                },
+                now_ms,
+            )
+            .map_err(|e| e.to_string())
     }
 
-    pub fn run(&mut self, max_iterations: u64, now_ms: Clock<'_>) -> SearchProgressDto {
-        progress_dto(self.solver.run(max_iterations, now_ms))
+    pub fn run(&mut self, max_iterations: u64, now_ms: Clock<'_>) -> Result<SearchProgressDto, String> {
+        self.solver
+            .run(max_iterations, now_ms)
+            .map(progress_dto)
+            .map_err(|e| e.to_string())
     }
 
-    pub fn progress(&self, now_ms: Clock<'_>) -> SearchProgressDto {
-        progress_dto(self.solver.progress(now_ms))
+    pub fn progress(&self, now_ms: Clock<'_>) -> Result<SearchProgressDto, String> {
+        self.solver
+            .progress(now_ms)
+            .map(progress_dto)
+            .map_err(|e| e.to_string())
     }
 
-    pub fn finish(&mut self, now_ms: Clock<'_>) -> SolverResultDto {
-        SolverResultDto::from_result(&self.solver.finish(now_ms))
+    pub fn finish(&mut self, now_ms: Clock<'_>) -> Result<SolverResultDto, String> {
+        self.solver
+            .finish(now_ms)
+            .map(|r| SolverResultDto::from_result(&r))
+            .map_err(|e| e.to_string())
     }
 
     pub fn tree_memory_bytes(&self) -> usize {
