@@ -40,6 +40,7 @@ dotnet run --project src/FFXIV.Export --configuration Release -- --out ./out --s
 
 - This repo uses **MediatR**, not the custom Result-aware mediator. Keep new handlers on MediatR.
 - Tests use **xUnit + FluentAssertions + NSubstitute**, not Shouldly/Bogus.
+- API integration tests live in `tests/FFXIV.Tests/Api`: `ApiFactory` runs the real pipeline on `WebApplicationFactory` over in-memory SQLite seeded from the static-data fixture, with the Lodestone, Discord and XIVAPI clients substituted. Accounts are created through the API. Give each test its own client (`CreateApiClient`) so the per-address rate limits never couple tests.
 - The crafting engine stays in `FFXIV.Domain/CraftingEngine`. Solver implementations stay in `FFXIV.Infrastructure/Solver` behind `IRotationSolver`. Do not move engine rules into Application or Infrastructure.
 - Crafting action ids (`ICraftingAction.Id`) are persisted in saved rotations and macros. Never renumber them; any port must reuse the same ids.
 - `Recipe.RecipeLevel` is the recipe level (rlvl), not the class job level. Formulas depend on the distinction (see commit bb6e8ad).
