@@ -7,6 +7,7 @@ import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { CONDITION_COLORS } from "@/lib/action-icons";
 import type { RecipeDto, RecipeSummaryDto, CraftType } from "@/types/api";
 import type { CraftingState } from "@/types/simulator";
+import { recipeJourneyPath } from "@/lib/routes";
 
 interface SimulatorHeaderProps {
   recipe: RecipeSummaryDto;
@@ -59,7 +60,7 @@ export function SimulatorHeader({
 
         {/* Journey link */}
         <Link
-          href={`/recipes/${recipe.recipeId}/journey`}
+          href={recipeJourneyPath(recipe.recipeId)}
           className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-gold/15 text-gold text-xs font-medium hover:bg-gold/25 transition-colors shrink-0"
         >
           <Map size={14} />

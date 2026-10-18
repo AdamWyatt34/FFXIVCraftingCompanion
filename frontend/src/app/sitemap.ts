@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getManifestServer, listRecipeIdsServer } from "@/lib/static-data/server";
+import { recipePath } from "@/lib/routes";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -49,7 +50,7 @@ export default async function sitemap({ id }: { id: number | string | Promise<nu
   const lastModified = manifest ? new Date(manifest.exportedAt) : new Date();
   const start = (sitemapId - 1) * RECIPES_PER_SITEMAP;
   return recipeIds.slice(start, start + RECIPES_PER_SITEMAP).map((recipeId) => ({
-    url: `${BASE_URL}/recipes/${recipeId}`,
+    url: `${BASE_URL}${recipePath(recipeId)}`,
     lastModified,
     changeFrequency: "monthly",
     priority: 0.6,

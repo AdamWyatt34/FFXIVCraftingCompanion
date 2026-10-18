@@ -40,6 +40,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useProfile } from "@/hooks/useProfile";
 import { ProtectedAction } from "@/components/ui/ProtectedAction";
 import type { RecipeDto, CraftType } from "@/types/api";
+import { recipeJourneyPath, simulatorPath } from "@/lib/routes";
 
 type TabKey = "shopping" | "tree" | "steps";
 
@@ -238,7 +239,7 @@ function RecipeDetailContent() {
 
       {/* Journey button */}
       <Link
-        href={`/recipes/${recipeId}/journey`}
+        href={recipeJourneyPath(recipeId, recipe.resultItem.name)}
         className="flex items-center gap-2 p-3 rounded-lg bg-gold/10 border border-gold/30 hover:bg-gold/20 transition-colors"
       >
         <Map className="text-gold shrink-0" size={18} />
@@ -248,14 +249,14 @@ function RecipeDetailContent() {
       {/* Simulate + Auto-Solve links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
-          href={`/simulator?recipeId=${recipeId}`}
+          href={simulatorPath(recipeId)}
           className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
         >
           <FlaskConical className="text-gold shrink-0" size={18} />
           <span className="text-sm text-text-primary">Simulate this Recipe</span>
         </Link>
         <Link
-          href={`/simulator?recipeId=${recipeId}&solve=true`}
+          href={simulatorPath(recipeId, { solve: true })}
           className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
         >
           <Sparkles className="text-gold shrink-0" size={18} />

@@ -8,6 +8,7 @@ import { ItemIcon } from "@/components/ui/ItemIcon";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import Link from "next/link";
 import type { SavedListSummaryDto } from "@/types/saved-lists";
+import { recipeJourneyPath, recipePath } from "@/lib/routes";
 
 const TABS = [
   { key: "ShoppingList", label: "Shopping Lists", icon: ShoppingCart },
@@ -209,35 +210,32 @@ function FavoritesTabContent() {
   return (
     <div className="space-y-2">
       {favorites.map((fav) => (
-        <Link
+        <div
           key={fav.recipeId}
-          href={`/recipes/${fav.recipeId}`}
           className="flex items-center gap-3 p-3 bg-bg-surface rounded-lg border border-border hover:border-border-focus transition-colors"
         >
           <ItemIcon iconUrl={fav.iconUrl} alt={fav.itemName} size="lg" />
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium text-text-primary truncate block">
+            <Link
+              href={recipePath(fav.recipeId, fav.itemName)}
+              className="text-sm font-medium text-text-primary hover:text-gold transition-colors truncate block"
+            >
               {fav.itemName}
-            </span>
+            </Link>
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span>{fav.craftType}</span>
               <span>Lv. {fav.recipeLevel}</span>
             </div>
           </div>
           <Link
-            href={`/recipes/${fav.recipeId}/journey`}
-            onClick={(e) => e.stopPropagation()}
+            href={recipeJourneyPath(fav.recipeId, fav.itemName)}
             className="p-1.5 rounded text-text-muted hover:text-gold transition-colors shrink-0"
             aria-label="Start journey"
           >
             <Map size={14} />
           </Link>
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleUnfavorite(fav.recipeId);
-            }}
+            onClick={() => handleUnfavorite(fav.recipeId)}
             disabled={togglingId === fav.recipeId}
             className="p-1.5 rounded text-red-400 hover:text-red-300 transition-colors shrink-0 disabled:opacity-50"
             aria-label="Remove from favorites"
@@ -248,7 +246,7 @@ function FavoritesTabContent() {
               <Heart size={14} fill="currentColor" />
             )}
           </button>
-        </Link>
+        </div>
       ))}
     </div>
   );

@@ -24,6 +24,7 @@ import {
   JourneySkeleton,
 } from "@/components/journey";
 import type { CraftType } from "@/types/api";
+import { recipePath } from "@/lib/routes";
 
 export default function JourneyPage() {
   const params = useParams<{ id: string }>();
@@ -37,7 +38,7 @@ export default function JourneyPage() {
       const itemName = journey.itemContext.itemName;
       setBreadcrumbs([
         { label: "Recipes", href: "/recipes" },
-        { label: itemName, href: `/recipes/${recipeId}` },
+        { label: itemName, href: recipePath(recipeId, itemName) },
         { label: "Journey" },
       ]);
     }
@@ -89,7 +90,7 @@ export default function JourneyPage() {
         </button>
         <Link href="/recipes" className="hover:text-gold transition-colors">Recipes</Link>
         <span>&gt;</span>
-        <Link href={`/recipes/${recipeId}`} className="hover:text-gold transition-colors truncate">
+        <Link href={recipePath(recipeId, journey.itemContext.itemName)} className="hover:text-gold transition-colors truncate">
           {ctx.itemName}
         </Link>
         <span>&gt;</span>

@@ -11,6 +11,7 @@ import {
 import { ItemIcon, ItemLink, SourceBadge } from "@/components/ui";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { buildIngredientMap } from "@/lib/tree-utils";
+import { recipePath } from "@/lib/routes";
 import type {
   IntermediateCraftDto,
   MaterialTreeNodeDto,
@@ -252,7 +253,7 @@ export function CraftingStepsView({
                     ))}
                   </div>
                   <Link
-                    href={`/recipes/${step.recipeId}`}
+                    href={recipePath(step.recipeId, step.itemName)}
                     className="inline-flex items-center gap-1 mt-2 text-xs text-gold hover:text-gold-light transition-colors"
                   >
                     View Recipe

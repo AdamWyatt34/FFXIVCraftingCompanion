@@ -5,6 +5,7 @@ import type { ItemDto } from "@/types/api";
 import { ITEM_CATEGORY_INFO } from "@/lib/constants";
 import { ItemIcon } from "./ItemIcon";
 import { Hammer, Shield, Heart } from "lucide-react";
+import { recipePath } from "@/lib/routes";
 
 interface ItemCardProps {
   item: ItemDto;
@@ -52,7 +53,7 @@ export function ItemCard({ item, isFavorited }: ItemCardProps) {
 
   if (item.recipeId !== null) {
     return (
-      <Link href={`/recipes/${item.recipeId}`} className="block">
+      <Link href={recipePath(item.recipeId, item.name)} className="block">
         {content}
       </Link>
     );

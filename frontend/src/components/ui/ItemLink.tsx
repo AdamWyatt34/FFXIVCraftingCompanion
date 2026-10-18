@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ItemIcon } from "./ItemIcon";
+import { itemPath, recipeJourneyPath, recipePath, simulatorPath } from "@/lib/routes";
 
 interface ItemLinkProps {
   itemId: number;
@@ -70,7 +71,7 @@ export function ItemLink({
   }, [menuPos]);
 
   const handleMouseEnter = useCallback(() => {
-    router.prefetch(`/items/${itemId}`);
+    router.prefetch(itemPath(itemId));
   }, [router, itemId]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -81,18 +82,18 @@ export function ItemLink({
   };
 
   const menuItems: { label: string; href: string }[] = [
-    { label: "View Item", href: `/items/${itemId}` },
+    { label: "View Item", href: itemPath(itemId) },
   ];
   if (recipeId) {
-    menuItems.push({ label: "View Recipe", href: `/recipes/${recipeId}` });
-    menuItems.push({ label: "Start Journey", href: `/recipes/${recipeId}/journey` });
-    menuItems.push({ label: "Simulate", href: `/simulator?recipeId=${recipeId}` });
+    menuItems.push({ label: "View Recipe", href: recipePath(recipeId, itemName) });
+    menuItems.push({ label: "Start Journey", href: recipeJourneyPath(recipeId, itemName) });
+    menuItems.push({ label: "Simulate", href: simulatorPath(recipeId) });
   }
 
   return (
     <>
       <Link
-        href={`/items/${itemId}`}
+        href={itemPath(itemId)}
         className={`inline-flex items-center gap-1.5 text-sm text-text-primary hover:text-gold transition-colors truncate ${className}`}
         title={itemName}
         onMouseEnter={handleMouseEnter}
