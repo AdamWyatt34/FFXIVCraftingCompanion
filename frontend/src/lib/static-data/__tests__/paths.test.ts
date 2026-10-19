@@ -23,5 +23,13 @@ describe("data base path", () => {
     const paths = await load({ NEXT_PUBLIC_DATA_VERSION: "7.57-20261017-2035", NEXT_PUBLIC_DATA_BASE: base });
     expect(paths.dataBasePath()).toBe(base);
     expect(paths.recipeBucketPath(2240)).toBe("recipes/22.json");
+    expect(paths.dataBases()).toEqual([base]);
+  });
+
+  it("lists the fallback origin after the CDN when the build recorded one", async () => {
+    const base = "https://cdn.jsdelivr.net/gh/AdamWyatt34/FFXIVCraftingCompanion@b84169d7";
+    const fallback = "https://raw.githubusercontent.com/AdamWyatt34/FFXIVCraftingCompanion/b84169d7";
+    const paths = await load({ NEXT_PUBLIC_DATA_VERSION: "7.57-20261017-2035", NEXT_PUBLIC_DATA_BASE: base, NEXT_PUBLIC_DATA_FALLBACK_BASE: fallback });
+    expect(paths.dataBases()).toEqual([base, fallback]);
   });
 });

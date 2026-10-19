@@ -3,7 +3,7 @@ import type { ItemSearchResultDto } from "@/types/api";
 import type { SearchWorkerRequest, SearchWorkerResponse } from "@/types/search-worker";
 import { loadJson } from "./fetch";
 import type { GearSearchParams } from "./gear";
-import { dataBasePath } from "./paths";
+import { dataBases } from "./paths";
 import type { QuickFilter } from "./search";
 import { loadSearchIndex } from "./search-compact";
 import type { SearchIndexEntry } from "./types";
@@ -62,7 +62,7 @@ function getWorker(): Worker {
 }
 
 /** A request before the bridge adds the id and the data set; distributes over the union. */
-type Ask<R> = R extends unknown ? Omit<R, "id" | "base"> : never;
+type Ask<R> = R extends unknown ? Omit<R, "id" | "base" | "fallbackBase"> : never;
 
 function ask<T>(request: Ask<SearchWorkerRequest>, signal?: AbortSignal): Promise<T> {
   if (signal?.aborted) return Promise.reject(abortError());
@@ -80,7 +80,8 @@ function ask<T>(request: Ask<SearchWorkerRequest>, signal?: AbortSignal): Promis
         fn(value);
       };
     pending.set(id, { resolve: settle((value) => resolve(value as T)), reject: settle(reject) });
-    getWorker().postMessage({ ...request, id, base: dataBasePath() } satisfies SearchWorkerRequest);
+    const [base, fallbackBase] = dataBases();
+    getWorker().postMessage({ ...request, id, base, ...(fallbackBase ? { fallbackBase } : {}) } satisfies SearchWorkerRequest);
   });
 }
 

@@ -1,4 +1,5 @@
 import { ApiClientError } from "@/lib/api-errors";
+import { fetchFromBases } from "@/lib/static-data/fetch";
 import { searchGearIndex } from "@/lib/static-data/gear";
 import { searchIndex } from "@/lib/static-data/search";
 import { loadSearchIndex } from "@/lib/static-data/search-compact";
@@ -18,21 +19,22 @@ export interface SearchWorkerHost {
 export function createSearchWorkerCore(host: SearchWorkerHost) {
   const indexes = new Map<string, Promise<SearchIndexEntry[]>>();
 
-  function index(base: string): Promise<SearchIndexEntry[]> {
-    let loading = indexes.get(base);
+  function index(bases: readonly string[]): Promise<SearchIndexEntry[]> {
+    const key = bases[0];
+    let loading = indexes.get(key);
     if (!loading) {
-      loading = loadSearchIndex((path) => host.fetchJson(`${base}/${path}`)).catch((err) => {
-        indexes.delete(base);
+      loading = loadSearchIndex((path) => fetchFromBases(bases, path, (url) => host.fetchJson(url))).catch((err) => {
+        indexes.delete(key);
         throw err;
       });
-      indexes.set(base, loading);
+      indexes.set(key, loading);
     }
     return loading;
   }
 
   async function handle(request: SearchWorkerRequest): Promise<void> {
     try {
-      const entries = await index(request.base);
+      const entries = await index(request.fallbackBase ? [request.base, request.fallbackBase] : [request.base]);
       if (request.type === "items") {
         const { query, page, pageSize, craftType, quickFilter } = request;
         host.post({ type: "items", id: request.id, result: searchIndex(entries, query, page, pageSize, craftType, quickFilter) });

@@ -8,9 +8,10 @@ import { LEGACY_VERCEL_HOST, hostPattern, securityHeaders } from "./src/lib/secu
 
 // scripts/data-fetch.mjs (the prebuild step) records which data set it placed and where it is
 // read from: `base` is what the browser prefixes to a data path (a CDN URL for a locked data set,
-// or this deployment's /data/v/<version>), `dir` is where the build reads it from disk. The
-// version is baked into the bundle so every data URL names exactly one export.
-function currentDataSet(): { version: string; bucketSize: number; base: string; dir: string } | null {
+// or this deployment's /data/v/<version>), `fallbackBase` a second origin for the same files when
+// the CDN refuses one (or null), `dir` is where the build reads it from disk. The version is baked
+// into the bundle so every data URL names exactly one export.
+function currentDataSet(): { version: string; bucketSize: number; base: string; fallbackBase: string | null; dir: string } | null {
   try {
     return JSON.parse(readFileSync(join(__dirname, ".data", "current.json"), "utf8"));
   } catch {
@@ -53,6 +54,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_DATA_VERSION: dataSet?.version ?? "",
     NEXT_PUBLIC_DATA_BUCKET_SIZE: String(dataSet?.bucketSize ?? 100),
     NEXT_PUBLIC_DATA_BASE: dataSet?.base ?? "",
+    NEXT_PUBLIC_DATA_FALLBACK_BASE: dataSet?.fallbackBase ?? "",
     FFXIV_DATA_LOCAL_DIR: dataSet?.dir ?? "",
   },
   async headers() {
@@ -63,6 +65,7 @@ const nextConfig: NextConfig = {
           apiOrigin: process.env.NEXT_PUBLIC_API_URL,
           sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
           dataBase: dataSet?.base,
+          dataFallbackBase: dataSet?.fallbackBase,
         }),
       },
       {

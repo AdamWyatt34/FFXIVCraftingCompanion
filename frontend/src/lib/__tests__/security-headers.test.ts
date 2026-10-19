@@ -39,6 +39,15 @@ describe("security headers", () => {
     expect(own).not.toContain("/data/v/");
   });
 
+  it("allows the game data's fallback origin beside the CDN", () => {
+    const csp = buildContentSecurityPolicy({
+      dataBase: "https://cdn.jsdelivr.net/gh/AdamWyatt34/FFXIVCraftingCompanion@b84169d7",
+      dataFallbackBase: "https://raw.githubusercontent.com/AdamWyatt34/FFXIVCraftingCompanion/b84169d7",
+    });
+    expect(csp).toMatch(/connect-src 'self' https:\/\/cdn\.jsdelivr\.net https:\/\/raw\.githubusercontent\.com /);
+    expect(buildContentSecurityPolicy({ dataBase: "/data/v/7.57", dataFallbackBase: null })).not.toContain("null");
+  });
+
   it("works without an API origin or a DSN", () => {
     const csp = buildContentSecurityPolicy({});
     expect(csp).toContain("connect-src 'self' https://universalis.app");

@@ -8,12 +8,13 @@ import { inflateSearchIndex } from "@/lib/static-data/search-compact";
 import type { CompactSearchIndex } from "@/lib/static-data/types";
 import type { ItemSearchRequest, SearchWorkerResponse } from "@/types/search-worker";
 
-function host(files: Record<string, unknown>) {
+function host(files: Record<string, unknown>, refused: string[] = []) {
   const posted: SearchWorkerResponse[] = [];
   const fetched: string[] = [];
   const core = createSearchWorkerCore({
     fetchJson<T>(url: string): Promise<T> {
       fetched.push(url);
+      if (refused.includes(url)) return Promise.reject(new ApiClientError(403, { error: "Game data request failed (403)" }));
       if (url in files) return Promise.resolve(files[url] as T);
       return Promise.reject(new ApiClientError(404, { error: "Not found" }));
     },
@@ -41,6 +42,15 @@ describe("search worker core", () => {
       { type: "items", id: "b", result: searchIndex(entries, "ing", 2, 5, "ARM", null) },
     ]);
     expect(fetched).toEqual(["/data/v/1/search/compact.json"]);
+  });
+
+  it("reads the index from the fallback origin when the CDN refuses it", async () => {
+    const { core, posted, fetched } = host({ "https://raw/x/search/compact.json": compact }, ["https://cdn/x/search/compact.json"]);
+
+    await core.handle({ ...items("a", "https://cdn/x", "ingot"), fallbackBase: "https://raw/x" });
+
+    expect(posted).toEqual([{ type: "items", id: "a", result: searchIndex(entries, "ingot", 1, 20, null, null) }]);
+    expect(fetched).toEqual(["https://cdn/x/search/compact.json", "https://raw/x/search/compact.json"]);
   });
 
   it("falls back to the entries file of a data set exported before the compact index", async () => {

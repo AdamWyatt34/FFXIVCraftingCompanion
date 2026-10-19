@@ -2,7 +2,7 @@ import "server-only";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CrystalTable } from "./materials";
-import { CRYSTALS_PATH, DATA_BASE, DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
+import { CRYSTALS_PATH, DATA_BASE, DATA_FALLBACK_BASE, DATA_ROOT, DATA_VERSION, MANIFEST_PATH, recipeBucketPath } from "./paths";
 import type { Bucket, Manifest, RecipeExport } from "./types";
 
 // Server-side reads of the data set. At build time (sitemap, any prerender) it is on disk in the
@@ -16,6 +16,9 @@ function dataDir(): string {
 }
 
 const remoteBase = /^https?:\/\//.test(DATA_BASE) ? DATA_BASE : null;
+// The CDN first; then the fallback origin for a file it refuses (see scripts/data-fetch.mjs). Both
+// serve the same commit, so a 404 from the first is final.
+const remoteBases = remoteBase ? [remoteBase, ...(DATA_FALLBACK_BASE ? [DATA_FALLBACK_BASE] : [])] : [];
 
 // Vercel's deployment protection covers every generated deployment URL (VERCEL_URL), production
 // ones included; only the production domain is public. So production reads through that domain,
@@ -30,10 +33,18 @@ function deploymentOrigin(): string | null {
 async function fetchOverHttp<T>(relativePath: string): Promise<T | null> {
   if (DATA_VERSION === "") return null;
   if (remoteBase) {
-    const response = await fetch(`${remoteBase}/${relativePath}`, { cache: "force-cache" });
-    if (response.status === 404) return null;
-    if (!response.ok) throw new Error(`Game data ${relativePath} answered ${response.status} from ${remoteBase}`);
-    return (await response.json()) as T;
+    let lastError: unknown = null;
+    for (const base of remoteBases) {
+      try {
+        const response = await fetch(`${base}/${relativePath}`, { cache: "force-cache" });
+        if (response.status === 404) return null;
+        if (response.ok) return (await response.json()) as T;
+        lastError = new Error(`Game data ${relativePath} answered ${response.status} from ${base}`);
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError;
   }
   const origin = deploymentOrigin();
   if (!origin) return null;
@@ -65,6 +76,8 @@ function readJson<T>(relativePath: string): Promise<T | null> {
         throw err;
       });
     cache.set(relativePath, promise);
+    // A failed read is not kept: the next request tries again (the CDN may serve the file by then).
+    promise.catch(() => cache.delete(relativePath));
   }
   return promise as Promise<T | null>;
 }
