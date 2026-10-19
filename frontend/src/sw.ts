@@ -17,6 +17,10 @@ declare const self: ServiceWorkerGlobalScope & {
 const DATA_BASE_URL = /^https?:\/\//.test(process.env.NEXT_PUBLIC_DATA_BASE ?? "")
   ? (process.env.NEXT_PUBLIC_DATA_BASE as string)
   : null;
+/** The fallback origin for the same files, when the build recorded one. */
+const DATA_FALLBACK_URL = /^https?:\/\//.test(process.env.NEXT_PUBLIC_DATA_FALLBACK_BASE ?? "")
+  ? (process.env.NEXT_PUBLIC_DATA_FALLBACK_BASE as string)
+  : null;
 
 const cacheableResponse: SerwistPlugin = new CacheableResponsePlugin({
   statuses: [0, 200],
@@ -47,7 +51,8 @@ const runtimeCaching = [
     matcher: ({ request, url }: { request: Request; url: URL }) =>
       request.destination === "" &&
       ((url.origin === self.location.origin && url.pathname.startsWith("/data/v/")) ||
-        (DATA_BASE_URL !== null && url.href.startsWith(`${DATA_BASE_URL}/`))),
+        (DATA_BASE_URL !== null && url.href.startsWith(`${DATA_BASE_URL}/`)) ||
+        (DATA_FALLBACK_URL !== null && url.href.startsWith(`${DATA_FALLBACK_URL}/`))),
     handler: new CacheFirst({
       cacheName: "game-data",
       plugins: [

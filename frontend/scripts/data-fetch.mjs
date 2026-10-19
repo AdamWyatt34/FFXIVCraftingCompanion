@@ -9,10 +9,15 @@
 //                    reads (sitemap, hubs, prerendered pages). The browser and on-demand renders
 //                    read the same commit from a CDN (jsDelivr over the public repository by
 //                    default), so the data set, hundreds of MB, is not part of the deployment and
-//                    does not count against Vercel's Deployment Storage. When the CDN cannot
-//                    serve it (the repository is private, or the probe fails for any reason) the
-//                    data set is copied under public/ and served by the deployment as before,
-//                    with a warning in the build log. The tarball download needs a token with read
+//                    does not count against Vercel's Deployment Storage. jsDelivr only stores a
+//                    file once it has fetched it, and refuses fetches from a repository over its
+//                    size limit unpredictably, so the build then requests every file of the data
+//                    set through it ("warming"), retrying the refused ones, before the deployment
+//                    goes out; the site also knows a fallback origin (GitHub's raw endpoint for
+//                    the same commit) for anything still refused. When the CDN cannot serve the
+//                    data set at all (the repository is private, the probe fails, too many files
+//                    stay refused) it is copied under public/ and served by the deployment as
+//                    before, with a warning in the build log. The tarball download needs a token with read
 //                    access to the repository's contents in GITHUB_TOKEN while the repository is
 //                    private (GitHub Actions passes its own; Vercel needs a fine-grained PAT in the
 //                    project's environment); a public repository needs none.
@@ -23,16 +28,17 @@
 // FFXIV_DATA_REPO names the repository (owner/name).
 //
 // Writes .data/current.json for next.config.ts:
-//   { version, bucketSize, gameVersion, base, dir }
+//   { version, bucketSize, gameVersion, base, fallbackBase, dir }
 // where `base` is what the browser prefixes to a data path (a URL, or /data/v/<version> when the
-// deployment serves it) and `dir` is where the build reads the files from disk.
+// deployment serves it), `fallbackBase` a second origin for the same files or null, and `dir` is
+// where the build reads the files from disk.
 
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { devNull, tmpdir } from "node:os";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decideServing, defaultDataBase } from "./data-serving.mjs";
+import { decideServing, defaultDataBase, fallbackDataBase } from "./data-serving.mjs";
 
 const frontendDir = resolve(fileURLToPath(import.meta.url), "..", "..");
 const publicData = join(frontendDir, "public", "data");
@@ -54,7 +60,7 @@ function readManifest(dir) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function writeCurrent(manifest, base, dir) {
+function writeCurrent(manifest, base, dir, fallbackBase = null) {
   mkdirSync(dataRoot, { recursive: true });
   writeFileSync(
     join(dataRoot, "current.json"),
@@ -63,6 +69,7 @@ function writeCurrent(manifest, base, dir) {
       bucketSize: manifest.bucketSize,
       gameVersion: manifest.gameVersion,
       base,
+      fallbackBase,
       dir,
     }) + "\n",
   );
@@ -95,6 +102,70 @@ function probe(base) {
   }
 }
 
+/** Every file of the data set under `dir`, as the relative paths the site requests. */
+function listFiles(dir) {
+  const files = [];
+  const walk = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else files.push(relative(dir, path).split("\\").join("/"));
+    }
+  };
+  walk(dir);
+  return files.sort();
+}
+
+/** The HTTP status the CDN answers for each URL, fetched in parallel by one curl process. */
+function fetchStatuses(urls) {
+  const work = mkdtempSync(join(tmpdir(), "ffxiv-warm-"));
+  try {
+    const config = join(work, "urls.txt");
+    const discard = devNull.replace(/\\/g, "\\\\");
+    writeFileSync(config, urls.map((url) => `url = "${url}"\noutput = "${discard}"\n`).join(""));
+    const out = execFileSync(
+      "curl",
+      ["-s", "--parallel", "--parallel-max", "8", "--max-time", "90", "-w", "%{http_code} %{url}\n", "-K", config],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 16 * 1024 * 1024 },
+    );
+    const statuses = new Map();
+    for (const line of out.split("\n")) {
+      const match = /^(\d{3}) (\S+)$/.exec(line.trim());
+      if (match) statuses.set(match[2], Number(match[1]));
+    }
+    return statuses;
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
+
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+/**
+ * Requests every file of the data set through the CDN so it stores them before the deployment
+ * goes out, in rounds: the files it refuses on one pass are asked for again after a pause. Returns
+ * what it still refused at the end, or null when curl could not report at all.
+ */
+async function warm(base, dir, rounds = 4) {
+  const files = listFiles(dir);
+  let pending = files;
+  const served = [];
+  for (let round = 1; round <= rounds && pending.length > 0; round++) {
+    if (round > 1) await sleep(20_000);
+    let statuses;
+    try {
+      statuses = fetchStatuses(pending.map((file) => `${base}/${file}`));
+    } catch (err) {
+      warn(`could not warm the CDN (${err instanceof Error ? err.message.split("\n")[0] : String(err)})`);
+      return null;
+    }
+    const refused = pending.filter((file) => statuses.get(`${base}/${file}`) !== 200);
+    served.push(pending.length - refused.length);
+    pending = refused;
+  }
+  return { total: files.length, refused: pending, served };
+}
+
 function download(lock) {
   const work = mkdtempSync(join(tmpdir(), "ffxiv-data-"));
   try {
@@ -122,19 +193,25 @@ function download(lock) {
   }
 }
 
-function serveLocked(lock) {
+async function serveLocked(lock) {
   const { dir, manifest } = download(lock);
   const base = process.env.FFXIV_DATA_BASE_URL?.replace(/\/+$/, "") || defaultDataBase(repo, lock.dataSha);
-  const probed = process.env.FFXIV_DATA_SERVE === "local" ? null : probe(base);
-  const decision = decideServing({
-    forceLocal: process.env.FFXIV_DATA_SERVE === "local",
-    base,
-    probedVersion: probed?.manifest?.version ?? null,
-    expectedVersion: manifest.version,
-  });
+  const forceLocal = process.env.FFXIV_DATA_SERVE === "local";
+  const probed = forceLocal ? null : probe(base);
+  const inputs = { forceLocal, base, probedVersion: probed?.manifest?.version ?? null, expectedVersion: manifest.version };
+  let decision = decideServing(inputs);
   if (decision.mode === "remote") {
-    writeCurrent(manifest, base, dir);
-    log(`downloaded ${describe(manifest)} for the build; the site reads it from ${base}`);
+    const warmed = await warm(base, dir);
+    if (warmed) {
+      decision = decideServing({ ...inputs, warmed });
+      log(`warmed the CDN: ${warmed.served.join(" + ")} of ${warmed.total} files served over ${warmed.served.length} round(s)`);
+    }
+  }
+  if (decision.mode === "remote") {
+    if (decision.warning) warn(decision.warning);
+    const fallbackBase = fallbackDataBase(base);
+    writeCurrent(manifest, base, dir, fallbackBase);
+    log(`downloaded ${describe(manifest)} for the build; the site reads it from ${base}${fallbackBase ? ` (fallback ${fallbackBase})` : ""}`);
     return;
   }
   if (decision.reason === "forced") log("FFXIV_DATA_SERVE=local: the deployment serves the data set");
@@ -151,7 +228,7 @@ if (localDir) {
   const source = resolve(frontendDir, localDir);
   serveFromDeployment(source, readManifest(source));
 } else if (existsSync(lockPath)) {
-  serveLocked(JSON.parse(readFileSync(lockPath, "utf8")));
+  await serveLocked(JSON.parse(readFileSync(lockPath, "utf8")));
 } else {
   log("no FFXIV_DATA_DIR and no data.lock.json: building without game data");
 }

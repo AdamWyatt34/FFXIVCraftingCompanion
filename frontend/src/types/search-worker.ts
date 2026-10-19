@@ -4,13 +4,15 @@ import type { QuickFilter } from "@/lib/static-data/search";
 
 /**
  * Messages between the main thread and the search worker (`src/workers/search.worker.ts`). The
- * worker loads the search index of the data set at `base` on its first request and keeps it.
+ * worker loads the search index of the data set at `base` on its first request and keeps it;
+ * `fallbackBase`, when given, is a second origin for the same files (see static-data/fetch.ts).
  */
 
 export interface ItemSearchRequest {
   type: "items";
   id: string;
   base: string;
+  fallbackBase?: string;
   query: string | null;
   page: number;
   pageSize: number;
@@ -22,6 +24,7 @@ export interface GearSearchRequest {
   type: "gear";
   id: string;
   base: string;
+  fallbackBase?: string;
   params: GearSearchParams;
 }
 

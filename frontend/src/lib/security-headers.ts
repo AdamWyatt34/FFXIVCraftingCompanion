@@ -11,6 +11,8 @@ export interface SecurityHeaderInputs {
   sentryDsn?: string | null;
   /** Where the browser reads the game data: a CDN URL, or this deployment's own path (ignored). */
   dataBase?: string | null;
+  /** A second origin for the same files, tried when the CDN refuses one; null when there is none. */
+  dataFallbackBase?: string | null;
 }
 
 export interface Header {
@@ -44,13 +46,15 @@ export function buildContentSecurityPolicy(inputs: SecurityHeaderInputs): string
   const apiOrigin = origin(inputs.apiOrigin);
   const sentryOrigin = origin(inputs.sentryDsn);
   const dataOrigin = origin(inputs.dataBase);
+  const dataFallbackOrigin = origin(inputs.dataFallbackBase);
   const reportUri = sentryReportUri(inputs.sentryDsn);
 
   const connect = [
     "'self'",
     apiOrigin,
-    // The exported game data, when a CDN serves it rather than the deployment.
+    // The exported game data, when a CDN serves it rather than the deployment, and its fallback.
     dataOrigin,
+    dataFallbackOrigin,
     // Market prices are fetched from Universalis in the browser; icons come from XIVAPI.
     "https://universalis.app",
     "https://v2.xivapi.com",

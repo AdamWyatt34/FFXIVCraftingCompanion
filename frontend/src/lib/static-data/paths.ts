@@ -13,8 +13,19 @@ export const DATA_ROOT = "/data/v";
  */
 export const DATA_BASE = process.env.NEXT_PUBLIC_DATA_BASE || `${DATA_ROOT}/${DATA_VERSION}`;
 
+/**
+ * A second origin for the same files, tried when the CDN refuses one (see scripts/data-fetch.mjs
+ * for why it can); empty when the deployment serves the data set itself.
+ */
+export const DATA_FALLBACK_BASE = process.env.NEXT_PUBLIC_DATA_FALLBACK_BASE || "";
+
 export function dataBasePath(): string {
   return DATA_BASE;
+}
+
+/** Where to read a data path from, in order: the CDN (or the deployment), then the fallback. */
+export function dataBases(): string[] {
+  return DATA_FALLBACK_BASE ? [DATA_BASE, DATA_FALLBACK_BASE] : [DATA_BASE];
 }
 
 export function bucketOf(id: number, bucketSize = DATA_BUCKET_SIZE): number {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideServing, defaultDataBase } from "../../../scripts/data-serving.mjs";
+import { decideServing, defaultDataBase, fallbackDataBase, toleratedRefusals } from "../../../scripts/data-serving.mjs";
 
 describe("data serving", () => {
   const base = defaultDataBase("AdamWyatt34/FFXIVCraftingCompanion", "b84169d761c473603b0f29e52fb9104887109af7");
@@ -10,7 +10,36 @@ describe("data serving", () => {
 
   it("serves from the CDN only when it answers with the locked data set", () => {
     expect(decideServing({ forceLocal: false, base, probedVersion: "7.57-20261017-2035", expectedVersion: "7.57-20261017-2035" }))
-      .toEqual({ mode: "remote", reason: null });
+      .toEqual({ mode: "remote", reason: null, warning: null });
+  });
+
+  it("names GitHub's raw endpoint for the same commit as the fallback origin, and nothing for another base", () => {
+    expect(fallbackDataBase(base)).toBe(
+      "https://raw.githubusercontent.com/AdamWyatt34/FFXIVCraftingCompanion/b84169d761c473603b0f29e52fb9104887109af7",
+    );
+    expect(fallbackDataBase("http://localhost:3999")).toBeNull();
+  });
+
+  const served = { forceLocal: false, base, probedVersion: "7.57-20261017-2035", expectedVersion: "7.57-20261017-2035" };
+
+  it("stays remote without a warning when warming served every file", () => {
+    expect(decideServing({ ...served, warmed: { total: 709, refused: [] } })).toEqual({ mode: "remote", reason: null, warning: null });
+  });
+
+  it("tolerates a few files the CDN still refuses after warming, with a warning naming them", () => {
+    const decision = decideServing({ ...served, warmed: { total: 709, refused: ["recipes/330.json", "recipes/450.json"] } });
+    expect(decision.mode).toBe("remote");
+    expect(decision.mode === "remote" && decision.warning).toContain("refused 2 of the data set's 709 files");
+    expect(decision.mode === "remote" && decision.warning).toContain("recipes/330.json");
+  });
+
+  it("falls back to the deployment when the CDN refuses more files than it tolerates", () => {
+    expect(toleratedRefusals(709)).toBe(36);
+    const refused = Array.from({ length: 40 }, (_, i) => `items/${i}.json`);
+    const decision = decideServing({ ...served, warmed: { total: 709, refused } });
+    expect(decision.mode).toBe("local");
+    expect(decision.reason).toContain("refused 40 of the data set's 709 files");
+    expect(decision.reason).toContain("items/0.json, items/1.json, items/2.json, …");
   });
 
   it("falls back to the deployment when the CDN cannot be read, for example while the repository is private", () => {
