@@ -147,10 +147,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter your JWT token"
     });
 
-    options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    // Without the host document the reference serializes as {}, and Swagger UI never sends the token.
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("Bearer"),
+            new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });
