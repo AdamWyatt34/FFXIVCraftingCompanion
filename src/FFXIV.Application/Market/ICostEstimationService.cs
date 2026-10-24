@@ -9,5 +9,6 @@ public interface ICostEstimationService
         int? finalItemId,
         string worldOrDc,
         CostEstimationOptions options,
+        int quantity = 1,
         CancellationToken ct = default);
 }

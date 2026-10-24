@@ -56,7 +56,7 @@ public sealed class GetRecipeCostQueryHandler : IRequestHandler<GetRecipeCostQue
             : (int?)null;
 
         var estimate = await _costService.EstimateCostAsync(
-            materials, finalItemId, request.WorldOrDc, request.Options, cancellationToken);
+            materials, finalItemId, request.WorldOrDc, request.Options, request.Quantity, cancellationToken);
 
         return MarketMapper.ToDto(estimate);
     }

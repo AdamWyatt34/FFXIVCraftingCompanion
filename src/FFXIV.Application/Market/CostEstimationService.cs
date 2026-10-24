@@ -31,6 +31,7 @@ public sealed class CostEstimationService : ICostEstimationService
         int? finalItemId,
         string worldOrDc,
         CostEstimationOptions options,
+        int quantity = 1,
         CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
@@ -103,8 +104,10 @@ public sealed class CostEstimationService : ICostEstimationService
 
                 if (hasMeaningfulCosts)
                 {
-                    estimate.CraftingIsCheaper = estimate.TotalEstimatedCost < (long)finalPrice;
-                    estimate.Savings = (long)finalPrice - estimate.TotalEstimatedCost;
+                    // The materials already cover all the crafts, so they are weighed against buying as many.
+                    var buyCost = (long)(finalPrice * quantity);
+                    estimate.CraftingIsCheaper = estimate.TotalEstimatedCost < buyCost;
+                    estimate.Savings = buyCost - estimate.TotalEstimatedCost;
                 }
                 else
                 {

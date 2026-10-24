@@ -217,6 +217,29 @@ public class CostEstimationServiceTests
     }
 
     [Fact]
+    public async Task CraftVsBuy_ComparesNCraftsWithNTimesTheUnitPrice()
+    {
+        // Ten crafts need 10,000 gil of materials; one finished item sells for 1,500.
+        var materials = new List<AggregatedMaterial>
+        {
+            CreateMaterial(100, "Vendor Mat", 10, ItemSourceType.Vendor, vendorCost: 1000)
+        };
+        var finalItemData = CreateMarketBoardData(999, avgNq: 1500, minNq: 1400);
+
+        _universalis.GetItemPricesBatchAsync("Adamantoise", Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, MarketBoardData> { { 999, finalItemData } });
+
+        var options = new CostEstimationOptions { IncludeCraftVsBuyAnalysis = true };
+
+        var result = await _service.EstimateCostAsync(materials, 999, "Adamantoise", options, quantity: 10);
+
+        result.TotalEstimatedCost.Should().Be(10_000);
+        result.FinalItemMarketPrice.Should().Be(1500);
+        result.CraftingIsCheaper.Should().BeTrue();
+        result.Savings.Should().Be(5000);
+    }
+
+    [Fact]
     public async Task StaleData_FlaggedCorrectly()
     {
         // Arrange
