@@ -37,8 +37,8 @@ public static class XivApiDataMapper
             Difficulty = CalculateFactoredValue(rlt?.Difficulty ?? 0, fields.DifficultyFactor),
             Quality = CalculateFactoredValue(rlt?.Quality ?? 0, fields.QualityFactor),
             Durability = CalculateFactoredValue(rlt?.Durability ?? 0, fields.DurabilityFactor),
-            RequiredCraftsmanship = rlt?.SuggestedCraftsmanship ?? 0,
-            RequiredControl = 0,
+            RequiredCraftsmanship = fields.RequiredCraftsmanship,
+            RequiredControl = fields.RequiredControl,
             Yield = fields.AmountResult > 0 ? fields.AmountResult : 1,
             MaterialQualityFactor = fields.MaterialQualityFactor
         };
@@ -66,7 +66,8 @@ public static class XivApiDataMapper
                 RecipeId = recipeId,
                 ItemId = ingredientRef.RowId,
                 Quantity = amount,
-                CanBeHQ = false // Cross-referenced from Item table by sync service
+                // Unused column: readers take HQ-ability from the ingredient's Item. Dropping it needs a migration.
+                CanBeHQ = false
             });
         }
 

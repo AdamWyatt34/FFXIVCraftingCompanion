@@ -3,9 +3,8 @@ using System.Text.Json.Serialization;
 namespace FFXIV.Infrastructure.ExternalApis.Models;
 
 /// <summary>
-/// Fields from the XIVAPI "Recipe" sheet.
-/// Request with: fields=ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,
-///   DurabilityFactor,Ingredient,AmountIngredient,AmountResult,CanHq
+/// Fields from the XIVAPI "Recipe" sheet; request with: fields=ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,
+///   DurabilityFactor,Ingredient,AmountIngredient,AmountResult,CanHq,RequiredCraftsmanship,RequiredControl
 /// </summary>
 public sealed class XivApiRecipeFields
 {
@@ -42,6 +41,13 @@ public sealed class XivApiRecipeFields
 
     [JsonPropertyName("MaterialQualityFactor")]
     public int MaterialQualityFactor { get; init; }
+
+    // The hard gate to start the craft; RecipeLevelTable's Suggested* values are only the in-game guideline.
+    [JsonPropertyName("RequiredCraftsmanship")]
+    public int RequiredCraftsmanship { get; init; }
+
+    [JsonPropertyName("RequiredControl")]
+    public int RequiredControl { get; init; }
 
     /// <summary>
     /// Array of 8 ingredient references. Empty slots have row_id == 0.

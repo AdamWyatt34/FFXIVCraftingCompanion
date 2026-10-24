@@ -115,6 +115,39 @@ public class RecipeTreeResolverTests
     }
 
     [Fact]
+    public async Task SharedIntermediate_IsCraftedOnceForBothBranches()
+    {
+        // Root needs A and B; each needs 1 Intermediate (yield 3), which needs 1 Raw and 2 Fire Crystals.
+        // Two Intermediates in all: one craft covers both branches, so 1 Raw and 2 crystals, not 2 and 4.
+        SetupSharedIntermediateGraph();
+
+        var result = await _resolver.ResolveTreeAsync(700);
+
+        result.IntermediateCrafts.Single(c => c.ItemId == 710).TotalQuantity.Should().Be(2);
+        result.ShoppingList.Single(s => s.ItemId == 720).TotalQuantity.Should().Be(1);
+        result.CrystalRequirements.Single(c => c.ItemId == TestDataBuilder.FireCrystalId).TotalQuantity.Should().Be(2);
+
+        // The tree keeps what each branch alone would need.
+        var intermediateUnderA = result.RootItem.Children.Single(c => c.ItemId == 701).Children.Single();
+        intermediateUnderA.Quantity.Should().Be(1);
+        intermediateUnderA.Children.Single(c => c.ItemId == 720).Quantity.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task SharedIntermediate_AppliesTheQuantityBeforeRounding()
+    {
+        // 4 roots: each branch needs 4 Intermediates, 8 in all, so ceil(8/3) = 3 crafts and 3 Raw
+        // (branch by branch it would be 2 + 2 crafts).
+        SetupSharedIntermediateGraph();
+
+        var result = await _resolver.ResolveTreeAsync(700, quantity: 4);
+
+        result.IntermediateCrafts.Single(c => c.ItemId == 710).TotalQuantity.Should().Be(8);
+        result.ShoppingList.Single(s => s.ItemId == 720).TotalQuantity.Should().Be(3);
+        result.CrystalRequirements.Single(c => c.ItemId == TestDataBuilder.FireCrystalId).TotalQuantity.Should().Be(6);
+    }
+
+    [Fact]
     public async Task Crystals_AreTreatedAsTerminalNodes()
     {
         SetupFullTestGraph();
@@ -281,6 +314,19 @@ public class RecipeTreeResolverTests
             TestDataBuilder.FireCrystalId, TestDataBuilder.WindCrystalId);
 
         SetupItem(TestDataBuilder.TestSwordId, "Test Sword");
+    }
+
+    private void SetupSharedIntermediateGraph()
+    {
+        var root = TestDataBuilder.CreateRecipe(70, 700, "Root", 1, (701, "Branch A", 1), (702, "Branch B", 1));
+        var branchA = TestDataBuilder.CreateRecipe(71, 701, "Branch A", 1, (710, "Intermediate", 1));
+        var branchB = TestDataBuilder.CreateRecipe(72, 702, "Branch B", 1, (710, "Intermediate", 1));
+        var intermediate = TestDataBuilder.CreateRecipe(73, 710, "Intermediate", 3,
+            (720, "Raw", 1), (TestDataBuilder.FireCrystalId, "Fire Crystal", 2));
+
+        SetupSingleRecipe(700, root);
+        SetupBatchRecipes(root, branchA, branchB, intermediate);
+        SetupItem(700, "Root");
     }
 
     private void SetupSingleRecipe(int itemId, Recipe recipe)

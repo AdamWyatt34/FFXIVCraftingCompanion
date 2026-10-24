@@ -42,11 +42,13 @@ public class GetRecipeCraftingParametersQueryHandlerTests
             Stars = 2,
             SuggestedCraftsmanship = 3700,
             SuggestedControl = 3280,
+            RequiredCraftsmanship = 2900,
+            RequiredControl = 2700,
             MaterialQualityFactor = 75,
             Ingredients =
             [
-                new RecipeIngredientInfo(1, 2, true),
-                new RecipeIngredientInfo(2, 1, false),
+                new RecipeIngredientInfo(1, 2, true, 640),
+                new RecipeIngredientInfo(2, 1, false, 1),
             ],
         });
 
@@ -68,9 +70,12 @@ public class GetRecipeCraftingParametersQueryHandlerTests
         result.ConditionsFlag.Should().Be(0);
         result.SuggestedCraftsmanship.Should().Be(3700);
         result.SuggestedControl.Should().Be(3280);
+        result.RequiredCraftsmanship.Should().Be(2900);
+        result.RequiredControl.Should().Be(2700);
         result.MaterialQualityFactor.Should().Be(75);
         result.Ingredients.Should().HaveCount(2);
-        result.Ingredients[0].Should().Be(new FFXIV.Application.Recipes.DTOs.RecipeCraftingIngredientDto(1, 2, true));
+        result.Ingredients[0].Should().Be(new FFXIV.Application.Recipes.DTOs.RecipeCraftingIngredientDto(1, 2, true, 640));
         result.Ingredients[1].CanBeHQ.Should().BeFalse();
+        result.Ingredients[1].ItemLevel.Should().Be(1);
     }
 }

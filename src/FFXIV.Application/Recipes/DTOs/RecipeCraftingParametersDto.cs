@@ -20,7 +20,9 @@ public sealed record RecipeCraftingParametersDto(
     int ConditionsFlag,
     int SuggestedCraftsmanship,
     int SuggestedControl,
+    int RequiredCraftsmanship,
+    int RequiredControl,
     int MaterialQualityFactor,
     List<RecipeCraftingIngredientDto> Ingredients);
 
-public sealed record RecipeCraftingIngredientDto(int ItemId, int Quantity, bool CanBeHQ);
+public sealed record RecipeCraftingIngredientDto(int ItemId, int Quantity, bool CanBeHQ, int ItemLevel);
