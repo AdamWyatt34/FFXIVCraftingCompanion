@@ -240,6 +240,7 @@ These are free, public APIs used by the data sync pipeline:
 | 7 | Click "Material Tree" tab | Full tree of sub-recipes and raw materials renders | `GET /api/recipes/{id}/materials` |
 | 8 | Click "Shopping List" tab | Flat list of all raw materials with quantities, grouped by source | `GET /api/recipes/{id}/materials` |
 | 9 | Change quantity to 5 | Shopping list quantities multiply by 5 | Re-fetches with `?quantity=5` |
+| 10 | On `/`, type an item name in the hero search and press Enter | `/recipes?q=<query>` opens with the query in the search bar and its results | — |
 
 ---
 
@@ -280,6 +281,16 @@ These are free, public APIs used by the data sync pipeline:
 | 11 | Let durability reach 0 | Failure screen | — |
 | 12 | Click "Export Macro" | Macro text appears with /ac lines and /wait delays | `POST /api/crafting/export-macro` |
 | 13 | Click copy button | Macro copied to clipboard | — |
+| 14 | Read the stats step | Helper line "In game: Character > Attributes. Enter the values with no food or medicine active; add those below."; hovering Specialist explains the soul crystal and the three actions it unlocks | — |
+| 15 | Signed out: enter valid stats, reload `/simulator`, pick a recipe | The stats form is prefilled from `ffxiv_last_stats` in localStorage; an edited or out-of-range stored value is ignored and the form stays empty | — |
+| 16 | Under the stats, open "Food and medicine (optional)" and pick a meal | HQ is preselected for an HQ-able item; the readout shows each stat's boost, with "(capped)" where the cap applies, and one effective line such as `Craftsmanship 4900 → 5046 (+146)` | None (the catalogue is `consumables.json` in the data set) |
+| 17 | Pick a medicine as well, then toggle the meal's HQ off | Both boosts are computed from the same base stats and added; the effective line follows. Stats entered with food already active would count it twice | — |
+| 18 | Use a data set exported without `consumables.json` | The food and medicine picker is absent; everything else works on the base stats | — |
+| 19 | Mark materials HQ in the HQ Ingredients card | Starting Quality shows the value worked out from them ("from HQ materials") and the manual input is hidden | — |
+| 20 | Set every material back to NQ, type a Starting Quality | The manual value applies, clamped to the recipe's quality, and Start Manual Craft begins at it | — |
+| 21 | Enter craftsmanship below the recipe's required value | A red sentence under the stats ("Your craftsmanship N is below this recipe's required M."); Auto-Solve and Quick Solve are disabled with that reason | — |
+| 22 | Enter stats at or above required but below recommended | An amber sentence ("... below the recommended M; Quick Synthesis and some rotations may fail."); solving stays enabled | — |
+| 23 | Check the level labels | The recipe card, the parameters card and the craft header read "Recipe Lv. N" (the recipe level, not the class level) | — |
 
 ---
 
@@ -297,6 +308,15 @@ These are free, public APIs used by the data sync pipeline:
 | 6 | Click "Load into Simulator" | Rotation loads into manual simulator | — |
 | 7 | Click "Share" | URL with encoded rotation copied to clipboard | — |
 | 8 | Click "Cancel" during solve | Job cancelled | `DELETE /api/crafting/solve/{jobId}` |
+| 9 | Solve with stats at or above the required values (0 for most recipes) but below recommended | The solver runs; it only refuses ("... is below the recipe's required ...") under a required value | — |
+| 10 | With a meal, a medicine, Specialist and a starting quality set, solve, click "Share" and open the link in a fresh tab | The same recipe, base stats, meal and medicine (with HQ), Specialist and starting quality come back, and the rotation replays to the same result. The plain "Share" link from the craft view does the same | — |
+| 11 | Open a share link whose rotation has no known action (edit `r=` or `rotation=`) | "The shared rotation contains no valid actions."; the recipe, stats and setup stay loaded in setup with the action buttons available | — |
+| 12 | Open a share link naming a meal the data set lacks | A one-line notice under the stats says the food or medicine was left out; the rest loads | — |
+| 13 | In the craft view, Auto-Solve, then click "View Rotation" | The solved rotation replaces the current craft | — |
+| 14 | Click "Back to setup" after a solve | Setup shows its action buttons; no earlier result panel reappears | — |
+| 15 | Read a result | "Rotation found" on the button and the panel; the gauge says "chance of HQ"; below 50% HQ a "Raise HQ with food, medicine or HQ materials." link scrolls to the food and medicine picker | — |
+| 16 | Open Export Macro from a result | The summary button reads "Copy summary"; above the macros: "Eat your food and medicine first; the macro assumes the same stats." | — |
+| 17 | Click "What If", then the "Current Gear" and "BiS" presets, then drag a stat slider | Each preset adds a row that resolves; BiS uses the recipe's job; the slider sweep resolves after the debounce and stays put while the page re-renders | None (the greedy solver runs in the browser) |
 
 ---
 
@@ -311,6 +331,11 @@ These are free, public APIs used by the data sync pipeline:
 | 3 | Sort by votes / recent | Order changes | `GET /api/rotations?sort=votes` |
 | 4 | Click rotation card | Detail page with full replay | `GET /api/rotations/{id}` |
 | 5 | Click "Load into Simulator" | Opens simulator with rotation pre-loaded | — |
+| 6 | Open a rotation without Heart and Soul, Quick Innovation or Careful Observation | The summary metrics are recomputed in the browser and captioned "Recomputed with the current engine" | None (the engine runs in the browser) |
+| 7 | Open a rotation holding one of those specialist actions | The stored metrics show, captioned "Saved before the engine update" (a saved rotation keeps no specialist flag) | — |
+| 8 | Open a rotation the current engine cannot replay (an unknown legacy action) | The stored metrics show, captioned "As saved; the current engine could not replay this rotation" | — |
+| 9 | Hover the HQ% or step count on a library card | The title says the numbers are from save time | — |
+| 10 | Watch the network while viewing rotations | Nothing is written: no POST, PUT or PATCH to `/api/rotations` | — |
 
 ---
 
@@ -610,6 +635,23 @@ dotnet test FFXIVCraftingCompanion.slnx --configuration Release
 - **Mocking:** NSubstitute 5.3.0
 - **Assertions:** FluentAssertions 8.2.0 (use `BeGreaterThanOrEqualTo`, not `BeGreaterOrEqualTo`)
 - **Project:** `tests/FFXIV.Tests/FFXIV.Tests.csproj`
+
+### Refreshing the generated fixtures
+
+The StaticData fixture, its goldens and the Playwright data set are written only by the exporter and the golden generator; never hand-edit them. Refresh them after a change to the sync or the export shapes. This needs the docker SQL Server and network access to XIVAPI.
+
+```powershell
+docker compose up -d
+# Full sync against XIVAPI (minutes); the consumable pass must succeed or the export fails.
+dotnet run --project src/FFXIV.Export --configuration Release -- --out ./out --fixture-recipes 35423,35585,34065,2240 --fixture-jobs CRP,MIN --fixture-out tests/FFXIV.Tests/StaticData/TestData/fixture.json
+# The two-recipe Playwright data set, from the database synced above.
+dotnet run --project src/FFXIV.Export --configuration Release -- --out frontend/e2e/fixtures/data --recipes 37783,35423 --skip-sync
+$env:FFXIV_PARITY_GENERATE = "1"; dotnet test FFXIVCraftingCompanion.slnx --configuration Release --filter "FullyQualifiedName~StaticDataGolden"; Remove-Item Env:FFXIV_PARITY_GENERATE
+dotnet test FFXIVCraftingCompanion.slnx --configuration Release
+cd frontend; npm test; npm run test:e2e
+```
+
+Review the golden diff for shape changes: a resync against today's game data may move any number in it.
 
 ---
 
