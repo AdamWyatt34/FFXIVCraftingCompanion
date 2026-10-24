@@ -235,7 +235,8 @@ fn select_best_action(
     let mut best = None;
     let mut best_score = f64::MIN;
     for availability in action_availability(state, stats, recipe) {
-        if !availability.is_available() {
+        // Legacy actions replay but are never picked: the solver draws only from the offered set.
+        if !availability.is_available() || availability.action.is_legacy() {
             continue;
         }
         // Step-free abilities never move the craft out of its phase, so a greedy pick would
@@ -343,7 +344,7 @@ fn estimate_progress_per_action(stats: &CrafterStats, recipe: &Recipe) -> i32 {
         recipe.progress_divider,
         recipe.progress_modifier,
         stats.level,
-        recipe.recipe_level,
+        recipe.class_job_level,
     );
     (base as f64 * 450.0 / 100.0).floor() as i32
 }
@@ -596,12 +597,13 @@ mod tests {
         };
         let recipe = Recipe {
             recipe_level: 580,
+            class_job_level: 90,
             progress_divider: 130,
             progress_modifier: 80,
             difficulty: 3500,
             ..Recipe::default()
         };
-        // base_progress = (3800*10/130 + 2) * 80 / 100 = 235; 235 * 4.5 floored.
+        // base_progress = (3800*10/130 + 2) * 80 / 100 = 235.4 → 235; 235 * 4.5 floored.
         assert_eq!(estimate_progress_per_action(&stats, &recipe), 1057);
         assert_eq!(estimate_actions_to_finish_progress(&stats, &recipe), 4);
     }

@@ -66,8 +66,10 @@ pub struct CrafterStats {
 }
 
 impl CrafterStats {
-    pub fn effective_control(&self, inner_quiet_stacks: i32) -> i32 {
-        (self.control as f64 * (1.0 + 0.1 * inner_quiet_stacks as f64)) as i32
+    /// Inner Quiet scales the quality multiplier, not Control, which would skip base quality's +35
+    /// term (Raphael `raphael-sim/src/effects.rs:76-80`; Teamcraft `quality-action.ts:79-90`).
+    pub fn effective_control(&self, _inner_quiet_stacks: i32) -> i32 {
+        self.control
     }
 }
 
@@ -121,15 +123,17 @@ pub struct CraftingState {
     pub muscle_memory_turns: i32,
     pub heart_and_soul_active: bool,
     pub trained_perfection_active: bool,
+    /// Set by a successful Hasty Touch from level 96; Daring Touch needs it.
+    pub expedience_active: bool,
     pub quick_innovation_used: bool,
     pub heart_and_soul_used: bool,
     pub trained_perfection_used: bool,
     pub careful_observation_count: i32,
 
     pub is_first_step: bool,
-    /// Id of the touch that set up a combo discount, 0 when none.
+    /// The combo the next action reads: Basic Touch's id, or Standard Touch's after a comboed
+    /// Standard Touch or an Observe; 0 when none.
     pub combo_action: i32,
-    pub observe_active: bool,
 }
 
 impl CraftingState {
@@ -234,13 +238,13 @@ mod tests {
     }
 
     #[test]
-    fn effective_control_truncates() {
+    fn inner_quiet_leaves_control_unchanged() {
         let stats = CrafterStats {
             control: 3600,
             ..Default::default()
         };
         assert_eq!(stats.effective_control(0), 3600);
-        assert_eq!(stats.effective_control(3), 4680);
-        assert_eq!(stats.effective_control(10), 7200);
+        assert_eq!(stats.effective_control(3), 3600);
+        assert_eq!(stats.effective_control(10), 3600);
     }
 }

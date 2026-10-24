@@ -89,16 +89,16 @@ fn greedy_completes_all_benchmarks() {
 /// Quality (to one decimal, as the C# suite prints it) and step count of the C# greedy solver on
 /// each benchmark. Greedy has no randomness, so any drift here is a porting bug.
 const CSHARP_GREEDY: [(&str, f64, usize); 10] = [
-    ("lv100_4star_endgame", 41.3, 17),
-    ("lv90_3star_standard", 57.3, 18),
+    ("lv100_4star_endgame", 21.3, 13),
+    ("lv90_3star_standard", 39.7, 13),
     ("lv80_2star_overgeared", 100.0, 3),
-    ("lv70_standard", 45.7, 16),
-    ("lv60_standard", 86.2, 16),
-    ("lv50_classic", 64.4, 12),
-    ("lv90_35dur_food", 64.3, 13),
-    ("lv100_40dur_potion", 48.3, 19),
-    ("lv100_undergeared", 39.0, 16),
-    ("lv100_4star_progress_heavy", 39.7, 17),
+    ("lv70_standard", 48.4, 16),
+    ("lv60_standard", 96.1, 16),
+    ("lv50_classic", 68.6, 12),
+    ("lv90_35dur_food", 73.2, 13),
+    ("lv100_40dur_potion", 100.0, 7),
+    ("lv100_undergeared", 100.0, 7),
+    ("lv100_4star_progress_heavy", 20.4, 14),
 ];
 
 #[test]

@@ -79,7 +79,7 @@ pub struct MctsSolver {
     config: MctsConfig,
     greedy_config: GreedySolverConfig,
     arena: Arena,
-    /// Actions the current crafter and recipe can ever use; see [`ActionSet::eligible`].
+    /// Offered actions the current crafter and recipe can ever use; see [`ActionSet::eligible`].
     eligible: ActionSet,
     rollout_actions: Vec<ActionId>,
     candidate: Vec<ActionId>,
@@ -207,6 +207,10 @@ impl MctsSolver {
         }
 
         self.eligible = ActionSet::eligible(stats, recipe);
+        // Legacy actions replay but are never picked: the solver draws only from the offered set.
+        for legacy in Action::ALL.into_iter().filter(|a| a.is_legacy()) {
+            self.eligible.remove(legacy);
+        }
         self.arena.clear();
         let root = self
             .arena
@@ -541,8 +545,8 @@ fn select_rollout_action(
     rng: &mut Xoshiro256,
     config: &MctsConfig,
 ) -> Option<Action> {
-    let mut candidates = [Action::BasicSynthesis; 36];
-    let mut scores = [0.0f64; 36];
+    let mut candidates = [Action::BasicSynthesis; Action::COUNT];
+    let mut scores = [0.0f64; Action::COUNT];
     let mut count = 0;
 
     for action in eligible.iter() {
@@ -568,7 +572,7 @@ fn select_rollout_action(
         .iter()
         .copied()
         .fold(f64::NEG_INFINITY, f64::max);
-    let mut weights = [0.0f64; 36];
+    let mut weights = [0.0f64; Action::COUNT];
     let mut total_weight = 0.0;
     for i in 0..count {
         weights[i] = ((scores[i] - max_score) / config.rollout_temperature).exp();

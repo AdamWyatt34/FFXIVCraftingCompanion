@@ -84,7 +84,7 @@ pub fn execute_action(
     Ok(StepResultDto::from_step(&step))
 }
 
-/// `GetAvailableActionsQuery`.
+/// `GetAvailableActionsQuery`: the offered set, so legacy actions are never listed.
 pub fn available_actions(
     state: &CraftingStateDto,
     stats: &CrafterStatsDto,
@@ -94,6 +94,7 @@ pub fn available_actions(
     Ok(
         action_availability(&state.to_state(), &stats.to_stats(), &recipe.to_recipe(0))
             .iter()
+            .filter(|a| !a.action.is_legacy())
             .map(ActionAvailabilityDto::from_availability)
             .collect(),
     )
@@ -198,8 +199,7 @@ pub fn export_macro(
     })
 }
 
-/// `GetCraftingActionsQuery`: registry order, then a stable sort by category name and level,
-/// filtered to the crafter's level when given.
+/// Legacy rows carry `isLegacy` so a palette can skip them while a rotation still accepts them.
 pub fn action_catalog(level: Option<i32>) -> Vec<ActionInfoDto> {
     let mut catalog: Vec<ActionInfoDto> = Action::ALL
         .iter()
