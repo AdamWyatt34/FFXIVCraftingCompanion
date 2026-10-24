@@ -17,8 +17,8 @@ over it, and `src/lib/api-client.ts` is the account API.
 
 The simulator, the solver and the signed-in stat check run from `src/wasm/`, a committed
 WebAssembly build of `crates/xiv-craft-wasm`. After any change under `crates/`, run
-`npm run wasm:build` here and commit `src/wasm/`; `npm run wasm:check` and the backend's
-`WasmArtifactTests` fail when it is stale.
+`npm run wasm:build` here and commit `src/wasm/`; `npm run wasm:check` and rust-ci's artifact
+check fail when it is stale.
 
 ## Commands
 

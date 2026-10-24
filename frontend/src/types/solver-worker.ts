@@ -5,7 +5,7 @@ import type { SolverConstraints, SolverJob, SolverJobStatus } from "./solver";
 /**
  * Messages between the main thread and the solver worker (`src/workers/solver.worker.ts`).
  * The worker owns the WASM solver; the main thread resolves "auto" to an algorithm and the
- * time budget before posting, matching the API's SolverFactory.
+ * time budget before posting.
  */
 
 export interface SolveWorkerRequest {

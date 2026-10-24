@@ -1,12 +1,10 @@
 /**
- * The solver calls, with the signatures the .NET solver job endpoints had. A solve runs in the
- * solver worker (`src/workers/solver.worker.ts`) and reports progress, resolving to the same
- * `SolverJob` shape.
+ * The solver calls. A solve runs in the solver worker (`src/workers/solver.worker.ts`) and
+ * reports progress, resolving to a `SolverJob`.
  *
- * The API's policy is replicated here: `SolverFactory.ResolveAlgorithm` (auto is MCTS when
- * quality is maximised or a target is set, else greedy), `AdaptSettings` (the default 10 s
- * budget is scaled by recipe difficulty), and `StartSolveCommand`'s validation, including the
- * 422 stat-minimum check.
+ * Policy: auto is MCTS when quality is maximised or a target is set, else greedy; the default
+ * 10 s budget is scaled by recipe difficulty; requests are validated, including the 422
+ * stat-minimum check.
  */
 
 import * as Sentry from "@sentry/nextjs";
@@ -187,7 +185,7 @@ const ADAPTIVE_BUDGET_MS: Record<RecipeDifficulty, number> = {
   Expert: 15_000,
 };
 
-/** `SolverFactory.AdaptSettings`: only the untouched default budget is adapted. */
+/** Only the untouched default budget is adapted. */
 function adaptBudget(
   timeBudgetMs: number,
   recipe: RecipeCraftingParametersDto,
@@ -198,7 +196,6 @@ function adaptBudget(
     : timeBudgetMs;
 }
 
-/** `SolverFactory.ResolveAlgorithm`. */
 function resolveAlgorithm(
   requested: string | undefined,
   constraints: SolverConstraints,

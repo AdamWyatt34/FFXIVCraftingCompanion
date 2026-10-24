@@ -11,7 +11,7 @@
       {
         "theme": "Port the crafting engine to a Rust crate (crates/xiv-craft) with byte-for-byte parity against the C# engine, targeting wasm32",
         "why": "One engine implementation that can run client-side and be shared by future solver work",
-        "status": "committed",
+        "status": "landed",
         "added": "2026-09-11",
         "source": "elicited"
       },

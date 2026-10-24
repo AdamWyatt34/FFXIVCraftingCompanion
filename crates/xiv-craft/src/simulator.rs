@@ -11,8 +11,8 @@ use crate::state::{Condition, CraftStatus, CrafterStats, CraftingState, Recipe};
 /// which is neither reproducible nor available on wasm, so the engine pins a constant instead.
 pub const DEFAULT_SEED: i32 = 0;
 
-/// Mirrors the C# `SimulationOptions`, defaults included: every action succeeds and the
-/// condition stays Normal, which is the path both solvers run on.
+/// The defaults (every action succeeds, the condition stays Normal) are the path both solvers
+/// run on.
 ///
 /// With `assume_all_success` or `assume_normal_condition` off and `random_seed` unset, every run
 /// uses [`DEFAULT_SEED`] and is therefore identical call after call. A caller that wants varied
