@@ -17,7 +17,8 @@ export interface Manifest {
   gameVersionKey: string;
   exportedAt: string;
   bucketSize: number;
-  counts: { recipes: number; items: number; equipment: number; jobs: number };
+  /** `consumables` is absent from data sets exported without consumables.json. */
+  counts: { recipes: number; items: number; equipment: number; jobs: number; consumables?: number };
 }
 
 export interface RecipeExport {

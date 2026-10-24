@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Minus, Plus, Star } from "lucide-react";
 import Image from "next/image";
 import type { RecipeDto, RecipeIngredientDto } from "@/types/api";
@@ -8,11 +8,17 @@ import type { HQIngredientInput } from "@/types/simulator";
 
 interface HQIngredientSelectorProps {
   recipe: RecipeDto;
+  /** The simulator's selection; the selector keeps no copy, so it cannot drift from the craft. */
+  value: HQIngredientInput[];
   onChange: (hqIngredients: HQIngredientInput[]) => void;
 }
 
-export function HQIngredientSelector({ recipe, onChange }: HQIngredientSelectorProps) {
-  const [hqCounts, setHqCounts] = useState<Record<number, number>>({});
+export function HQIngredientSelector({ recipe, value, onChange }: HQIngredientSelectorProps) {
+  const hqCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (const { itemId, hqQuantity } of value) counts[itemId] = hqQuantity;
+    return counts;
+  }, [value]);
 
   const hqableIngredients = useMemo(
     () => recipe.ingredients.filter((i) => i.canBeHQ),
@@ -26,39 +32,25 @@ export function HQIngredientSelector({ recipe, onChange }: HQIngredientSelectorP
 
   const updateCount = useCallback(
     (itemId: number, quantity: number, delta: number) => {
-      setHqCounts((prev) => {
-        const current = prev[itemId] ?? 0;
-        const next = Math.max(0, Math.min(quantity, current + delta));
-        const updated = { ...prev, [itemId]: next };
-
-        // Emit change
-        const hqIngredients: HQIngredientInput[] = [];
-        for (const [id, qty] of Object.entries(updated)) {
-          if (qty > 0) {
-            hqIngredients.push({ itemId: Number(id), hqQuantity: qty });
-          }
+      const current = hqCounts[itemId] ?? 0;
+      const next = Math.max(0, Math.min(quantity, current + delta));
+      const updated = { ...hqCounts, [itemId]: next };
+      const hqIngredients: HQIngredientInput[] = [];
+      for (const [id, qty] of Object.entries(updated)) {
+        if (qty > 0) {
+          hqIngredients.push({ itemId: Number(id), hqQuantity: qty });
         }
-        onChange(hqIngredients);
-
-        return updated;
-      });
+      }
+      onChange(hqIngredients);
     },
-    [onChange],
+    [hqCounts, onChange],
   );
 
   const setAllHQ = useCallback(() => {
-    const updated: Record<number, number> = {};
-    const hqIngredients: HQIngredientInput[] = [];
-    for (const ing of hqableIngredients) {
-      updated[ing.itemId] = ing.quantity;
-      hqIngredients.push({ itemId: ing.itemId, hqQuantity: ing.quantity });
-    }
-    setHqCounts(updated);
-    onChange(hqIngredients);
+    onChange(hqableIngredients.map((ing) => ({ itemId: ing.itemId, hqQuantity: ing.quantity })));
   }, [hqableIngredients, onChange]);
 
   const setAllNQ = useCallback(() => {
-    setHqCounts({});
     onChange([]);
   }, [onChange]);
 

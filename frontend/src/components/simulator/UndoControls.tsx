@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Undo2, RotateCcw, FileDown, Link2, Check } from "lucide-react";
+import { RotateCcw, FileDown, Link2, Check } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui";
 
 interface UndoControlsProps {
   canUndo: boolean;
   stepCount: number;
   isLoading: boolean;
-  onUndo: () => void;
   onReset: () => Promise<void>;
   onOpenMacroExport: () => void;
   onShareRotation?: () => void;
@@ -19,7 +18,6 @@ export function UndoControls({
   canUndo,
   stepCount,
   isLoading,
-  onUndo,
   onReset,
   onOpenMacroExport,
   onShareRotation,
@@ -35,16 +33,6 @@ export function UndoControls({
   return (
     <>
       <div className="flex items-center gap-2">
-        <button
-          onClick={onUndo}
-          disabled={!canUndo || isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-text-primary border border-border transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Undo Last (Ctrl+Z)"
-          aria-label="Undo last action"
-        >
-          <Undo2 size={14} />
-          <span className="hidden sm:inline">Undo Last</span>
-        </button>
         <button
           onClick={() => setShowResetConfirm(true)}
           disabled={!canUndo || isLoading}

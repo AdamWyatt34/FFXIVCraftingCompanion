@@ -149,7 +149,7 @@ function ActionButtonInner({
         aria-disabled={isDisabled}
         tabIndex={isAvailable ? 0 : -1}
         className={`
-          relative flex items-center gap-2.5 px-2.5 py-2 rounded-md border transition-all duration-150 w-full focus-ring
+          relative flex items-center gap-2.5 px-2.5 py-2 rounded-md border transition-all duration-150 w-full h-full focus-ring
           ${justUsed ? "animate-action-ripple" : ""}
           ${
             isAvailable && !isExecuting
@@ -210,6 +210,11 @@ function ActionButtonInner({
               </span>
             )}
           </div>
+          {!isAvailable && availability?.unavailableReason && (
+            <div className="mt-0.5 text-[10px] leading-tight text-text-secondary truncate">
+              {availability.unavailableReason}
+            </div>
+          )}
         </div>
       </button>
     </span>
@@ -223,6 +228,7 @@ export const ActionButton = memo(ActionButtonInner, (prev, next) => {
     prev.action.id === next.action.id &&
     prev.onExecute === next.onExecute &&
     prev.availability?.isAvailable === next.availability?.isAvailable &&
+    prev.availability?.unavailableReason === next.availability?.unavailableReason &&
     prev.availability?.cpCost === next.availability?.cpCost &&
     prev.availability?.durabilityCost === next.availability?.durabilityCost &&
     prev.availability?.successRate === next.availability?.successRate &&

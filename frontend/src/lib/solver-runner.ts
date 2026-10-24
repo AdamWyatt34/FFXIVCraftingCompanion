@@ -102,17 +102,20 @@ export function createSolverRunner(host: RunnerHost): SolverRunner {
     else post({ type: "error", id, message: errorMessage(err) });
   }
 
+  function startingQualityOf(engine: WasmEngine, request: SolveWorkerRequest): number {
+    return request.hqIngredients?.length
+      ? engine.startingQuality(request.recipe, request.hqIngredients)
+      : request.startingQuality ?? 0;
+  }
+
   async function runGreedy(request: SolveWorkerRequest): Promise<void> {
     try {
       const engine = await host.engine;
-      const startingQuality = request.hqIngredients?.length
-        ? engine.startingQuality(request.recipe, request.hqIngredients)
-        : 0;
       const started = now();
       const result = engine.greedySolve(
         request.recipe,
         request.stats,
-        startingQuality,
+        startingQualityOf(engine, request),
         request.constraints,
       );
       post({ type: "result", id: request.id, job: toJob(result, now() - started) });
@@ -127,11 +130,7 @@ export function createSolverRunner(host: RunnerHost): SolverRunner {
     try {
       const engine = await host.engine;
       session ??= engine.createSolverSession(MAX_NODES, CRATE_EARLY_TERMINATION_OFF);
-      const startingQuality = request.hqIngredients?.length
-        ? engine.startingQuality(request.recipe, request.hqIngredients)
-        : 0;
-
-      session.begin(request.recipe, request.stats, startingQuality, request.constraints, {
+      session.begin(request.recipe, request.stats, startingQualityOf(engine, request), request.constraints, {
         timeBudgetMs: request.settings.timeBudgetMs,
         randomSeed: request.settings.randomSeed,
       });

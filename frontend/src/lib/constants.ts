@@ -204,26 +204,8 @@ export const WHAT_IF_PRESETS = [
   {
     key: "current",
     label: "Current Gear",
-    description: "Your current stats with no buffs",
+    description: "Your current stats, consumables included",
     buffs: { craftsmanship: 0, control: 0, cp: 0 },
-  },
-  {
-    key: "food",
-    label: "+Food",
-    description: "Typical HQ crafting food",
-    buffs: { craftsmanship: 80, control: 80, cp: 50 },
-  },
-  {
-    key: "pot",
-    label: "+Pot",
-    description: "Typical HQ crafting potion",
-    buffs: { craftsmanship: 40, control: 40, cp: 20 },
-  },
-  {
-    key: "foodpot",
-    label: "+Food+Pot",
-    description: "Food and potion combined",
-    buffs: { craftsmanship: 120, control: 120, cp: 70 },
   },
   {
     key: "bis",

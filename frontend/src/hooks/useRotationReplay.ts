@@ -77,7 +77,7 @@ export function useRotationReplay(
       activeBuffs: [],
       innerQuietStacks: 0,
       comboAction: 0,
-      observeActive: false,
+      expedienceActive: false,
       isFirstStep: true,
       quickInnovationUsed: false,
       heartAndSoulUsed: false,

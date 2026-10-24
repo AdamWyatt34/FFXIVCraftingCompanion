@@ -6,7 +6,13 @@
 
 import { ApiClientError } from "@/lib/api-client";
 import { getRecipe, getRecipeCraftingParameters } from "@/lib/game-data";
-import { isFatalEngineError, loadWasmEngine, resetWasmEngine } from "@/lib/wasm-engine";
+import { startingQualityProblem } from "@/lib/simulator-setup";
+import {
+  isFatalEngineError,
+  loadWasmEngine,
+  resetWasmEngine,
+  type WasmEngine,
+} from "@/lib/wasm-engine";
 import type {
   RecipeCraftingParametersDto,
   RecipeSummaryDto,
@@ -67,6 +73,11 @@ function validateLevel(level: number): void {
     throw badRequest("Level must be between 1 and 100.");
 }
 
+function validateStartingQuality(startingQuality: number | undefined): void {
+  const problem = startingQualityProblem(startingQuality);
+  if (problem) throw badRequest(problem);
+}
+
 /**
  * WASM raises plain errors carrying the API's messages; surface them as the API would. A trap
  * leaves the instance unusable, so it is forgotten and the next call instantiates a fresh one.
@@ -116,8 +127,7 @@ export async function getInitialCraftingState(
   validateLevel(level);
   if (craftsmanship < 0 || control < 0 || cp < 0)
     throw badRequest("Stats must be non-negative.");
-  if (startingQuality < 0)
-    throw badRequest("Starting quality must be non-negative.");
+  validateStartingQuality(startingQuality);
 
   const [engine, recipe] = await Promise.all([
     loadWasmEngine(),
@@ -171,8 +181,13 @@ export async function getAvailableActions(
   );
 }
 
+/** `startingQuality` is the quality the craft starts from, in place of what `hqIngredients` give. */
+export interface SimulateCraftRequest extends SimulateRequest {
+  startingQuality?: number;
+}
+
 export async function simulateCraft(
-  request: SimulateRequest,
+  request: SimulateCraftRequest,
   signal?: AbortSignal,
 ): Promise<SimulationResult> {
   if (!request.stats) throw badRequest("Stats are required.");
@@ -181,6 +196,12 @@ export async function simulateCraft(
   if (stats.craftsmanship < 0 || stats.control < 0 || stats.cp < 0) {
     throw badRequest("Stats must be non-negative.");
   }
+  validateStartingQuality(request.startingQuality);
+  const startingQuality = request.startingQuality ?? 0;
+  if (startingQuality > 0 && (request.options || request.hqIngredients?.length))
+    throw badRequest(
+      "A starting quality replaces the HQ ingredients and runs with the default options.",
+    );
 
   const [engine, recipe, summary] = await Promise.all([
     loadWasmEngine(),
@@ -189,15 +210,49 @@ export async function simulateCraft(
   ]);
   throwIfAborted(signal);
   const result = local(() =>
-    engine.simulate(
-      recipe,
-      stats,
-      request.actionIds,
-      request.options,
-      request.hqIngredients,
-    ),
+    startingQuality > 0
+      ? simulateFrom(engine, recipe, stats, request.actionIds, startingQuality)
+      : engine.simulate(
+          recipe,
+          stats,
+          request.actionIds,
+          request.options,
+          request.hqIngredients,
+        ),
   );
   return { ...result, recipe: summary };
+}
+
+// The engine's simulate takes no starting quality; under the default options (every action
+// succeeds, the condition stays Normal) stepping from an initial state that has one is the same run.
+function simulateFrom(
+  engine: WasmEngine,
+  recipe: RecipeCraftingParametersDto,
+  stats: CrafterStatsInput,
+  actionIds: number[],
+  startingQuality: number,
+): Omit<SimulationResult, "recipe"> {
+  if (actionIds.length === 0)
+    throw badRequest(
+      "At least one action is required (provide ActionIds or ActionNames).",
+    );
+  let state = engine.initialState(recipe, stats, startingQuality);
+  const steps: StepResult[] = [];
+  for (const actionId of actionIds) {
+    if (state.status !== "InProgress") break;
+    const step = engine.executeAction(state, actionId, stats, recipe);
+    steps.push(step);
+    state = step.stateAfter;
+  }
+  return {
+    success: state.status === "Completed",
+    totalSteps: steps.length,
+    finalQualityPercent: state.qualityPercent,
+    finalHQPercent: state.hqPercent,
+    finalState: state,
+    steps,
+    macros: engine.exportMacro(actionIds).macros,
+  };
 }
 
 export async function exportCraftingMacro(
@@ -209,11 +264,21 @@ export async function exportCraftingMacro(
   return local(() => engine.exportMacro(request.actionIds, request.options));
 }
 
+/** The palette: the actions the game offers, filtered to `level` when given. */
 export async function getCraftingActions(
   level?: number,
   signal?: AbortSignal,
 ): Promise<ActionInfo[]> {
   const engine = await loadWasmEngine();
   throwIfAborted(signal);
-  return local(() => engine.actionCatalog(level));
+  return local(() => engine.actionCatalog(level).filter((a) => !a.isLegacy));
+}
+
+/** Every action id the engine replays, legacy ones included, at any level; saved and shared rotations are checked against these. */
+export async function getRecognizedActionIds(
+  signal?: AbortSignal,
+): Promise<Set<number>> {
+  const engine = await loadWasmEngine();
+  throwIfAborted(signal);
+  return local(() => new Set(engine.actionCatalog().map((a) => a.id)));
 }

@@ -29,7 +29,7 @@ describe("cost estimate", () => {
       // Only the prices the service would have asked for, as the sample client answered.
       const asked = new Set(marketBoardItemIds(materials, finalItemId, options));
       const available = new Map([...prices].filter(([id]) => asked.has(id)));
-      expect(estimateCost(materials, finalItemId, "Gilgamesh", options, available, NOW_MS)).toEqual(golden.result);
+      expect(estimateCost(materials, finalItemId, "Gilgamesh", options, golden.quantity, available, NOW_MS)).toEqual(golden.result);
     },
   );
 

@@ -26,6 +26,9 @@ const ACTION_ICON_MAP: Record<string, string> = {
   ByregotsBlessing: "/i/002000/002917.png",
   TrainedFinesse: "/i/002000/002937.png",
   TrainedEye: "/i/002000/002927.png",
+  PreciseTouch: "/i/001000/001524.png",
+  RefinedTouch: "/i/001000/001522.png",
+  DaringTouch: "/i/001000/001998.png",
   // Buffs
   InnerQuiet: "/i/002000/002916.png",
   WasteNot: "/i/002000/002910.png",
@@ -73,6 +76,9 @@ export const ACTION_ID_TO_NAME: Record<number, string> = {
   100339: "ByregotsBlessing",
   100435: "TrainedFinesse",
   100283: "TrainedEye",
+  100501: "PreciseTouch",
+  100502: "RefinedTouch",
+  100503: "DaringTouch",
   // Buffs
   100252: "InnerQuiet",
   100279: "WasteNot",

@@ -5,6 +5,7 @@ import { ArrowLeft, Map } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { CONDITION_COLORS } from "@/lib/action-icons";
+import { CraftingStateBar } from "./CraftingStateBar";
 import type { RecipeDto, RecipeSummaryDto, CraftType } from "@/types/api";
 import type { CraftingState } from "@/types/simulator";
 import { recipeJourneyPath } from "@/lib/routes";
@@ -27,9 +28,8 @@ export function SimulatorHeader({
     state.condition === "GoodOmen" ? "Good Omen" : state.condition;
 
   return (
-    <div className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur-sm pb-2 sm:pb-3 -mx-4 px-4 pt-1 border-b border-border">
-      {/* Single row on mobile, two rows on sm+ */}
-      <div className="flex items-center gap-2 sm:gap-3">
+    <>
+      <div className="flex items-center gap-2 sm:gap-3 pt-1 pb-1 sm:pb-2">
         <button
           onClick={onBackToSetup}
           className="text-text-secondary hover:text-gold transition-colors shrink-0"
@@ -48,13 +48,13 @@ export function SimulatorHeader({
         ) : null}
         <div className="min-w-0 flex-1">
           <h1 className="text-sm sm:text-base font-bold text-text-primary truncate">
-            {fullRecipe?.resultItem.name ?? `Recipe Lv.${recipe.recipeLevel}`}
+            {fullRecipe?.resultItem.name ?? `Recipe Lv. ${recipe.recipeLevel}`}
           </h1>
           <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
             {craftInfo && (
               <span className={craftInfo.colorClass}>{craftInfo.name}</span>
             )}
-            <span>Lv. {recipe.recipeLevel}</span>
+            <span>Recipe Lv. {recipe.recipeLevel}</span>
           </div>
         </div>
 
@@ -66,46 +66,52 @@ export function SimulatorHeader({
           <Map size={14} />
           Journey
         </Link>
+      </div>
 
-        {/* Inline step/condition on mobile */}
-        <div className="flex items-center gap-1.5 sm:hidden text-xs shrink-0">
-          <span className="text-text-muted">#{state.step}</span>
-          <span
-            style={{
-              color: CONDITION_COLORS[state.condition],
-            }}
-          >
-            {conditionDisplay}
-          </span>
-          {state.innerQuietStacks > 0 && (
-            <span className="text-teal-400">
-              IQ{state.innerQuietStacks}
+      {/* Sticks under the app header (h-14), so the step, the condition and the compact bars stay
+          in view over the action grid. */}
+      <div className="sticky top-14 z-10 bg-bg-primary/95 backdrop-blur-sm -mx-4 px-4 py-1 border-b border-border">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:hidden text-xs shrink-0">
+            <span className="text-text-muted">#{state.step}</span>
+            <span
+              style={{
+                color: CONDITION_COLORS[state.condition],
+              }}
+            >
+              {conditionDisplay}
             </span>
-          )}
+            {state.innerQuietStacks > 0 && (
+              <span className="text-teal-400">
+                IQ{state.innerQuietStacks}
+              </span>
+            )}
+          </div>
+          <div className="hidden sm:flex items-center gap-3 text-sm ml-8 shrink-0">
+            <span className="text-text-secondary">Step {state.step}</span>
+            <span className="text-text-muted">&#xB7;</span>
+            <span
+              style={{
+                color: CONDITION_COLORS[state.condition],
+                transition: "color 0.3s ease",
+              }}
+            >
+              {conditionDisplay}
+            </span>
+            {state.innerQuietStacks > 0 && (
+              <>
+                <span className="text-text-muted">&#xB7;</span>
+                <span className="text-teal-400">
+                  IQ &#xD7;{state.innerQuietStacks}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 max-w-xl">
+            <CraftingStateBar state={state} compact />
+          </div>
         </div>
       </div>
-
-      {/* Row 2: Step + Condition + IQ (sm+ only) */}
-      <div className="hidden sm:flex items-center gap-3 text-sm mt-2 ml-8">
-        <span className="text-text-secondary">Step {state.step}</span>
-        <span className="text-text-muted">&#xB7;</span>
-        <span
-          style={{
-            color: CONDITION_COLORS[state.condition],
-            transition: "color 0.3s ease",
-          }}
-        >
-          {conditionDisplay}
-        </span>
-        {state.innerQuietStacks > 0 && (
-          <>
-            <span className="text-text-muted">&#xB7;</span>
-            <span className="text-teal-400">
-              IQ &#xD7;{state.innerQuietStacks}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
+    </>
   );
 }

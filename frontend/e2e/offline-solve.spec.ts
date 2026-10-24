@@ -66,7 +66,7 @@ test("simulator and solver run offline from the WASM engine", async ({
   await page
     .getByRole("button", { name: "Auto-solve crafting rotation" })
     .click();
-  await expect(page.getByText("Solution Found")).toBeVisible({
+  await expect(page.getByText("Rotation found", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
   await page.getByRole("button", { name: "View Rotation" }).click();

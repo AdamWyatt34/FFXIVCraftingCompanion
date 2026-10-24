@@ -69,6 +69,7 @@ export interface SolveRequest {
   constraints?: SolverConstraints;
   settings?: SolverSettings;
   hqIngredients?: HQIngredientInput[];
+  startingQuality?: number;
 }
 
 export interface QuickSolveParams {
@@ -77,6 +78,8 @@ export interface QuickSolveParams {
   control: number;
   cp: number;
   level: number;
+  hqIngredients?: HQIngredientInput[];
+  startingQuality?: number;
 }
 
 // ── Type Guards ──

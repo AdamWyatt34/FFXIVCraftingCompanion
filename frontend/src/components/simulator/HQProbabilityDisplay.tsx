@@ -76,7 +76,7 @@ export function HQProbabilityDisplay({ hqPercent, compact }: HQProbabilityDispla
             className={subTextClass}
             fill="#6b6b80"
           >
-            HQ Rate
+            chance of HQ
           </text>
         </svg>
         {hqPercent === 100 && (

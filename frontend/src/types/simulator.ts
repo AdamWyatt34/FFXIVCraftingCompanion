@@ -45,7 +45,7 @@ export interface CraftingState {
   innerQuietStacks: number;
   // Hidden state for DTO roundtrip (step-by-step mode)
   comboAction: number;
-  observeActive: boolean;
+  expedienceActive: boolean;
   isFirstStep: boolean;
   quickInnovationUsed: boolean;
   heartAndSoulUsed: boolean;
@@ -91,6 +91,8 @@ export interface ActionInfo {
   baseCPCost: number;
   baseDurabilityCost: number;
   baseSuccessRate: number;
+  /** Removed from the game: a saved rotation still replays it, but the palette does not offer it. */
+  isLegacy: boolean;
 }
 
 export interface ActionAvailability {
@@ -118,6 +120,16 @@ export interface CrafterStatsInput {
   control: number;
   cp: number;
   isSpecialist?: boolean;
+}
+
+export interface ConsumableChoice {
+  itemId: number;
+  hq: boolean;
+}
+
+export interface ConsumableSelection {
+  meal: ConsumableChoice | null;
+  medicine: ConsumableChoice | null;
 }
 
 export interface SimulationOptions {

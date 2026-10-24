@@ -5,7 +5,7 @@ import type {
   CraftPlanItemInput,
   CraftPlanResultDto,
 } from "@/types/craft-plan";
-import { compareOrdinalIgnoreCase } from "./materials";
+import { addRootDemand, compareOrdinalIgnoreCase } from "./materials";
 
 // Port of CraftPlanResolver, CraftPlanMapper and ShoppingListExporter over trees the materials
 // port expanded. Proven by goldens/craft-plan.jsonl, exports included.
@@ -41,13 +41,18 @@ export function aggregateCraftPlan(entries: PlanEntry[]): CraftPlanResultDto {
     craftType: recipe.craftType,
   }));
 
+  // One plan-wide demand map, as CraftPlanResolver: a shared intermediate is crafted for the combined need.
+  const intermediateDemand = new Map<number, number>();
   const rawMaterials = new Map<number, AggregatedMaterialDto>();
-  for (const { recipe, tree } of entries)
-    for (const item of tree.shoppingList) aggregateMaterial(rawMaterials, item, recipe.recipeId, tree.tree.itemName);
-
   const crystals = new Map<number, AggregatedMaterialDto>();
-  for (const { recipe, tree } of entries)
-    for (const item of tree.crystalRequirements) aggregateMaterial(crystals, item, recipe.recipeId, tree.tree.itemName);
+  for (const { recipe, tree } of entries) {
+    const rawDemand = addRootDemand(tree.tree, intermediateDemand);
+    const added = (itemId: number) => rawDemand.get(itemId) ?? 0;
+    for (const item of tree.shoppingList)
+      aggregateMaterial(rawMaterials, item, added(item.itemId), recipe.recipeId, tree.tree.itemName);
+    for (const item of tree.crystalRequirements)
+      aggregateMaterial(crystals, item, added(item.itemId), recipe.recipeId, tree.tree.itemName);
+  }
 
   const recipes = new Map<number, RecipeSummaryDto>();
   const depths = new Map<number, number>();
@@ -57,25 +62,20 @@ export function aggregateCraftPlan(entries: PlanEntry[]): CraftPlanResultDto {
   for (const { tree } of entries) {
     for (const item of tree.intermediateCrafts) {
       const recipe = recipes.get(item.itemId);
-      if (!recipe) continue;
-      const existing = intermediates.get(item.itemId);
-      if (existing) {
-        existing.totalQuantity += item.quantity;
-      } else {
-        intermediates.set(item.itemId, {
-          itemId: item.itemId,
-          itemName: item.itemName,
-          iconUrl: item.iconUrl,
-          totalQuantity: item.quantity,
-          recipeId: recipe.recipeId,
-          craftType: recipe.craftType,
-          craftTypeName: recipe.craftTypeName,
-          recipeLevel: recipe.recipeLevel,
-          yieldPerCraft: recipe.yield,
-          craftOrder: 0,
-          maxDepth: depths.get(item.itemId) ?? 1,
-        });
-      }
+      if (!recipe || intermediates.has(item.itemId)) continue;
+      intermediates.set(item.itemId, {
+        itemId: item.itemId,
+        itemName: item.itemName,
+        iconUrl: item.iconUrl,
+        totalQuantity: intermediateDemand.get(item.itemId) ?? 0,
+        recipeId: recipe.recipeId,
+        craftType: recipe.craftType,
+        craftTypeName: recipe.craftTypeName,
+        recipeLevel: recipe.recipeLevel,
+        yieldPerCraft: recipe.yield,
+        craftOrder: 0,
+        maxDepth: depths.get(item.itemId) ?? 1,
+      });
     }
   }
 
@@ -118,20 +118,21 @@ export function aggregateCraftPlan(entries: PlanEntry[]): CraftPlanResultDto {
 function aggregateMaterial(
   lookup: Map<number, AggregatedMaterialDto>,
   item: MaterialTreeResultDto["shoppingList"][number],
+  quantity: number,
   recipeId: number,
   recipeItemName: string,
 ): void {
-  const contribution = { recipeId, itemName: recipeItemName, quantity: item.totalQuantity };
+  const contribution = { recipeId, itemName: recipeItemName, quantity };
   const existing = lookup.get(item.itemId);
   if (existing) {
-    existing.totalQuantity += item.totalQuantity;
+    existing.totalQuantity += quantity;
     existing.contributions.push(contribution);
   } else {
     lookup.set(item.itemId, {
       itemId: item.itemId,
       itemName: item.itemName,
       iconUrl: item.iconUrl,
-      totalQuantity: item.totalQuantity,
+      totalQuantity: quantity,
       primarySource: item.primarySource,
       sources: item.sources,
       category: item.category,

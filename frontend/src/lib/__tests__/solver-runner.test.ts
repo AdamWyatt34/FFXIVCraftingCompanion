@@ -124,6 +124,45 @@ describe("solver runner on the committed WASM", () => {
   });
 });
 
+describe("solver runner starting quality", () => {
+  function recordingEngine(fromHqMaterials: number) {
+    const begun: number[] = [];
+    const engine = {
+      startingQuality: () => fromHqMaterials,
+      createSolverSession: () => ({
+        begin: (_recipe: unknown, _stats: unknown, startingQuality: number) => {
+          begun.push(startingQuality);
+          throw new Error("recorded");
+        },
+        free: () => {},
+      }),
+    } as unknown as WasmEngine;
+    return { engine, begun };
+  }
+
+  it("begins the search at a manual starting quality", async () => {
+    const { engine, begun } = recordingEngine(900);
+    const { runner, next } = harness(engine);
+    const request = solve({ algorithm: "mcts", startingQuality: 350 });
+    runner.handle(request);
+    expect((await next("error", request.id)).message).toBe("recorded");
+    expect(begun).toEqual([350]);
+  });
+
+  it("begins the search at the HQ materials' quality over a manual one", async () => {
+    const { engine, begun } = recordingEngine(900);
+    const { runner, next } = harness(engine);
+    const request = solve({
+      algorithm: "mcts",
+      startingQuality: 350,
+      hqIngredients: [{ itemId: 1, hqQuantity: 2 }],
+    });
+    runner.handle(request);
+    expect((await next("error", request.id)).message).toBe("recorded");
+    expect(begun).toEqual([900]);
+  });
+});
+
 describe("solver runner after a fatal engine error", () => {
   it("frees the session, posts fatal once and refuses everything after", async () => {
     let freed = 0;

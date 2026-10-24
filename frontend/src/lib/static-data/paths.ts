@@ -44,6 +44,8 @@ export const SEARCH_INDEX_PATH = "search/items.json";
 /** The same index as interned tables and columns; absent from data sets exported before it existed. */
 export const SEARCH_COMPACT_PATH = "search/compact.json";
 export const CRYSTALS_PATH = "materials/crystals.json";
+/** Crafting meals and medicines; absent from data sets exported without them. */
+export const CONSUMABLES_PATH = "consumables.json";
 export const MANIFEST_PATH = "manifest.json";
 
 export const GEAR_PROFILES_PATH = "gear/profiles.json";

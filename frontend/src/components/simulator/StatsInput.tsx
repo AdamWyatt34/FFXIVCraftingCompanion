@@ -6,13 +6,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { CRAFT_TYPE_INFO, SIMULATOR_CONSTANTS } from "@/lib/constants";
 import { LEVEL_PRESETS } from "@/lib/gear-constants";
-import type { CrafterStatsInput } from "@/types/simulator";
-import type { CraftType } from "@/types/api";
+import { isValidCrafterStats } from "@/lib/stat-limits";
+import { ConsumableSelect } from "@/components/simulator/ConsumableSelect";
+import type { ConsumableSelection, CrafterStatsInput } from "@/types/simulator";
+import type { CraftingConsumableDto, CraftType } from "@/types/api";
 
 interface StatsInputProps {
+  /** The base stats, without food or medicine. */
   stats: CrafterStatsInput | null;
   onStatsChange: (stats: CrafterStatsInput) => void;
   selectedCraftType: CraftType | null;
+  consumableOptions: CraftingConsumableDto[];
+  consumables: ConsumableSelection;
+  onConsumablesChange: (selection: ConsumableSelection) => void;
 }
 
 interface LocalStats {
@@ -29,6 +35,11 @@ interface ValidationErrors {
   control?: string;
   cp?: string;
 }
+
+const LAST_STATS_KEY = "ffxiv_last_stats";
+const SPECIALIST_HINT =
+  "Specialist soul crystal equipped for this job; unlocks Heart and Soul, Careful Observation and Quick Innovation";
+const EMPTY_LOCAL_STATS: LocalStats = { level: "", craftsmanship: "", control: "", cp: "", isSpecialist: false };
 
 function toLocalStats(stats: CrafterStatsInput): LocalStats {
   return {
@@ -75,12 +86,38 @@ function parseStats(local: LocalStats): CrafterStatsInput | null {
   };
 }
 
+// Storage is user-editable, so a stored value must pass the shared bounds and this form's rules.
+function readLastStats(): CrafterStatsInput | null {
+  try {
+    const raw = localStorage.getItem(LAST_STATS_KEY);
+    if (!raw) return null;
+    const stored: unknown = JSON.parse(raw);
+    if (typeof stored !== "object" || stored === null) return null;
+    const { level, craftsmanship, control, cp, isSpecialist } = stored as Record<string, unknown>;
+    const stats = { level, craftsmanship, control, cp, isSpecialist: isSpecialist === true } as CrafterStatsInput;
+    return isValidCrafterStats(stats) ? parseStats(toLocalStats(stats)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberStats(stats: CrafterStatsInput): void {
+  try {
+    localStorage.setItem(LAST_STATS_KEY, JSON.stringify(stats));
+  } catch {
+    // storage may be full or unavailable; the stats are then not remembered
+  }
+}
+
 export function StatsInput({
   stats,
   onStatsChange,
   selectedCraftType,
+  consumableOptions,
+  consumables,
+  onConsumablesChange,
 }: StatsInputProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { profile } = useProfile();
 
   const hasProfile =
@@ -90,13 +127,23 @@ export function StatsInput({
     hasProfile ? "profile" : "manual",
   );
   const [localStats, setLocalStats] = useState<LocalStats>(
-    stats
-      ? toLocalStats(stats)
-      : { level: "", craftsmanship: "", control: "", cp: "", isSpecialist: false },
+    stats ? toLocalStats(stats) : EMPTY_LOCAL_STATS,
   );
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefillCheckedRef = useRef(false);
+
+  // A signed-out visitor starts from the last stats they entered; a signed-in one from the profile.
+  useEffect(() => {
+    if (prefillCheckedRef.current || authLoading) return;
+    prefillCheckedRef.current = true;
+    if (stats || isAuthenticated) return;
+    const remembered = readLastStats();
+    if (!remembered) return;
+    setLocalStats(toLocalStats(remembered));
+    onStatsChange(remembered);
+  }, [authLoading, isAuthenticated, stats, onStatsChange]);
 
   // Sync local stats when external stats prop changes (e.g., profile auto-fill)
   useEffect(() => {
@@ -136,6 +183,7 @@ export function StatsInput({
         const parsed = parseStats(newLocal);
         if (parsed) {
           onStatsChange(parsed);
+          rememberStats(parsed);
         }
       }, SIMULATOR_CONSTANTS.DEBOUNCE_STATS_MS);
     },
@@ -300,7 +348,7 @@ export function StatsInput({
                 inputMode="numeric"
                 value={localStats.level}
                 aria-invalid={touched.level && !!errors.level}
-                aria-describedby={touched.level && errors.level ? "stats-level-error" : undefined}
+                aria-describedby={touched.level && errors.level ? "stats-level-error stats-help" : "stats-help"}
                 onChange={(e) => handleFieldChange("level", e.target.value)}
                 onBlur={() => handleBlur("level")}
                 placeholder="1-100"
@@ -325,6 +373,10 @@ export function StatsInput({
             {touched.level && errors.level && (
               <p id="stats-level-error" className="text-xs text-red-400 mt-1">{errors.level}</p>
             )}
+            <p id="stats-help" className="text-xs text-text-muted mt-1.5">
+              In game: Character &gt; Attributes. Enter the values with no food or medicine active; add those
+              below.
+            </p>
           </div>
 
           {/* Stats grid */}
@@ -394,19 +446,30 @@ export function StatsInput({
               )}
             </div>
             <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer" title={SPECIALIST_HINT}>
                 <input
                   type="checkbox"
                   checked={localStats.isSpecialist}
                   onChange={handleSpecialistToggle}
+                  aria-describedby="stats-specialist-hint"
                   className="w-4 h-4 rounded border-border bg-bg-elevated accent-gold"
                 />
                 <span className="text-sm text-text-secondary">Specialist</span>
+                <span id="stats-specialist-hint" className="sr-only">
+                  {SPECIALIST_HINT}
+                </span>
               </label>
             </div>
           </div>
         </div>
       )}
+
+      <ConsumableSelect
+        options={consumableOptions}
+        selection={consumables}
+        baseStats={stats}
+        onChange={onConsumablesChange}
+      />
     </div>
   );
 }

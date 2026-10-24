@@ -36,14 +36,12 @@ function StatSliderRow({
   baseValue,
   value,
   onChange,
-  onVariedStatChange,
 }: {
   label: string;
   statKey: VariedStat;
   baseValue: number;
   value: number;
   onChange: (stat: VariedStat, value: number) => void;
-  onVariedStatChange: (stat: VariedStat) => void;
   isVaried?: boolean;
 }) {
   const min = Math.max(1, baseValue - STAT_SLIDER_RANGE);
@@ -76,10 +74,7 @@ function StatSliderRow({
           max={max}
           step={10}
           value={value}
-          onChange={(e) => {
-            onChange(statKey, Number(e.target.value));
-            onVariedStatChange(statKey);
-          }}
+          onChange={(e) => onChange(statKey, Number(e.target.value))}
           className="flex-1 h-2 bg-bg-elevated rounded-lg appearance-none cursor-pointer accent-gold"
           aria-valuemin={min}
           aria-valuemax={max}
@@ -239,13 +234,26 @@ export function WhatIfPanel({
   const firstInputRef = useRef<HTMLInputElement>(null);
   const [showChart, setShowChart] = useState(false);
   const [adjustedStats, setAdjustedStats] = useState<WhatIfStatSet | null>(null);
+  // The stats the page pushed: edits move the sweep, while the labels and slider ranges stay
+  // anchored here so a drag does not re-centre the range under the pointer.
+  const [originStats, setOriginStats] = useState<WhatIfStatSet | null>(null);
+  const sentBaseRef = useRef<WhatIfStatSet | null>(null);
+  // Edits build on this, not on adjustedStats: that copy takes a pushed base a frame late, and a
+  // handler sees it only after a render.
+  const adjustedStatsRef = useRef<WhatIfStatSet | null>(null);
 
-  // Initialize adjusted stats from base stats
+  // The sliders follow every base the page pushes, or a later edit would send stale stats back as
+  // the base. A base the panel sent is skipped: the sliders already hold it.
   useEffect(() => {
-    if (!(whatIf.baseStats && !adjustedStats)) return;
-    const id = requestAnimationFrame(() => setAdjustedStats({ ...whatIf.baseStats! }));
+    const base = whatIf.baseStats;
+    if (!base || base === sentBaseRef.current) return;
+    adjustedStatsRef.current = { ...base };
+    const id = requestAnimationFrame(() => {
+      setAdjustedStats({ ...base });
+      setOriginStats(base);
+    });
     return () => cancelAnimationFrame(id);
-  }, [whatIf.baseStats, adjustedStats]);
+  }, [whatIf.baseStats]);
 
   // Focus first input when panel opens
   useEffect(() => {
@@ -255,22 +263,16 @@ export function WhatIfPanel({
 
   const handleStatChange = useCallback(
     (stat: VariedStat, value: number) => {
-      setAdjustedStats((prev) => {
-        if (!prev) return prev;
-        return { ...prev, [stat]: value };
-      });
-    },
-    [],
-  );
-
-  const handleVariedStatChange = useCallback(
-    (stat: VariedStat) => {
-      if (adjustedStats) {
-        whatIf.setBaseStats(adjustedStats);
-      }
+      const current = adjustedStatsRef.current;
+      if (!current) return;
+      const next: WhatIfStatSet = { ...current, [stat]: value };
+      adjustedStatsRef.current = next;
+      sentBaseRef.current = next;
+      setAdjustedStats(next);
+      whatIf.setBaseStats(next);
       whatIf.setVariedStat(stat);
     },
-    [whatIf, adjustedStats],
+    [whatIf],
   );
 
   const handleNavigateToSolve = useCallback(
@@ -312,6 +314,7 @@ export function WhatIfPanel({
   }
 
   const base = whatIf.baseStats;
+  const origin = originStats ?? base;
 
   return (
     <div
@@ -340,28 +343,25 @@ export function WhatIfPanel({
             <StatSliderRow
               label="Craftsmanship"
               statKey="craftsmanship"
-              baseValue={base.craftsmanship}
-              value={adjustedStats?.craftsmanship ?? base.craftsmanship}
+              baseValue={origin.craftsmanship}
+              value={adjustedStats?.craftsmanship ?? origin.craftsmanship}
               onChange={handleStatChange}
-              onVariedStatChange={handleVariedStatChange}
               isVaried={whatIf.variedStat === "craftsmanship"}
             />
             <StatSliderRow
               label="Control"
               statKey="control"
-              baseValue={base.control}
-              value={adjustedStats?.control ?? base.control}
+              baseValue={origin.control}
+              value={adjustedStats?.control ?? origin.control}
               onChange={handleStatChange}
-              onVariedStatChange={handleVariedStatChange}
               isVaried={whatIf.variedStat === "control"}
             />
             <StatSliderRow
               label="CP"
               statKey="cp"
-              baseValue={base.cp}
-              value={adjustedStats?.cp ?? base.cp}
+              baseValue={origin.cp}
+              value={adjustedStats?.cp ?? origin.cp}
               onChange={handleStatChange}
-              onVariedStatChange={handleVariedStatChange}
               isVaried={whatIf.variedStat === "cp"}
             />
           </div>
