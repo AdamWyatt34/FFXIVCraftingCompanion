@@ -1,0 +1,236 @@
+[
+  {
+    "id": 100001,
+    "name": "BasicSynthesis",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100002,
+    "name": "BasicTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100003,
+    "name": "MastersMend",
+    "isLegacy": false,
+    "category": 3
+  },
+  {
+    "id": 100004,
+    "name": "StandardTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100010,
+    "name": "Observe",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100033,
+    "name": "RapidSynthesis",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100203,
+    "name": "CarefulSynthesis",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100209,
+    "name": "Innovation",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100227,
+    "name": "PrudentTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100235,
+    "name": "FocusedSynthesis",
+    "isLegacy": true,
+    "category": 0
+  },
+  {
+    "id": 100243,
+    "name": "FocusedTouch",
+    "isLegacy": true,
+    "category": 1
+  },
+  {
+    "id": 100252,
+    "name": "InnerQuiet",
+    "isLegacy": true,
+    "category": 2
+  },
+  {
+    "id": 100260,
+    "name": "GreatStrides",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100278,
+    "name": "Manipulation",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100279,
+    "name": "WasteNot",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100283,
+    "name": "TrainedEye",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100285,
+    "name": "WasteNotII",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100297,
+    "name": "Veneration",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100299,
+    "name": "PreparatoryTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100315,
+    "name": "IntensiveSynthesis",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100317,
+    "name": "HeartAndSoul",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100323,
+    "name": "DelicateSynthesis",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100339,
+    "name": "ByregotsBlessing",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100355,
+    "name": "HastyTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100364,
+    "name": "FinalAppraisal",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100371,
+    "name": "TricksOfTheTrade",
+    "isLegacy": false,
+    "category": 4
+  },
+  {
+    "id": 100379,
+    "name": "MuscleMemory",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100387,
+    "name": "Reflect",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100395,
+    "name": "CarefulObservation",
+    "isLegacy": false,
+    "category": 4
+  },
+  {
+    "id": 100403,
+    "name": "Groundwork",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100411,
+    "name": "AdvancedTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100427,
+    "name": "PrudentSynthesis",
+    "isLegacy": false,
+    "category": 0
+  },
+  {
+    "id": 100435,
+    "name": "TrainedFinesse",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100439,
+    "name": "ImmaculateMend",
+    "isLegacy": false,
+    "category": 3
+  },
+  {
+    "id": 100443,
+    "name": "QuickInnovation",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100451,
+    "name": "TrainedPerfection",
+    "isLegacy": false,
+    "category": 2
+  },
+  {
+    "id": 100501,
+    "name": "PreciseTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100502,
+    "name": "RefinedTouch",
+    "isLegacy": false,
+    "category": 1
+  },
+  {
+    "id": 100503,
+    "name": "DaringTouch",
+    "isLegacy": false,
+    "category": 1
+  }
+]

@@ -1,5 +1,5 @@
-//! Crafting engine mirroring `FFXIV.Domain/CraftingEngine`. Every rule here is a transcription
-//! of the C# engine; parity is proven by the goldens replayed in `tests/parity.rs`.
+//! Dependency-free FFXIV crafting engine and solvers; builds for the host and
+//! wasm32-unknown-unknown.
 
 pub mod actions;
 pub mod condition;

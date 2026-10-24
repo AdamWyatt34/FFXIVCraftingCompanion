@@ -2,6 +2,9 @@
 
 #![allow(dead_code)]
 
+pub mod golden;
+pub mod sources;
+
 use std::time::Instant;
 use xiv_craft::{CraftStatus, CrafterStats, CraftingState, Recipe};
 

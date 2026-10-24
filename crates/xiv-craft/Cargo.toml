@@ -3,7 +3,7 @@ name = "xiv-craft"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.98"
-description = "FFXIV crafting engine mirroring FFXIV.Domain/CraftingEngine, proven by C# parity goldens"
+description = "FFXIV crafting engine and solvers pinned by reference tests, snapshots and benchmarks"
 publish = false
 
 [lib]

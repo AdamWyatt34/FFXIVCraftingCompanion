@@ -1,8 +1,3 @@
-//! The C# `SolverBenchmarks` theories over the hand-maintained
-//! `tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json`. Greedy is deterministic, so
-//! its quality and step count are asserted against the values the C# suite prints; that is the
-//! solver-level parity check the goldens do not cover.
-
 mod benchmarks;
 mod common;
 
@@ -86,9 +81,8 @@ fn greedy_completes_all_benchmarks() {
     }
 }
 
-/// Quality (to one decimal, as the C# suite prints it) and step count of the C# greedy solver on
-/// each benchmark. Greedy has no randomness, so any drift here is a porting bug.
-const CSHARP_GREEDY: [(&str, f64, usize); 10] = [
+// Greedy is deterministic: any change to these qualities (one decimal) or step counts is a solver change.
+const GREEDY_REFERENCE: [(&str, f64, usize); 10] = [
     ("lv100_4star_endgame", 21.3, 13),
     ("lv90_3star_standard", 39.7, 13),
     ("lv80_2star_overgeared", 100.0, 3),
@@ -102,12 +96,12 @@ const CSHARP_GREEDY: [(&str, f64, usize); 10] = [
 ];
 
 #[test]
-fn greedy_reproduces_the_csharp_rotations() {
+fn greedy_reproduces_reference_metrics() {
     for entry in load() {
-        let (_, expected_quality, expected_steps) = CSHARP_GREEDY
+        let (_, expected_quality, expected_steps) = GREEDY_REFERENCE
             .iter()
             .find(|(id, _, _)| *id == entry.id)
-            .unwrap_or_else(|| panic!("no C# reference for {}", entry.id));
+            .unwrap_or_else(|| panic!("no greedy reference for {}", entry.id));
         let result = greedy::solve(
             &entry.recipe(),
             &entry.stats(),
@@ -119,7 +113,7 @@ fn greedy_reproduces_the_csharp_rotations() {
         assert_eq!(
             (quality, result.metrics.total_steps),
             (*expected_quality, *expected_steps),
-            "[{}] greedy differs from C#",
+            "[{}] greedy differs from reference",
             entry.id
         );
     }

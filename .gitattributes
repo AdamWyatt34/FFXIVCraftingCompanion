@@ -1,2 +1,2 @@
-# Parity goldens are byte-compared by ParityGoldenTests; never convert line endings.
-tests/FFXIV.Tests/CraftingEngine/TestData/parity/** -text
+# Snapshot goldens are byte-compared by the crate's snapshot tests; never convert line endings.
+crates/xiv-craft/tests/goldens/** -text

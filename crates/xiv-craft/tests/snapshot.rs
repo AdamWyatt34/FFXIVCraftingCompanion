@@ -1,7 +1,9 @@
-//! Replays the C# parity goldens. This crate is monorepo-only: the goldens live in the .NET test
-//! tree and are written by ParityGoldenTests (see README.md).
+//! Full-run snapshot pins. Arithmetic is checked independently in reference_parity.rs.
 
-use serde::Deserialize;
+mod benchmarks;
+mod common;
+
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use xiv_craft::{
     action_availability, create_initial, execute_action, export_to_macro, simulate_with, Action,
@@ -10,7 +12,7 @@ use xiv_craft::{
 
 const MIN_GOLDEN_FILES: usize = 10;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Case {
     case: String,
@@ -26,7 +28,7 @@ struct Case {
     macros: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RecipeJson {
     recipe_id: i32,
@@ -48,7 +50,7 @@ struct RecipeJson {
     material_quality_factor: i32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StatsJson {
     level: i32,
@@ -58,7 +60,7 @@ struct StatsJson {
     is_specialist: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct OptionsJson {
     assume_all_success: bool,
@@ -67,7 +69,7 @@ struct OptionsJson {
     force_condition: Option<i32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StepJson {
     step: i32,
@@ -80,7 +82,7 @@ struct StepJson {
     availability: Option<Vec<AvailabilityJson>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AvailabilityJson {
     action_id: i32,
@@ -93,7 +95,7 @@ struct AvailabilityJson {
     is_legacy: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StateJson {
     progress: i32,
@@ -212,13 +214,12 @@ fn options_of(json: &OptionsJson) -> SimulationOptions {
 }
 
 fn golden_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/FFXIV.Tests/CraftingEngine/TestData/parity")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/goldens")
 }
 
 fn golden_files() -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = std::fs::read_dir(golden_dir())
-        .expect("parity golden directory exists")
+        .expect("snapshot golden directory exists; run with XIV_CRAFT_GENERATE=1")
         .map(|entry| entry.expect("readable entry").path())
         .filter(|path| path.extension().is_some_and(|ext| ext == "jsonl"))
         .collect();
@@ -370,9 +371,7 @@ fn replay(file: &str, case: &Case) {
         "{name}: macros"
     );
 
-    // The public single-step call must agree with the full run whenever no success roll is
-    // involved. A forced condition is applied after a step that executed; a gated step returns
-    // before it in C#, so only successful steps are patched.
+    // Gated steps return before the forced condition applies; patch only successful steps.
     if options.assume_all_success
         && (options.assume_normal_condition || options.force_condition.is_some())
     {
@@ -399,6 +398,7 @@ fn replay(file: &str, case: &Case) {
 
 #[test]
 fn every_golden_case_replays_identically() {
+    assert_snapshots_current();
     let mut asserted = 0usize;
 
     for path in golden_files() {
@@ -415,6 +415,191 @@ fn every_golden_case_replays_identically() {
         }
     }
 
-    println!("parity: {asserted} cases asserted");
+    println!("snapshot: {asserted} cases asserted");
     assert!(asserted > 0, "no golden cases found");
+}
+
+impl From<&Recipe> for RecipeJson {
+    fn from(value: &Recipe) -> Self {
+        Self {
+            recipe_id: value.recipe_id,
+            recipe_level: value.recipe_level,
+            class_job_level: value.class_job_level,
+            difficulty: value.difficulty,
+            quality: value.quality,
+            durability: value.durability,
+            stars: value.stars,
+            progress_divider: value.progress_divider,
+            progress_modifier: value.progress_modifier,
+            quality_divider: value.quality_divider,
+            quality_modifier: value.quality_modifier,
+            suggested_craftsmanship: value.suggested_craftsmanship,
+            suggested_control: value.suggested_control,
+            is_expert: value.is_expert,
+            conditions_flag: value.conditions_flag,
+            starting_quality: value.starting_quality,
+            material_quality_factor: value.material_quality_factor,
+        }
+    }
+}
+
+impl From<&CrafterStats> for StatsJson {
+    fn from(value: &CrafterStats) -> Self {
+        Self {
+            level: value.level,
+            craftsmanship: value.craftsmanship,
+            control: value.control,
+            cp: value.cp,
+            is_specialist: value.is_specialist,
+        }
+    }
+}
+
+impl From<&CraftingState> for StateJson {
+    fn from(value: &CraftingState) -> Self {
+        Self {
+            progress: value.progress,
+            max_progress: value.max_progress,
+            quality: value.quality,
+            max_quality: value.max_quality,
+            durability: value.durability,
+            max_durability: value.max_durability,
+            cp: value.cp,
+            max_cp: value.max_cp,
+            step: value.step,
+            condition: value.condition as i32,
+            status: value.status as i32,
+            inner_quiet_stacks: value.inner_quiet_stacks,
+            waste_not_turns: value.waste_not_turns,
+            waste_not2_turns: value.waste_not_ii_turns,
+            veneration_turns: value.veneration_turns,
+            innovation_turns: value.innovation_turns,
+            great_strides_turns: value.great_strides_turns,
+            manipulation_turns: value.manipulation_turns,
+            final_appraisal_turns: value.final_appraisal_turns,
+            muscle_memory_turns: value.muscle_memory_turns,
+            heart_and_soul_active: value.heart_and_soul_active,
+            trained_perfection_active: value.trained_perfection_active,
+            expedience_active: value.expedience_active,
+            quick_innovation_used: value.quick_innovation_used,
+            heart_and_soul_used: value.heart_and_soul_used,
+            trained_perfection_used: value.trained_perfection_used,
+            careful_observation_count: value.careful_observation_count,
+            is_first_step: value.is_first_step,
+            combo_action: value.combo_action,
+            is_complete: value.is_complete(),
+            is_failed: value.is_failed(),
+            quality_percent: value.quality_percent(),
+            progress_percent: value.progress_percent(),
+            hq_percent: value.hq_percent(),
+        }
+    }
+}
+
+fn availability(
+    state: &CraftingState,
+    stats: &CrafterStats,
+    recipe: &Recipe,
+) -> Vec<AvailabilityJson> {
+    let mut rows = action_availability(state, stats, recipe);
+    rows.sort_by_key(|row| row.action.id());
+    rows.into_iter()
+        .map(|row| AvailabilityJson {
+            action_id: row.action.id(),
+            is_available: row.is_available(),
+            unavailable_reason: row.fail_reason.map(|reason| reason.to_string()),
+            cp_cost: row.cp_cost,
+            durability_cost: row.durability_cost,
+            success_rate: row.success_rate,
+            category: row.action.category() as i32,
+            is_legacy: row.action.is_legacy(),
+        })
+        .collect()
+}
+
+fn build(scenario: common::sources::Scenario) -> Case {
+    let recipe = &scenario.recipe;
+    let stats = &scenario.stats;
+    let options = &scenario.options;
+    let result = simulate_with(recipe, stats, &scenario.actions, options);
+    let steps = result
+        .steps
+        .iter()
+        .map(|step| {
+            let mut legal_before = xiv_craft::legal_actions(&step.state_before, stats, recipe);
+            legal_before.sort_unstable();
+            StepJson {
+                step: step.step_number,
+                action_id: step.action_id,
+                action_name: step.action_name(),
+                succeeded: step.succeeded,
+                fail_reason: step.fail_reason.map(|reason| reason.to_string()),
+                legal_before,
+                after: StateJson::from(&step.state_after),
+                availability: scenario
+                    .step_availability
+                    .then(|| availability(&step.state_before, stats, recipe)),
+            }
+        })
+        .collect();
+    Case {
+        case: scenario.name,
+        recipe: RecipeJson::from(recipe),
+        stats: StatsJson::from(stats),
+        options: OptionsJson {
+            assume_all_success: options.assume_all_success,
+            assume_normal_condition: options.assume_normal_condition,
+            random_seed: options.random_seed,
+            force_condition: options.force_condition.map(|c| c as i32),
+        },
+        initial: StateJson::from(&create_initial(recipe, stats)),
+        steps,
+        final_state: StateJson::from(&result.final_state),
+        final_availability: scenario
+            .final_availability
+            .then(|| availability(&result.final_state, stats, recipe)),
+        macros: export_to_macro(&scenario.actions, &MacroOptions::default()),
+        actions: scenario.actions,
+    }
+}
+
+fn assert_snapshots_current() {
+    for benchmark in benchmarks::load() {
+        let mut bytes = Vec::new();
+        for scenario in common::sources::for_benchmark(
+            benchmark.recipe(),
+            benchmark.stats(),
+            benchmark.community_action_ids(),
+        ) {
+            serde_json::to_writer(&mut bytes, &build(scenario)).expect("serialize snapshot");
+            bytes.push(b'\n');
+        }
+        common::golden::assert_or_write(&format!("{}.jsonl", benchmark.id), &bytes);
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ActionJson {
+    id: i32,
+    name: &'static str,
+    is_legacy: bool,
+    category: i32,
+}
+
+#[test]
+fn action_catalog_is_current() {
+    let mut actions: Vec<_> = Action::ALL
+        .into_iter()
+        .map(|action| ActionJson {
+            id: action.id(),
+            name: action.name(),
+            is_legacy: action.is_legacy(),
+            category: action.category() as i32,
+        })
+        .collect();
+    actions.sort_by_key(|action| action.id);
+    let mut bytes = serde_json::to_vec_pretty(&actions).expect("serialize actions");
+    bytes.push(b'\n');
+    common::golden::assert_or_write("actions.json", &bytes);
 }
