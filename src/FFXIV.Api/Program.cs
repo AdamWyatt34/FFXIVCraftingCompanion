@@ -107,6 +107,8 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartitions.FixedWindow(context, rateLimits.RegisterPerHour, TimeSpan.FromHours(1)));
     options.AddPolicy("public-read", context =>
         RateLimitPartitions.SlidingWindow(context, rateLimits.PublicReadPerMinute, TimeSpan.FromMinutes(1)));
+    options.AddPolicy("rotation-write", context =>
+        RateLimitPartitions.FixedWindow(context, rateLimits.RotationWritePerHour, TimeSpan.FromHours(1)));
     options.AddPolicy("feedback", context =>
         RateLimitPartitions.FixedWindow(context, rateLimits.FeedbackPerHour, TimeSpan.FromHours(1)));
 

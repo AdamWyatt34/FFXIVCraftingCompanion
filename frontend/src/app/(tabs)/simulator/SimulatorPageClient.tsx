@@ -20,6 +20,7 @@ import { useSolver } from "@/hooks/useSolver";
 import { useSolverConfig } from "@/hooks/useSolverConfig";
 import { useWhatIf } from "@/hooks/useWhatIf";
 import { submitRotation } from "@/lib/api-client";
+import { rotationMetricsFor, rotationSaveErrorMessage } from "@/lib/rotation-metrics";
 import { getRecipe, getRecipeCraftingParameters } from "@/lib/game-data";
 import { withRequiredStats, type CraftingParameters } from "@/lib/static-data/recipes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -661,17 +662,21 @@ function SimulatorPageContent() {
     }
     setIsSavingToLibrary(true);
     try {
-      await submitRotation({
+      const replay = {
         recipeId: solvedSetup.recipeId,
         actionIds: result.actionIds,
         stats: solvedSetup.crafterStats,
+      };
+      await submitRotation({
+        ...replay,
+        metrics: await rotationMetricsFor(replay),
         source: "Solver",
         algorithm: result.metrics.algorithmUsed,
       });
       setSaveToLibrarySuccess(true);
       setTimeout(() => setSaveToLibrarySuccess(false), 3000);
-    } catch {
-      // Error is silently handled — could add toast later
+    } catch (error) {
+      toast(rotationSaveErrorMessage(error), "error");
     } finally {
       setIsSavingToLibrary(false);
     }
@@ -691,16 +696,20 @@ function SimulatorPageContent() {
     }
     setIsSavingManual(true);
     try {
-      await submitRotation({
+      const replay = {
         recipeId: simulator.selectedRecipe.recipeId,
         actionIds: simulator.actionIds,
         stats: simulator.crafterStats,
+      };
+      await submitRotation({
+        ...replay,
+        metrics: await rotationMetricsFor(replay),
         source: "Manual",
       });
       setSaveManualSuccess(true);
       setTimeout(() => setSaveManualSuccess(false), 3000);
-    } catch {
-      // Error is silently handled
+    } catch (error) {
+      toast(rotationSaveErrorMessage(error), "error");
     } finally {
       setIsSavingManual(false);
     }

@@ -17,5 +17,7 @@ public sealed class RateLimitSettings
     /// <summary>Anonymous reads that cost the API real work, per client per minute.</summary>
     public int PublicReadPerMinute { get; set; } = 120;
 
+    public int RotationWritePerHour { get; set; } = 30;
+
     public int FeedbackPerHour { get; set; } = 5;
 }
