@@ -79,7 +79,8 @@ public class CraftingSimulatorTests
         result.FinalState.Status.Should().Be(CraftStatus.Completed);
         result.FinalState.Progress.Should().BeGreaterThanOrEqualTo(recipe.Difficulty);
         result.FinalState.Quality.Should().BeGreaterThan(0);
-        result.TotalSteps.Should().Be(11);
+        // The first Groundwork under Veneration adds 294 * 360 * 15 / 1000 = 1587 >= 1500, so the last action never runs.
+        result.TotalSteps.Should().Be(10);
         result.Steps.Should().AllSatisfy(s => s.ActionSucceeded.Should().BeTrue());
     }
 

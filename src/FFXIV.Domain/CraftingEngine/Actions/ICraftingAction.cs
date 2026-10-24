@@ -19,6 +19,18 @@ public interface ICraftingAction
     // entire purpose.
     bool AdvancesCondition { get; }
 
+    // The macro's <wait.N>: 2 seconds for buffs, 3 for every other action including Observe, Heart and Soul,
+    // Quick Innovation and Trained Perfection (Raphael raphael-sim/src/actions.rs time_cost; Teamcraft getWaitDuration).
+    int MacroWaitSeconds { get; }
+
+    // The name a macro's /ac line uses; it differs from InGameName only for an action that takes over another's
+    // hotbar slot, which the game resolves by the original name.
+    string MacroName { get; }
+
+    // Removed from the game but kept resolvable by id so saved rotations and macros still load;
+    // never offered by the registry's GetAll/GetAvailable or picked by a solver.
+    bool IsLegacy { get; }
+
     int GetCPCost(CraftingState state);
     int GetDurabilityCost(CraftingState state);
     int GetSuccessRate(CraftingState state);

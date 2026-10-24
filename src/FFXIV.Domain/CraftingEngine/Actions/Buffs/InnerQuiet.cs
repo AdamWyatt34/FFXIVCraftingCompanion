@@ -8,13 +8,15 @@ public class InnerQuiet : BuffAction
     public override string Name => "InnerQuiet";
     public override string InGameName => "Inner Quiet";
     public override int LevelRequirement => 11;
+
+    // Inner Quiet is a trait that stacks on its own from level 11; neither Raphael nor Teamcraft has the action.
+    public override bool IsLegacy => true;
     protected override int BaseCPCost => 18;
     protected override int BuffDuration => 0;
 
     protected override CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
-        // Inner Quiet is auto-enabled in Dawntrail — this action is a no-op
         return state;
     }
 }

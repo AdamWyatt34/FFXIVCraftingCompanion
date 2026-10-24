@@ -12,5 +12,5 @@ public class WasteNotII : BuffAction
     protected override int BuffDuration => 8;
 
     protected override CraftingState WithBuffTurns(CraftingState state, int turns)
-        => state with { WasteNotIITurns = turns };
+        => state with { WasteNotIITurns = turns, WasteNotTurns = 0 };
 }

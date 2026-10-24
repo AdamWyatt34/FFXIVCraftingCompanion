@@ -26,7 +26,7 @@ public class RecipeParameterFactory : IRecipeParameterFactory
         if (rlt is null) return null;
 
         var ingredients = recipe.Ingredients
-            .Select(i => new RecipeIngredientInfo(i.ItemId, i.Quantity, i.CanBeHQ))
+            .Select(i => new RecipeIngredientInfo(i.ItemId, i.Quantity, i.Item.CanBeHQ, i.Item.ItemLevel))
             .ToList();
 
         return new RecipeParameters
@@ -44,6 +44,8 @@ public class RecipeParameterFactory : IRecipeParameterFactory
             Stars = rlt.Stars,
             SuggestedCraftsmanship = rlt.SuggestedCraftsmanship,
             SuggestedControl = rlt.SuggestedControl,
+            RequiredCraftsmanship = recipe.RequiredCraftsmanship,
+            RequiredControl = recipe.RequiredControl,
             MaterialQualityFactor = recipe.MaterialQualityFactor,
             Ingredients = ingredients,
         };

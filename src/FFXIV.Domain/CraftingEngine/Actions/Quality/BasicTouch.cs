@@ -1,3 +1,5 @@
+using FFXIV.Domain.CraftingEngine.Models;
+
 namespace FFXIV.Domain.CraftingEngine.Actions.Quality;
 
 public class BasicTouch : QualityAction
@@ -11,5 +13,5 @@ public class BasicTouch : QualityAction
     protected override int BaseCPCost => 18;
     protected override int Potency => 100;
 
-    protected override int GetComboAction() => ActionId;
+    protected override int GetComboAction(CraftingState before) => ActionId;
 }

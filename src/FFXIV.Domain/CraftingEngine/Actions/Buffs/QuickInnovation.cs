@@ -8,6 +8,7 @@ public class QuickInnovation : BuffAction
     public override string Name => "QuickInnovation";
     public override string InGameName => "Quick Innovation";
     public override int LevelRequirement => 96;
+    public override int MacroWaitSeconds => 3;
     public override bool ConsumesStep => false;
     protected override int BaseCPCost => 0;
     protected override int BuffDuration => 0;

@@ -8,6 +8,7 @@ public class TrainedPerfection : BuffAction
     public override string Name => "TrainedPerfection";
     public override string InGameName => "Trained Perfection";
     public override int LevelRequirement => 100;
+    public override int MacroWaitSeconds => 3;
     protected override int BaseCPCost => 0;
     protected override int BuffDuration => 0;
 

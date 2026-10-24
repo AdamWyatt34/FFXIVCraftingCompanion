@@ -7,21 +7,18 @@ namespace FFXIV.Tests.CraftingEngine;
 public class QualityActionTests
 {
     private readonly CrafterStats _stats = CraftingTestHelpers.CreateDefaultStats();
-    private readonly RecipeParameters _recipe = CraftingTestHelpers.CreateDefaultRecipe();
+    private readonly RecipeParameters _recipe = CraftingTestHelpers.CreateDefaultRecipe() with { ClassJobLevel = 90 };
 
     [Fact]
-    public void ApplyEffect_CalculatesQualityWithEffectiveControl()
+    public void ApplyEffect_CalculatesQualityFromBaseQuality()
     {
         var action = new TestQualityAction(potency: 100);
         var state = CraftingTestHelpers.CreateDefaultState() with { InnerQuietStacks = 0 };
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Control=3600, IQ=0 → effectiveControl = 3600
-        // Base: 3600*10/115 + 35 = 313+35 = 348
-        // Modifier: 348*70/100 = 243
-        // Efficiency: 100% → floor(243 * 100 / 100) = 243
-        // Normal condition: ×1.0
+        // Base: (3600*10/115 + 35) * 70/100 = 243.6 → 243
+        // 243 * 100 * ((0 + 10) * 10) * 2 / 20000 = 243 (Normal counts 2 halves)
         result.Quality.Should().Be(243);
     }
 
@@ -33,35 +30,31 @@ public class QualityActionTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Control=3600, IQ=5 → effectiveControl = (int)(3600*(1+0.5)) = 5400
-        // Base: 5400*10/115 + 35 = 469+35 = 504
-        // Modifier: 504*70/100 = 352
-        // Efficiency: 100% → 352
-        result.Quality.Should().Be(352);
+        // Inner Quiet scales the gain, not Control: 243 * 100 * ((5 + 10) * 10) * 2 / 20000 = 364.5 → 364
+        result.Quality.Should().Be(364);
     }
 
     [Fact]
-    public void ApplyEffect_InnovationAdds50ToEfficiency()
+    public void ApplyEffect_InnovationMultipliesPotencyBy1_5()
     {
         var action = new TestQualityAction(potency: 100);
         var state = CraftingTestHelpers.CreateDefaultState() with { InnovationTurns = 3 };
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Base quality = 243 (same as first test)
-        // Efficiency: 100 + 50 = 150% → floor(243 * 150 / 100) = floor(364.5) = 364
+        // 243 * 100 * (10 * (10 + 5)) * 2 / 20000 = 364.5 → 364
         result.Quality.Should().Be(364);
     }
 
     [Fact]
-    public void ApplyEffect_GreatStridesAdds100ToEfficiency()
+    public void ApplyEffect_GreatStridesDoublesPotency()
     {
         var action = new TestQualityAction(potency: 100);
         var state = CraftingTestHelpers.CreateDefaultState() with { GreatStridesTurns = 3 };
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Efficiency: 100 + 100 = 200% → floor(243 * 200 / 100) = 486
+        // 243 * 100 * (10 * (10 + 10)) * 2 / 20000 = 486
         result.Quality.Should().Be(486);
     }
 
@@ -73,8 +66,20 @@ public class QualityActionTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Base quality increase: 243, Good: (int)(243 * 1.5) = (int)364.5 = 364
+        // Good counts 3 halves: 243 * 100 * 100 * 3 / 20000 = 364.5 → 364
         result.Quality.Should().Be(364);
+    }
+
+    [Fact]
+    public void ApplyEffect_GoodCondition_TruncatesOnce()
+    {
+        var action = new TestQualityAction(potency: 125);
+        var state = CraftingTestHelpers.CreateDefaultState() with { Condition = CraftCondition.Good };
+
+        var result = action.Execute(state, _stats, _recipe);
+
+        // 243 * 125 * 100 * 3 / 20000 = 455.6 → 455; truncating before the condition gives 454.
+        result.Quality.Should().Be(455);
     }
 
     [Fact]
@@ -85,7 +90,7 @@ public class QualityActionTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // 243 * 4 = 972
+        // Excellent counts 8 halves: 243 * 100 * 100 * 8 / 20000 = 972
         result.Quality.Should().Be(972);
     }
 
@@ -97,7 +102,7 @@ public class QualityActionTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // (int)(243 * 0.5) = (int)121.5 = 121
+        // Poor counts 1 half: 243 * 100 * 100 * 1 / 20000 = 121.5 → 121
         result.Quality.Should().Be(121);
     }
 

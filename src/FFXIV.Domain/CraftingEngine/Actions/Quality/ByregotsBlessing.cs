@@ -23,27 +23,7 @@ public class ByregotsBlessing : QualityAction
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
         var effectivePotency = 100 + (state.InnerQuietStacks * 20);
-
-        var effectiveControl = stats.GetEffectiveControl(state.InnerQuietStacks);
-        var baseQuality = FormulaCalculator.CalculateBaseQuality(
-            effectiveControl, recipe.QualityDivider, recipe.QualityModifier,
-            stats.Level, recipe.RecipeLevel);
-
-        var efficiency = effectivePotency;
-        if (state.InnovationTurns > 0)
-            efficiency += 50;
-        if (state.GreatStridesTurns > 0)
-            efficiency += 100;
-
-        var qualityIncrease = (int)(baseQuality * efficiency / 100.0);
-
-        qualityIncrease = state.Condition switch
-        {
-            CraftCondition.Good => (int)(qualityIncrease * 1.5),
-            CraftCondition.Excellent => qualityIncrease * 4,
-            CraftCondition.Poor => (int)(qualityIncrease * 0.5),
-            _ => qualityIncrease,
-        };
+        var qualityIncrease = CalculateQuality(state, stats, recipe, effectivePotency);
 
         return state with
         {

@@ -11,6 +11,8 @@ public class WasteNot : BuffAction
     protected override int BaseCPCost => 56;
     protected override int BuffDuration => 4;
 
+    // Waste Not and Waste Not II are one effect, so casting either replaces the other
+    // (Teamcraft buff/waste-not.ts:35-37).
     protected override CraftingState WithBuffTurns(CraftingState state, int turns)
-        => state with { WasteNotTurns = turns };
+        => state with { WasteNotTurns = turns, WasteNotIITurns = 0 };
 }

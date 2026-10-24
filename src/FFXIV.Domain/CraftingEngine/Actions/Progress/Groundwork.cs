@@ -19,18 +19,7 @@ public class Groundwork : ProgressAction
         var basePotency = GetPotency(state, stats);
         var effectivePotency = state.Durability < GetDurabilityCost(state) ? basePotency / 2 : basePotency;
 
-        var baseProgress = FormulaCalculator.CalculateBaseProgress(
-            stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,
-            stats.Level, recipe.RecipeLevel);
-
-        var efficiency = effectivePotency;
-        if (state.VenerationTurns > 0)
-            efficiency += 50;
-        if (state.MuscleMemoryTurns > 0)
-            efficiency += 100;
-
-        var progressIncrease = (int)(baseProgress * efficiency / 100.0);
-        var newProgress = state.Progress + progressIncrease;
+        var newProgress = state.Progress + CalculateProgress(state, stats, recipe, effectivePotency);
 
         if (state.FinalAppraisalTurns > 0 && newProgress >= state.MaxProgress)
         {

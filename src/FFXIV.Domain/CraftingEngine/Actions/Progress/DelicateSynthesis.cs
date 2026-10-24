@@ -17,39 +17,8 @@ public class DelicateSynthesis : CraftingActionBase
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
         // Delicate Synthesis Mastery (level 94) raises only the progress half, not quality.
-        var baseProgress = FormulaCalculator.CalculateBaseProgress(
-            stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,
-            stats.Level, recipe.RecipeLevel);
-
-        var progressEfficiency = stats.Level >= 94 ? 150 : 100;
-        if (state.VenerationTurns > 0)
-            progressEfficiency += 50;
-        if (state.MuscleMemoryTurns > 0)
-            progressEfficiency += 100;
-
-        var progressIncrease = (int)(baseProgress * progressEfficiency / 100.0);
-
-        // Calculate quality (100 potency)
-        var effectiveControl = stats.GetEffectiveControl(state.InnerQuietStacks);
-        var baseQuality = FormulaCalculator.CalculateBaseQuality(
-            effectiveControl, recipe.QualityDivider, recipe.QualityModifier,
-            stats.Level, recipe.RecipeLevel);
-
-        var qualityEfficiency = 100;
-        if (state.InnovationTurns > 0)
-            qualityEfficiency += 50;
-        if (state.GreatStridesTurns > 0)
-            qualityEfficiency += 100;
-
-        var qualityIncrease = (int)(baseQuality * qualityEfficiency / 100.0);
-
-        qualityIncrease = state.Condition switch
-        {
-            CraftCondition.Good => (int)(qualityIncrease * 1.5),
-            CraftCondition.Excellent => qualityIncrease * 4,
-            CraftCondition.Poor => (int)(qualityIncrease * 0.5),
-            _ => qualityIncrease,
-        };
+        var progressIncrease = ProgressAction.CalculateProgress(state, stats, recipe, stats.Level >= 94 ? 150 : 100);
+        var qualityIncrease = QualityAction.CalculateQuality(state, stats, recipe, 100);
 
         // Handle Final Appraisal for progress
         var newProgress = state.Progress + progressIncrease;
@@ -71,7 +40,7 @@ public class DelicateSynthesis : CraftingActionBase
             FinalAppraisalTurns = finalAppraisalTurns,
             MuscleMemoryTurns = 0,
             GreatStridesTurns = 0,
-            InnerQuietStacks = Math.Min(state.InnerQuietStacks + 1, 10),
+            InnerQuietStacks = QualityAction.GainInnerQuiet(state.InnerQuietStacks, 1, stats),
         };
     }
 }

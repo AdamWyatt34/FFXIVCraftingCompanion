@@ -1,4 +1,5 @@
 using FFXIV.Application.CraftingEngine;
+using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
 using FFXIV.Domain.Repositories;
@@ -29,8 +30,22 @@ public class RecipeParameterFactoryTests
             Quality = 7200,
             Durability = 70,
             RequiredCraftsmanship = 3700,
-            RequiredControl = 0,
+            RequiredControl = 3280,
             Yield = 1,
+            Ingredients =
+            [
+                new RecipeIngredient
+                {
+                    // The sync leaves the ingredient's own flag false; the Item says whether it can be HQ.
+                    RecipeId = 100, ItemId = 37830, Quantity = 2, CanBeHQ = false,
+                    Item = new Item { ItemId = 37830, Name = "Rutilated Quartz", ItemLevel = 610, CanBeHQ = true },
+                },
+                new RecipeIngredient
+                {
+                    RecipeId = 100, ItemId = 15, Quantity = 5, CanBeHQ = false,
+                    Item = new Item { ItemId = 15, Name = "Ice Cluster", ItemLevel = 1, CanBeHQ = false },
+                },
+            ],
         };
         var rlt = new RecipeLevelEntry
         {
@@ -40,8 +55,8 @@ public class RecipeParameterFactoryTests
             Difficulty = 5000,
             Quality = 10000,
             Durability = 70,
-            SuggestedCraftsmanship = 3700,
-            SuggestedControl = 0,
+            SuggestedCraftsmanship = 4045,
+            SuggestedControl = 3792,
             ProgressDivider = 130,
             ProgressModifier = 80,
             QualityDivider = 115,
@@ -64,7 +79,13 @@ public class RecipeParameterFactoryTests
         result.QualityDivider.Should().Be(115);
         result.QualityModifier.Should().Be(70);
         result.Stars.Should().Be(2);
-        result.SuggestedCraftsmanship.Should().Be(3700);
+        result.SuggestedCraftsmanship.Should().Be(4045);
+        result.SuggestedControl.Should().Be(3792);
+        result.RequiredCraftsmanship.Should().Be(3700);
+        result.RequiredControl.Should().Be(3280);
+        result.Ingredients.Should().Equal(
+            new RecipeIngredientInfo(37830, 2, true, 610),
+            new RecipeIngredientInfo(15, 5, false, 1));
     }
 
     [Fact]

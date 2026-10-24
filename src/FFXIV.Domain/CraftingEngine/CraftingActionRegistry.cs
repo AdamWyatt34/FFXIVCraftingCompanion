@@ -40,6 +40,9 @@ public static class CraftingActionRegistry
             new ByregotsBlessing(),
             new TrainedFinesse(),
             new TrainedEye(),
+            new PreciseTouch(),
+            new RefinedTouch(),
+            new DaringTouch(),
 
             // Buffs
             new InnerQuiet(),
@@ -76,11 +79,13 @@ public static class CraftingActionRegistry
     public static ICraftingAction? GetByName(string name) =>
         ActionsByName.GetValueOrDefault(name);
 
-    public static IReadOnlyList<ICraftingAction> GetAll() =>
-        ActionsById.Values.ToList();
+    // The offered set by default; includeLegacy gives the recognized set, which a saved or shared rotation
+    // is replayed against. GetById and GetByName resolve legacy actions either way.
+    public static IReadOnlyList<ICraftingAction> GetAll(bool includeLegacy = false) =>
+        ActionsById.Values.Where(a => includeLegacy || !a.IsLegacy).ToList();
 
     public static IReadOnlyList<ICraftingAction> GetAvailable(CrafterStats stats) =>
-        ActionsById.Values
+        GetAll()
             .Where(a => stats.Level >= a.LevelRequirement)
             .OrderBy(a => a.Category)
             .ThenBy(a => a.LevelRequirement)

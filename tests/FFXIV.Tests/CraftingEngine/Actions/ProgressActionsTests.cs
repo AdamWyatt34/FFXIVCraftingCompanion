@@ -1,3 +1,4 @@
+using FFXIV.Domain.CraftingEngine.Actions.Buffs;
 using FFXIV.Domain.CraftingEngine.Actions.Progress;
 using FFXIV.Domain.CraftingEngine.Models;
 using FluentAssertions;
@@ -46,6 +47,21 @@ public class ProgressActionsTests
     }
 
     [Fact]
+    public void RapidSynthesis_BelowLevel63_HasHalfTheMasteryPotency()
+    {
+        var action = new RapidSynthesis();
+        var state = CraftingTestHelpers.CreateDefaultState();
+
+        var below = action.Execute(state, _stats with { Level = 62 }, _recipe);
+        var mastery = action.Execute(state, _stats with { Level = 63 }, _recipe);
+
+        // The default recipe has no class job level, so base progress is 3800*10/130 + 2 = 294 at both levels:
+        // 294 * 250 * 10 / 1000 = 735 and 294 * 500 * 10 / 1000 = 1470.
+        below.Progress.Should().Be(735);
+        mastery.Progress.Should().Be(1470);
+    }
+
+    [Fact]
     public void RapidSynthesis_GetSuccessRate_WithCentered_Returns75()
     {
         var action = new RapidSynthesis();
@@ -63,13 +79,14 @@ public class ProgressActionsTests
         action.GetSuccessRate(state).Should().Be(50);
     }
 
+    // Observe's 100% bonus left the game with the action in 7.0; a replayed legacy rotation keeps the base rate.
     [Fact]
-    public void FocusedSynthesis_AfterObserve_Returns100()
+    public void FocusedSynthesis_AfterObserve_StaysAt50()
     {
         var action = new FocusedSynthesis();
-        var state = CraftingTestHelpers.CreateDefaultState() with { ObserveActive = true };
+        var state = new Observe().Execute(CraftingTestHelpers.CreateDefaultState(), _stats, _recipe);
 
-        action.GetSuccessRate(state).Should().Be(100);
+        action.GetSuccessRate(state).Should().Be(50);
     }
 
     [Fact]

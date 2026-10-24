@@ -12,6 +12,9 @@ public abstract class CraftingActionBase : ICraftingAction
 
     public virtual bool ConsumesStep => true;
     public virtual bool AdvancesCondition => ConsumesStep;
+    public virtual int MacroWaitSeconds => 3;
+    public virtual string MacroName => InGameName;
+    public virtual bool IsLegacy => false;
 
     protected abstract int BaseCPCost { get; }
     protected abstract int BaseDurabilityCost { get; }
@@ -56,8 +59,9 @@ public abstract class CraftingActionBase : ICraftingAction
         return Math.Min(rate, 100);
     }
 
-    protected virtual int GetComboAction() => 0;
-    protected virtual bool GetObserveActive() => false;
+    // The combo token left for the next action; it may depend on the state the action was used on.
+    protected virtual int GetComboAction(CraftingState before) => 0;
+    protected virtual bool GrantsExpedience(CrafterStats stats) => false;
 
     public virtual bool CanExecute(CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
@@ -79,6 +83,7 @@ public abstract class CraftingActionBase : ICraftingAction
         CraftingState state, CrafterStats stats, RecipeParameters recipe, bool forceSuccess = true)
     {
         // Costs are read from the state the action was used on, before its own effects land.
+        var before = state;
         var durabilityCost = GetDurabilityCost(state);
         state = state with { CP = state.CP - GetCPCost(state) };
 
@@ -102,13 +107,15 @@ public abstract class CraftingActionBase : ICraftingAction
             {
                 Step = state.Step + 1,
                 IsFirstStep = false,
-                ComboAction = forceSuccess ? GetComboAction() : 0,
-                ObserveActive = forceSuccess ? GetObserveActive() : false,
+                ComboAction = forceSuccess ? GetComboAction(before) : 0,
+                // Expedience lasts the one step after the Hasty Touch that granted it, but step-free abilities keep
+                // it (Raphael raphael-sim/src/effects.rs tick_down; Teamcraft simulation.ts tickBuffs/skipsBuffTicks).
+                ExpedienceActive = forceSuccess && GrantsExpedience(stats),
             };
         }
         else
         {
-            state = state with { ComboAction = 0, ObserveActive = false };
+            state = state with { ComboAction = 0 };
         }
 
         if (forceSuccess)

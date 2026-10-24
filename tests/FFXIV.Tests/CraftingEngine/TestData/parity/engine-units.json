@@ -8,17 +8,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -41,17 +44,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -70,17 +76,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [],
@@ -94,17 +103,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -123,17 +135,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -152,7 +167,8 @@
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -171,17 +187,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -204,17 +223,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -233,17 +255,20 @@
         {
           "itemId": 1,
           "quantity": 2,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 3,
           "quantity": 3,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -266,12 +291,14 @@
         {
           "itemId": 1,
           "quantity": 3,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 4,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -294,12 +321,14 @@
         {
           "itemId": 1,
           "quantity": 1,
-          "canBeHq": true
+          "canBeHq": true,
+          "itemLevel": 560
         },
         {
           "itemId": 2,
           "quantity": 1,
-          "canBeHq": false
+          "canBeHq": false,
+          "itemLevel": 560
         }
       ],
       "hqIngredients": [
@@ -313,6 +342,294 @@
         }
       ],
       "expected": 2500
+    },
+    {
+      "case": "item-level-alkahest",
+      "maxQuality": 12900,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 15,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 17,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 37830,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 37833,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 38932,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 620
+        },
+        {
+          "itemId": 39595,
+          "quantity": 3,
+          "canBeHq": false,
+          "itemLevel": 620
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 38932,
+          "hqQuantity": 3
+        }
+      ],
+      "expected": 2443
+    },
+    {
+      "case": "item-level-quartz",
+      "maxQuality": 12900,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 15,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 17,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 37830,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 37833,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 38932,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 620
+        },
+        {
+          "itemId": 39595,
+          "quantity": 3,
+          "canBeHq": false,
+          "itemLevel": 620
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 37830,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 1602
+    },
+    {
+      "case": "item-level-all",
+      "maxQuality": 12900,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 15,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 17,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 37830,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 37833,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 38932,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 620
+        },
+        {
+          "itemId": 39595,
+          "quantity": 3,
+          "canBeHq": false,
+          "itemLevel": 620
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 38932,
+          "hqQuantity": 3
+        },
+        {
+          "itemId": 37833,
+          "hqQuantity": 3
+        },
+        {
+          "itemId": 37830,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 6450
+    },
+    {
+      "case": "item-level-partial-quantities",
+      "maxQuality": 12900,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 15,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 17,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 1
+        },
+        {
+          "itemId": 37830,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 37833,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 610
+        },
+        {
+          "itemId": 38932,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 620
+        },
+        {
+          "itemId": 39595,
+          "quantity": 3,
+          "canBeHq": false,
+          "itemLevel": 620
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 38932,
+          "hqQuantity": 1
+        },
+        {
+          "itemId": 37833,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 2417
+    },
+    {
+      "case": "item-level-zero-among-weighted",
+      "maxQuality": 10000,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 1,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 700
+        },
+        {
+          "itemId": 2,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 0
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 2,
+          "hqQuantity": 2
+        }
+      ],
+      "expected": 0
+    },
+    {
+      "case": "legacy-no-item-levels",
+      "maxQuality": 12900,
+      "materialQualityFactor": 50,
+      "ingredients": [
+        {
+          "itemId": 15,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 0
+        },
+        {
+          "itemId": 17,
+          "quantity": 5,
+          "canBeHq": false,
+          "itemLevel": 0
+        },
+        {
+          "itemId": 37830,
+          "quantity": 2,
+          "canBeHq": true,
+          "itemLevel": 0
+        },
+        {
+          "itemId": 37833,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 0
+        },
+        {
+          "itemId": 38932,
+          "quantity": 3,
+          "canBeHq": true,
+          "itemLevel": 0
+        },
+        {
+          "itemId": 39595,
+          "quantity": 3,
+          "canBeHq": false,
+          "itemLevel": 0
+        }
+      ],
+      "hqIngredients": [
+        {
+          "itemId": 38932,
+          "hqQuantity": 3
+        }
+      ],
+      "expected": 2418
     }
   ],
   "macros": [
@@ -500,6 +817,43 @@
         "includeEcho": true
       },
       "expected": []
+    },
+    {
+      "case": "dawntrail-touches",
+      "actionIds": [
+        100002,
+        100502,
+        100501,
+        100355,
+        100503
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Basic Touch\" <wait.3>\n/ac \"Refined Touch\" <wait.3>\n/ac \"Precise Touch\" <wait.3>\n/ac \"Hasty Touch\" <wait.3>\n/ac \"Hasty Touch\" <wait.3>\n/echo Craft complete <se.2>"
+      ]
+    },
+    {
+      "case": "legacy-actions",
+      "actionIds": [
+        100252,
+        100235,
+        100010,
+        100243
+      ],
+      "options": {
+        "linesPerMacro": 14,
+        "soundEffect": 1,
+        "completeSoundEffect": 2,
+        "includeEcho": true
+      },
+      "expected": [
+        "/ac \"Inner Quiet\" <wait.2>\n/ac \"Focused Synthesis\" <wait.3>\n/ac \"Observe\" <wait.3>\n/ac \"Focused Touch\" <wait.3>\n/echo Craft complete <se.2>"
+      ]
     }
   ]
 }

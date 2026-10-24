@@ -10,5 +10,6 @@ public class RapidSynthesis : ProgressAction
     public override int LevelRequirement => 9;
     protected override int BaseCPCost => 0;
     protected override int BaseSuccessRate => 50;
-    protected override int GetPotency(CraftingState state, CrafterStats stats) => 500;
+    // Rapid Synthesis Mastery, unlocked at level 63.
+    protected override int GetPotency(CraftingState state, CrafterStats stats) => stats.Level >= 63 ? 500 : 250;
 }

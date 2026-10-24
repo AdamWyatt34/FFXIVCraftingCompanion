@@ -7,7 +7,7 @@ namespace FFXIV.Tests.CraftingEngine;
 public class ProgressActionTests
 {
     private readonly CrafterStats _stats = CraftingTestHelpers.CreateDefaultStats();
-    private readonly RecipeParameters _recipe = CraftingTestHelpers.CreateDefaultRecipe();
+    private readonly RecipeParameters _recipe = CraftingTestHelpers.CreateDefaultRecipe() with { ClassJobLevel = 90 };
 
     [Fact]
     public void ApplyEffect_CalculatesProgressCorrectly()
@@ -17,37 +17,37 @@ public class ProgressActionTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Base: 3800*10/130 + 2 = 294, modifier: 294*80/100 = 235
-        // Efficiency: 120% → floor(235 * 120 / 100) = floor(282.0) = 282
+        // Base: (3800*10/130 + 2) * 80/100 = 235.4 → 235 (level 90 <= class job level 90)
+        // 235 * 120 * 10 / 1000 = 282
         result.Progress.Should().Be(282);
     }
 
     [Fact]
-    public void ApplyEffect_VenerationAdds50ToEfficiency()
+    public void ApplyEffect_VenerationMultipliesPotencyBy1_5()
     {
         var action = new TestProgressAction(potency: 120);
         var state = CraftingTestHelpers.CreateDefaultState() with { VenerationTurns = 3 };
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Efficiency: 120 + 50 = 170% → floor(235 * 170 / 100) = floor(399.5) = 399
-        result.Progress.Should().Be(399);
+        // 235 * 120 * (10 + 5) / 1000 = 423
+        result.Progress.Should().Be(423);
     }
 
     [Fact]
-    public void ApplyEffect_MuscleMemoryAdds100ToEfficiency()
+    public void ApplyEffect_MuscleMemoryDoublesPotency()
     {
         var action = new TestProgressAction(potency: 120);
         var state = CraftingTestHelpers.CreateDefaultState() with { MuscleMemoryTurns = 5 };
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Efficiency: 120 + 100 = 220% → floor(235 * 220 / 100) = floor(517.0) = 517
-        result.Progress.Should().Be(517);
+        // 235 * 120 * (10 + 10) / 1000 = 564
+        result.Progress.Should().Be(564);
     }
 
     [Fact]
-    public void ApplyEffect_VenerationAndMuscleMemory_StackAdditively()
+    public void ApplyEffect_VenerationAndMuscleMemory_SumIntoOneMultiplier()
     {
         var action = new TestProgressAction(potency: 120);
         var state = CraftingTestHelpers.CreateDefaultState() with
@@ -58,8 +58,8 @@ public class ProgressActionTests
 
         var result = action.Execute(state, _stats, _recipe);
 
-        // Efficiency: 120 + 50 + 100 = 270% → floor(235 * 270 / 100) = floor(634.5) = 634
-        result.Progress.Should().Be(634);
+        // 235 * 120 * (10 + 10 + 5) / 1000 = 705
+        result.Progress.Should().Be(705);
     }
 
     [Fact]

@@ -29,6 +29,7 @@ public record CraftingState
     public int MuscleMemoryTurns { get; init; } = 0;
     public bool HeartAndSoulActive { get; init; } = false;
     public bool TrainedPerfectionActive { get; init; } = false;
+    public bool ExpedienceActive { get; init; } = false;
     public bool QuickInnovationUsed { get; init; } = false;
     public bool HeartAndSoulUsed { get; init; } = false;
     public bool TrainedPerfectionUsed { get; init; } = false;
@@ -37,7 +38,6 @@ public record CraftingState
     // Tracking
     public bool IsFirstStep { get; init; } = true;
     public int ComboAction { get; init; } = 0;
-    public bool ObserveActive { get; init; } = false;
 
     // Computed properties
     public bool IsComplete => Progress >= MaxProgress;

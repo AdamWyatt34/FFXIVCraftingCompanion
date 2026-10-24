@@ -58,6 +58,58 @@ public class CraftingActionRegistryTests
         actions.Should().HaveCount(36);
     }
 
+    // Focused Synthesis, Focused Touch and Inner Quiet.
+    private static readonly int[] LegacyIds = [100235, 100243, 100252];
+
+    [Fact]
+    public void GetAll_ExcludesLegacyActions()
+    {
+        var actions = CraftingActionRegistry.GetAll();
+
+        actions.Should().NotContain(a => a.IsLegacy);
+        actions.Select(a => a.Id).Should().NotContain(LegacyIds);
+    }
+
+    [Fact]
+    public void GetAll_IncludeLegacy_ReturnsTheRecognizedSet()
+    {
+        var recognized = CraftingActionRegistry.GetAll(includeLegacy: true);
+
+        recognized.Should().HaveCount(39);
+        recognized.Where(a => a.IsLegacy).Select(a => a.Id).Should().BeEquivalentTo(LegacyIds);
+    }
+
+    [Theory]
+    [InlineData(100235, "FocusedSynthesis")]
+    [InlineData(100243, "FocusedTouch")]
+    [InlineData(100252, "InnerQuiet")]
+    public void GetById_LegacyAction_StillResolves(int id, string name)
+    {
+        var action = CraftingActionRegistry.GetById(id);
+
+        action.Should().NotBeNull();
+        action!.Name.Should().Be(name);
+        action.IsLegacy.Should().BeTrue();
+        CraftingActionRegistry.GetByName(name).Should().BeSameAs(action);
+    }
+
+    // Our ids, never the game's 100128/100443/100451: two of those are Quick Innovation and Trained Perfection here.
+    [Theory]
+    [InlineData(100501, "PreciseTouch", 53)]
+    [InlineData(100502, "RefinedTouch", 92)]
+    [InlineData(100503, "DaringTouch", 96)]
+    public void GetById_DawntrailTouches_AreOffered(int id, string name, int level)
+    {
+        var action = CraftingActionRegistry.GetById(id);
+
+        action.Should().NotBeNull();
+        action!.Name.Should().Be(name);
+        action.LevelRequirement.Should().Be(level);
+        action.Category.Should().Be(ActionCategory.Quality);
+        action.MacroWaitSeconds.Should().Be(3);
+        CraftingActionRegistry.GetAll().Should().Contain(action);
+    }
+
     [Fact]
     public void GetAll_ContainsAllCategories()
     {
@@ -82,12 +134,13 @@ public class CraftingActionRegistryTests
         lowActions.Count.Should().BeLessThan(highActions.Count);
         lowActions.Should().OnlyContain(a => a.LevelRequirement <= 1);
         highActions.Should().HaveCount(36); // All actions available at level 100
+        highActions.Should().NotContain(a => a.IsLegacy);
     }
 
     [Fact]
     public void GetAll_AllActionsHaveUniqueIds()
     {
-        var actions = CraftingActionRegistry.GetAll();
+        var actions = CraftingActionRegistry.GetAll(includeLegacy: true);
         var ids = actions.Select(a => a.Id).ToList();
 
         ids.Should().OnlyHaveUniqueItems();
@@ -96,7 +149,7 @@ public class CraftingActionRegistryTests
     [Fact]
     public void GetAll_AllActionsHaveUniqueNames()
     {
-        var actions = CraftingActionRegistry.GetAll();
+        var actions = CraftingActionRegistry.GetAll(includeLegacy: true);
         var names = actions.Select(a => a.Name).ToList();
 
         names.Should().OnlyHaveUniqueItems();
