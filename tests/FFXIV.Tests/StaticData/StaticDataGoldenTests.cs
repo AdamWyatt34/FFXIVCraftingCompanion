@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FFXIV.Application.Consumables.DTOs;
 using FFXIV.Application.Gathering;
 using FFXIV.Application.Gathering.DTOs;
 using FFXIV.Application.Gear;
@@ -153,6 +154,9 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
         [(35423, 3), (35585, 2)],
         [(34065, 999)],
         [(2240, 7), (35423, 1), (35585, 1), (34065, 2)],
+        // Two plan items sharing a yield-3 intermediate (Grade 5 Strength Alkahest, 1 + 2 needed,
+        // one craft). The fixture's roots share no multi-yield intermediate, hence one recipe twice.
+        [(35585, 2), (35585, 4)],
     ];
 
     [Fact]
@@ -341,6 +345,83 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
         AssertOrWrite("spawn-windows.json", JsonSerializer.Serialize(cases, StaticDataExporter.Json) + "\n");
     }
 
+    private static readonly CrafterStats[] ConsumableBases =
+    [
+        new() { Level = 100, Craftsmanship = 3999, Control = 3800, CP = 500 },
+        new() { Level = 100, Craftsmanship = 4000, Control = 3800, CP = 500 },
+        new() { Level = 100, Craftsmanship = 5000, Control = 3800, CP = 500 },
+        new() { Level = 100, Craftsmanship = 3999, Control = 4200, CP = 600, IsSpecialist = true },
+        new() { Level = 100, Craftsmanship = 4000, Control = 4200, CP = 600 },
+        new() { Level = 100, Craftsmanship = 5000, Control = 4200, CP = 600 },
+        new() { Level = 70, Craftsmanship = 1200, Control = 1100, CP = 300 },
+    ];
+
+    [Fact]
+    public void Consumable_stats_golden_is_current()
+    {
+        // Rroneek Steak carries its sheet values; the synthetic rows cover what it lacks: a
+        // craftsmanship bonus, a flat bonus and an empty slot.
+        ConsumableInput[] meals =
+        [
+            Consumable(44091, "Rroneek Steak", 710, ConsumableKind.Meal,
+                RelativeBonus(ConsumableStat.Control, 4, 77, 5, 97),
+                RelativeBonus(ConsumableStat.CP, 21, 73, 26, 92)),
+            Consumable(900001, "Synthetic Meal", 700, ConsumableKind.Meal,
+                RelativeBonus(ConsumableStat.Craftsmanship, 0, 0, 0, 0),
+                RelativeBonus(ConsumableStat.Control, 7, 150, 9, 190)),
+        ];
+        ConsumableInput[] medicines =
+        [
+            Consumable(900002, "Synthetic Craftsmanship Draught", 720, ConsumableKind.Medicine,
+                RelativeBonus(ConsumableStat.Craftsmanship, 4, 180, 5, 220)),
+            Consumable(900003, "Synthetic Flat Draught", 690, ConsumableKind.Medicine,
+                new ConsumableBonus { Stat = ConsumableStat.CP, IsRelative = false, Value = 21, ValueHQ = 27 }),
+        ];
+
+        var mealChoices = Choices(meals);
+        var medicineChoices = Choices(medicines);
+        var cases = new List<ConsumableCaseGolden>();
+        foreach (var stats in ConsumableBases)
+            foreach (var meal in mealChoices)
+                foreach (var medicine in medicineChoices)
+                {
+                    var name = $"L{stats.Level} {stats.Craftsmanship}/{stats.Control}/{stats.CP}{(stats.IsSpecialist ? " specialist" : "")}"
+                        + $" | {ChoiceName(meal, "no meal")} | {ChoiceName(medicine, "no medicine")}";
+                    cases.Add(new ConsumableCaseGolden(
+                        name,
+                        stats,
+                        meal is null ? null : new ConsumableChoiceGolden(meal.Consumable.Dto, meal.Hq),
+                        medicine is null ? null : new ConsumableChoiceGolden(medicine.Consumable.Dto, medicine.Hq),
+                        meal is null ? ConsumableStatBonuses.None : ConsumableStats.BonusesFor(stats, meal.Consumable.Rows, meal.Hq),
+                        medicine is null ? ConsumableStatBonuses.None : ConsumableStats.BonusesFor(stats, medicine.Consumable.Rows, medicine.Hq),
+                        ConsumableStats.Apply(stats, meal?.Consumable.Rows, meal?.Hq ?? false, medicine?.Consumable.Rows, medicine?.Hq ?? false)));
+                }
+
+        AssertOrWrite("consumable-stats.json", JsonSerializer.Serialize(new ConsumableStatsGolden(cases), StaticDataExporter.Json) + "\n");
+
+        static List<ConsumableInputChoice?> Choices(ConsumableInput[] consumables) =>
+            [null, .. consumables.SelectMany(c => new[] { new ConsumableInputChoice(c, false), new ConsumableInputChoice(c, true) })];
+
+        static string ChoiceName(ConsumableInputChoice? choice, string none) =>
+            choice is null ? none : $"{choice.Consumable.Dto.Name} {(choice.Hq ? "HQ" : "NQ")}";
+    }
+
+    private static ConsumableInput Consumable(int itemId, string name, int itemLevel, ConsumableKind kind, params ConsumableBonus[] bonuses)
+    {
+        foreach (var bonus in bonuses)
+        {
+            bonus.ItemId = itemId;
+            bonus.Kind = kind;
+        }
+
+        var dto = new CraftingConsumableDto(itemId, name, "", itemLevel, true, kind.ToString(),
+            bonuses.Select(b => new ConsumableBonusDto(b.Stat.ToString(), b.IsRelative, b.Value, b.Max, b.ValueHQ, b.MaxHQ)).ToList());
+        return new ConsumableInput(dto, bonuses);
+    }
+
+    private static ConsumableBonus RelativeBonus(ConsumableStat stat, int value, int max, int valueHq, int maxHq) =>
+        new() { Stat = stat, IsRelative = true, Value = value, Max = max, ValueHQ = valueHq, MaxHQ = maxHq };
+
     [Fact]
     public async Task Gathering_guide_golden_is_current()
     {
@@ -383,7 +464,7 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
 
         var optionSets = new (bool UseMin, bool Gathered)[] { (false, true), (true, true), (false, false), (true, false) };
         foreach (var recipeId in _db.Fixture.RootRecipeIds)
-            foreach (var quantity in new[] { 1, 3 })
+            foreach (var quantity in new[] { 1, 3, 10 })
                 foreach (var (useMin, gathered) in optionSets)
                 {
                     var options = new CostEstimationOptions { UseMinPrice = useMin, IncludeGatheredItemPrices = gathered };
@@ -521,6 +602,23 @@ public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
     private sealed record SpawnWindowGolden(string? Input, List<SpawnWindowHours> Windows, string? Serialized);
 
     private sealed record SpawnWindowHours(int StartHour, int EndHour);
+
+    private sealed record ConsumableStatsGolden(List<ConsumableCaseGolden> Cases);
+
+    private sealed record ConsumableCaseGolden(
+        string Name,
+        CrafterStats Base,
+        ConsumableChoiceGolden? Meal,
+        ConsumableChoiceGolden? Medicine,
+        ConsumableStatBonuses MealBonus,
+        ConsumableStatBonuses MedicineBonus,
+        CrafterStats Effective);
+
+    private sealed record ConsumableChoiceGolden(CraftingConsumableDto Consumable, bool Hq);
+
+    private sealed record ConsumableInput(CraftingConsumableDto Dto, ConsumableBonus[] Rows);
+
+    private sealed record ConsumableInputChoice(ConsumableInput Consumable, bool Hq);
 
     private sealed record GatheringGuideGolden(string Name, List<GatheredMaterialInput> Items, int CurrentHour, GatheringGuideDto Result);
 
