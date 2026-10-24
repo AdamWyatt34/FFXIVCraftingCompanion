@@ -37,7 +37,7 @@
       "detected": true
     },
     {
-      "name": "Crafting engine (state, actions, formulas, HQ, macro export) lives in FFXIV.Domain/CraftingEngine; solver implementations live in FFXIV.Infrastructure/Solver behind IRotationSolver",
+      "name": "Crafting engine and solvers live only in crates/xiv-craft and reach the browser through crates/xiv-craft-wasm; C# holds RotationActionCatalog (ids and names) and no engine rule",
       "status": "enforced",
       "detected": true
     },
@@ -52,14 +52,14 @@
       "detected": true
     },
     {
-      "name": "Tests: xUnit + FluentAssertions + NSubstitute; solver benchmarks driven by tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json",
+      "name": "Tests: xUnit + FluentAssertions + NSubstitute; solver benchmarks driven by crates/xiv-craft/tests/benchmarks/solver-benchmarks.json",
       "status": "enforced",
       "detected": true
     },
     {
-      "name": "Rust crate crates/xiv-craft mirrors the C# engine; action ids equal C# Id values; parity proven by committed JSONL golden files",
-      "status": "aspirational",
-      "detected": false
+      "name": "crates/xiv-craft is the engine reference: correctness pinned by tests/reference_parity.rs (Raphael/Teamcraft arithmetic), tests/goldens/ snapshots regenerated only for an intended engine change, and the solver benchmarks",
+      "status": "enforced",
+      "detected": true
     }
   ],
   "noGoZones": [
@@ -80,8 +80,8 @@
       "reason": "Production configuration"
     },
     {
-      "path": "tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json",
-      "reason": "Hand-maintained solver benchmark fixtures pin solver behaviour. The sibling TestData/parity/ folder is generator-only output of ParityGoldenTests (FFXIV_PARITY_GENERATE=1); never hand-edit it, and regenerate only when a C# engine change is intended"
+      "path": "crates/xiv-craft/tests/benchmarks/solver-benchmarks.json",
+      "reason": "Hand-maintained solver benchmark fixtures pin solver behaviour. crates/xiv-craft/tests/goldens/ is generator-only output of the snapshot tests (XIV_CRAFT_GENERATE=1); never hand-edit it, and regenerate only when an engine change is intended. dotnet-random.json is frozen .NET output and is not regenerated"
     }
   ],
   "prGates": [
@@ -92,7 +92,7 @@
     "npm run build succeeds in frontend/ (when frontend/ changes)",
     "cargo test is green on the host target for crates/ (when crates/ changes)",
     "cargo build --target wasm32-unknown-unknown --release succeeds for crates/ (when crates/ changes)",
-    "the C#/Rust parity golden files are regenerated and committed when engine behaviour changes (when crates/ changes)"
+    "tests/goldens/ is regenerated (XIV_CRAFT_GENERATE=1) and committed when engine behaviour changes, and reference_parity.rs gains a Raphael/Teamcraft-cited case for every rule change (when crates/ changes)"
   ],
   "layeringRules": [
     {
@@ -149,8 +149,7 @@
       "prGates": [
         "cargo test is green on the host target for crates/",
         "cargo build --target wasm32-unknown-unknown --release succeeds for crates/",
-        "the C#/Rust parity golden files are regenerated and committed when engine behaviour changes",
-        "dotnet test FFXIVCraftingCompanion.slnx --configuration Release is green (the parity generator test lives in tests/)"
+        "tests/goldens/ is regenerated (XIV_CRAFT_GENERATE=1) and committed when engine behaviour changes, and reference_parity.rs gains a Raphael/Teamcraft-cited case for every rule change"
       ]
     }
   ],
