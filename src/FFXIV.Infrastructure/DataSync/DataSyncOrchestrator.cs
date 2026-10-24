@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Interfaces;
 using FFXIV.Infrastructure.ExternalApis;
@@ -17,12 +18,13 @@ public sealed class DataSyncOrchestrator
     private readonly DataSyncOptions _options;
     private readonly SourceDataSyncService _sourceDataSync;
     private readonly EquipmentSyncService _equipmentSync;
+    private readonly ConsumableSyncService _consumableSync;
     private readonly GarlandDataEnricher _garlandEnricher;
     private readonly ICacheService _cache;
     private readonly ILogger<DataSyncOrchestrator> _logger;
 
     private const string ItemFields = "Name,LevelItem,CanBeHq,Icon,ItemSearchCategory,ItemUICategory,PriceMid";
-    private const string RecipeFields = "ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,DurabilityFactor,AmountResult,CanHq,MaterialQualityFactor,Ingredient,AmountIngredient";
+    private const string RecipeFields = "ItemResult,CraftType,RecipeLevelTable,DifficultyFactor,QualityFactor,DurabilityFactor,AmountResult,CanHq,MaterialQualityFactor,RequiredCraftsmanship,RequiredControl,Ingredient,AmountIngredient";
     private const int ItemPageSize = 500;
     private const int RecipePageSize = 50;
     private const string RecipeLevelTableFieldList = "ClassJobLevel,Stars,Difficulty,Quality,Durability,SuggestedCraftsmanship,SuggestedControl,ProgressDivider,ProgressModifier,QualityDivider,QualityModifier";
@@ -34,6 +36,7 @@ public sealed class DataSyncOrchestrator
         IOptions<DataSyncOptions> options,
         SourceDataSyncService sourceDataSync,
         EquipmentSyncService equipmentSync,
+        ConsumableSyncService consumableSync,
         GarlandDataEnricher garlandEnricher,
         ICacheService cache,
         ILogger<DataSyncOrchestrator> logger)
@@ -43,6 +46,7 @@ public sealed class DataSyncOrchestrator
         _options = options.Value;
         _sourceDataSync = sourceDataSync;
         _equipmentSync = equipmentSync;
+        _consumableSync = consumableSync;
         _garlandEnricher = garlandEnricher;
         _cache = cache;
         _logger = logger;
@@ -100,13 +104,30 @@ public sealed class DataSyncOrchestrator
             await UpdateSyncMetadataAsync("Equipment", equipCount, versionKey, ct);
         }
 
+        // A bad consumable snapshot must not cost the core passes, but the run still fails and leaves
+        // GameVersion unwritten, so the next run retries it.
+        var consumableCount = 0;
+        ExceptionDispatchInfo? consumableFailure = null;
+        try
+        {
+            consumableCount = await _consumableSync.SyncConsumablesAsync(ct);
+            await UpdateSyncMetadataAsync("ConsumableBonus", consumableCount, versionKey, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Consumable sync failed; the remaining passes run and the sync then fails");
+            _db.ChangeTracker.Clear();
+            consumableFailure = ExceptionDispatchInfo.Capture(ex);
+        }
+
         if (_options.EnrichFromGarlandTools)
         {
             _logger.LogInformation("Running Garland Tools data enrichment...");
             await _garlandEnricher.EnrichSourceDataAsync(ct);
         }
 
-        await UpdateSyncMetadataAsync("GameVersion", 0, versionKey, ct);
+        if (consumableFailure is null)
+            await UpdateSyncMetadataAsync("GameVersion", 0, versionKey, ct);
 
         _logger.LogInformation("Invalidating cached data after sync...");
         await _cache.RemoveByPrefixAsync("materialtree:", ct);
@@ -119,10 +140,12 @@ public sealed class DataSyncOrchestrator
         await _cache.RemoveByPrefixAsync("gearsearch:", ct);
         _logger.LogInformation("Cache invalidation complete");
 
+        consumableFailure?.Throw();
+
         stopwatch.Stop();
         _logger.LogInformation(
-            "Full data sync completed in {Duration}. Items: {ItemCount}, Recipes: {RecipeCount}, Equipment: {EquipCount}",
-            stopwatch.Elapsed, itemCount, recipeCount, equipCount);
+            "Full data sync completed in {Duration}. Items: {ItemCount}, Consumable bonuses: {ConsumableCount}, Recipes: {RecipeCount}, Equipment: {EquipCount}",
+            stopwatch.Elapsed, itemCount, consumableCount, recipeCount, equipCount);
     }
 
     private async Task<(int Count, Dictionary<int, int> PriceLookup)> SyncItemsAsync(CancellationToken ct)

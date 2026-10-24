@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<ISavedListRepository, SavedListRepository>();
         services.AddScoped<IFavoriteRecipeRepository, FavoriteRecipeRepository>();
         services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
+        services.AddScoped<IConsumableRepository, ConsumableRepository>();
         services.AddScoped<ISharedRotationRepository, SharedRotationRepository>();
         services.AddScoped<ICraftPlanRepository, CraftPlanRepository>();
         services.AddScoped<IFeedbackRepository, FeedbackRepository>();
@@ -68,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<DataSyncOrchestrator>();
         services.AddScoped<SourceDataSyncService>();
         services.AddScoped<EquipmentSyncService>();
+        services.AddScoped<ConsumableSyncService>();
         services.AddSingleton<DataSyncService>();
         services.AddSingleton<IDataSyncTrigger>(sp => sp.GetRequiredService<DataSyncService>());
         services.AddHostedService(sp => sp.GetRequiredService<DataSyncService>());

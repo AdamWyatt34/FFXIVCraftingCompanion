@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SavedList> SavedLists => Set<SavedList>();
     public DbSet<FavoriteRecipe> FavoriteRecipes => Set<FavoriteRecipe>();
     public DbSet<RecipeLevelEntry> RecipeLevelEntries => Set<RecipeLevelEntry>();
+    public DbSet<ConsumableBonus> ConsumableBonuses => Set<ConsumableBonus>();
     public DbSet<SharedRotation> SharedRotations => Set<SharedRotation>();
     public DbSet<RotationVote> RotationVotes => Set<RotationVote>();
     public DbSet<CraftPlan> CraftPlans => Set<CraftPlan>();
