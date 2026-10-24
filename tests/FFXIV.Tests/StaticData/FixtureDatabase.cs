@@ -56,9 +56,6 @@ public sealed class FixtureDatabase : IDisposable
         services.AddScoped<IRecipeLevelRepository, RecipeLevelRepository>();
         services.AddApplication();
         services.AddScoped(_ => Substitute.For<ICharacterProfileRepository>());
-        // The sufficiency goldens cover everything but the rotation search: the solver here
-        // finds nothing, so HQ, steps and completion stay at their empty-rotation values.
-        services.AddSingleton(_ => EmptySolverFactory());
         services.AddSingleton<TimeProvider>(new FixedClock(Now));
         services.AddSingleton(_ => UniversalisFromSample());
         _services = services.BuildServiceProvider();
@@ -99,21 +96,6 @@ public sealed class FixtureDatabase : IDisposable
                 .Where(sample.ContainsKey)
                 .ToDictionary(id => id, id => sample[id]));
         return client;
-    }
-
-    private static Application.CraftingEngine.Solver.ISolverFactory EmptySolverFactory()
-    {
-        var solver = Substitute.For<Domain.CraftingEngine.Solver.IRotationSolver>();
-        solver.SolveAsync(
-                Arg.Any<Domain.CraftingEngine.Models.RecipeParameters>(),
-                Arg.Any<Domain.CraftingEngine.Models.CrafterStats>(),
-                Arg.Any<Domain.CraftingEngine.Solver.Models.SolverConstraints>(),
-                Arg.Any<Domain.CraftingEngine.Solver.Models.SolverSettings>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new Domain.CraftingEngine.Solver.Models.SolverResult { Status = Domain.CraftingEngine.Solver.Models.SolverStatus.Completed });
-        var factory = Substitute.For<Application.CraftingEngine.Solver.ISolverFactory>();
-        factory.Create(Arg.Any<Domain.CraftingEngine.Solver.Models.SolverAlgorithm>()).Returns(solver);
-        return factory;
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

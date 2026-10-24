@@ -1,4 +1,4 @@
-using FFXIV.Application.CraftingEngine;
+using FFXIV.Application.Recipes;
 using FFXIV.Application.Recipes.DTOs;
 using MediatR;
 

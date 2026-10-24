@@ -15,7 +15,6 @@ using FFXIV.Application.CraftPlans.Queries;
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Journey;
 using FFXIV.Application.Journey.DTOs;
-using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.Entities;
 using FFXIV.Application.Items.Queries;
 using FFXIV.Domain.Enums;
@@ -30,9 +29,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FFXIV.Tests.StaticData;
 
-// Goldens for the computations the frontend replays from static data. Same contract as the
-// engine parity goldens: FFXIV_PARITY_GENERATE=1 rewrites them, otherwise the first differing
-// byte fails. Regenerate only when a C# handler change is intended.
+// Goldens for the computations the frontend replays from static data. FFXIV_PARITY_GENERATE=1
+// rewrites them, otherwise the first differing byte fails. Regenerate only when a C# handler
+// change is intended.
 public class StaticDataGoldenTests : IClassFixture<FixtureDatabase>
 {
     private const string GenerateVariable = "FFXIV_PARITY_GENERATE";

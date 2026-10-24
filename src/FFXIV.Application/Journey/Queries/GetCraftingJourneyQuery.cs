@@ -2,7 +2,7 @@ using FFXIV.Application.DTOs;
 using FFXIV.Application.Journey.DTOs;
 using FFXIV.Application.Mapping;
 using FFXIV.Application.Recipes;
-using FFXIV.Domain.CraftingEngine.Models;
+using FFXIV.Domain.Models;
 using FFXIV.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;

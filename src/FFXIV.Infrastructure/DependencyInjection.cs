@@ -5,12 +5,9 @@ using FFXIV.Application.Profile;
 using FFXIV.Domain.Interfaces;
 using FFXIV.Domain.Repositories;
 using FFXIV.Infrastructure.Caching;
-using FFXIV.Application.CraftingEngine.Solver;
-using FFXIV.Domain.CraftingEngine.Solver.Models;
 using FFXIV.Infrastructure.DataSync;
 using FFXIV.Infrastructure.ExternalApis;
 using FFXIV.Infrastructure.Identity;
-using FFXIV.Infrastructure.Solver;
 using FFXIV.Infrastructure.Persistence;
 using FFXIV.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -46,7 +43,6 @@ public static class DependencyInjection
                     errorNumbersToAdd: null)));
 
         AddCaching(services, configuration);
-        AddSolverServices(services);
         AddIdentityServices(services, configuration);
 
         services.AddScoped<IItemRepository, ItemRepository>();
@@ -292,13 +288,6 @@ public static class DependencyInjection
 
             builder.AddTimeout(TimeSpan.FromSeconds(options.TimeoutSeconds));
         });
-    }
-
-    private static void AddSolverServices(IServiceCollection services)
-    {
-        services.AddSingleton(GreedySolverConfig.Default);
-        services.AddSingleton(MCTSConfig.Default);
-        services.AddSingleton<ISolverFactory, SolverFactory>();
     }
 
     private static void AddLodestoneServices(IServiceCollection services)

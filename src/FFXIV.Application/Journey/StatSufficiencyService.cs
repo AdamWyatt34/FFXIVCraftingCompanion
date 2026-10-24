@@ -1,13 +1,9 @@
-using FFXIV.Application.CraftingEngine;
-using FFXIV.Application.CraftingEngine.Solver;
+using FFXIV.Application.Recipes;
 using FFXIV.Application.Gear;
-using FFXIV.Domain.CraftingEngine;
-using FFXIV.Domain.CraftingEngine.Models;
-using FFXIV.Domain.CraftingEngine.Solver.Models;
+using FFXIV.Domain.Models;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
 using FFXIV.Domain.Interfaces;
-using FFXIV.Domain.Models;
 using FFXIV.Domain.Repositories;
 
 namespace FFXIV.Application.Journey;
@@ -16,8 +12,6 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
 {
     private readonly IRecipeRepository _recipeRepo;
     private readonly IRecipeParameterFactory _recipeParamFactory;
-    private readonly ISolverFactory _solverFactory;
-    private readonly ICraftingSimulator _simulator;
     private readonly IGearRecommendationService _gearService;
     private readonly IEquipmentRepository _equipmentRepo;
     private readonly ICacheService _cache;
@@ -25,16 +19,12 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
     public StatSufficiencyService(
         IRecipeRepository recipeRepo,
         IRecipeParameterFactory recipeParamFactory,
-        ISolverFactory solverFactory,
-        ICraftingSimulator simulator,
         IGearRecommendationService gearService,
         IEquipmentRepository equipmentRepo,
         ICacheService cache)
     {
         _recipeRepo = recipeRepo;
         _recipeParamFactory = recipeParamFactory;
-        _solverFactory = solverFactory;
-        _simulator = simulator;
         _gearService = gearService;
         _equipmentRepo = equipmentRepo;
         _cache = cache;
@@ -86,27 +76,8 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
         int estimatedSteps = 0;
         bool canComplete = false;
 
-        if (meetsMinimums)
-        {
-            var solver = _solverFactory.Create(SolverAlgorithm.Greedy);
-            var constraints = new SolverConstraints();
-            var settings = new SolverSettings
-            {
-                Algorithm = SolverAlgorithm.Greedy,
-                TimeBudgetMs = 3000,
-            };
-
-            var solverResult = await solver.SolveAsync(recipeParams, stats, constraints, settings, ct);
-
-            if (solverResult.Status == SolverStatus.Completed && solverResult.ActionIds.Count > 0)
-            {
-                var simulation = _simulator.Simulate(recipeParams, stats, solverResult.ActionIds);
-                hqPercent = simulation.FinalHQPercent;
-                qualityPercent = simulation.FinalQualityPercent;
-                estimatedSteps = simulation.TotalSteps;
-                canComplete = simulation.Success;
-            }
-        }
+        // The estimates come from the browser's wasm engine, so the server reports them as zero, which
+        // makes its recommendation always UpgradeGear.
 
         var recommendation = DetermineRecommendation(meetsMinimums, hqPercent, canComplete);
 

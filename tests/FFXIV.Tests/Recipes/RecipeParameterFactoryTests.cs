@@ -1,10 +1,10 @@
-using FFXIV.Application.CraftingEngine;
-using FFXIV.Domain.CraftingEngine.Models;
+using FFXIV.Application.Recipes;
+using FFXIV.Domain.Models;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
 using FFXIV.Domain.Repositories;
 
-namespace FFXIV.Tests.CraftingEngine;
+namespace FFXIV.Tests.Recipes;
 
 public class RecipeParameterFactoryTests
 {

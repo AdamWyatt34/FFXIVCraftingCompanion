@@ -1,4 +1,4 @@
-namespace FFXIV.Domain.CraftingEngine.Models;
+namespace FFXIV.Domain.Models;
 
 public record RecipeParameters
 {

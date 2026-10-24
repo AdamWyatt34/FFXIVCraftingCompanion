@@ -25,12 +25,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="CraftingEngine\TestData\solver-benchmarks.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CraftingEngine\TestData\parity\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="StaticData\TestData\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

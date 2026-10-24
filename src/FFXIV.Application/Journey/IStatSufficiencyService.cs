@@ -1,6 +1,5 @@
-using FFXIV.Domain.CraftingEngine.Models;
-using FFXIV.Domain.Entities;
 using FFXIV.Domain.Models;
+using FFXIV.Domain.Entities;
 
 namespace FFXIV.Application.Journey;
 

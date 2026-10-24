@@ -1,6 +1,6 @@
-using FFXIV.Domain.CraftingEngine.Models;
+using FFXIV.Domain.Models;
 
-namespace FFXIV.Application.CraftingEngine;
+namespace FFXIV.Application.Recipes;
 
 public interface IRecipeParameterFactory
 {
