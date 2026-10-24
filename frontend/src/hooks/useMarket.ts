@@ -18,7 +18,11 @@ export function useWorldList(): UseWorldListReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedWorld, setSelectedWorldState] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    return localStorage.getItem(MARKET_CONSTANTS.DEFAULT_WORLD_KEY) ?? "";
+    try {
+      return localStorage.getItem(MARKET_CONSTANTS.DEFAULT_WORLD_KEY) ?? "";
+    } catch {
+      return "";
+    }
   });
 
   useEffect(() => {
@@ -30,8 +34,10 @@ export function useWorldList(): UseWorldListReturn {
 
   const setSelectedWorld = useCallback((world: string) => {
     setSelectedWorldState(world);
-    if (typeof window !== "undefined") {
+    try {
       localStorage.setItem(MARKET_CONSTANTS.DEFAULT_WORLD_KEY, world);
+    } catch {
+      // Storage blocked or full: the world is kept only until the page closes.
     }
   }, []);
 

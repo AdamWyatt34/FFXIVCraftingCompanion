@@ -11,6 +11,7 @@ import {
 import { ItemIcon, ItemLink, SourceBadge } from "@/components/ui";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { buildIngredientMap } from "@/lib/tree-utils";
+import { craftsNeeded } from "@/lib/static-data/materials";
 import { recipePath } from "@/lib/routes";
 import type {
   IntermediateCraftDto,
@@ -35,6 +36,10 @@ interface CraftStep {
   recipeLevel: number;
   stepNumber: number;
   isFinal: boolean;
+}
+
+function craftsLabel(crafts: number): string {
+  return `${crafts} ${crafts === 1 ? "craft" : "crafts"}`;
 }
 
 export function CraftingStepsView({
@@ -113,7 +118,11 @@ export function CraftingStepsView({
         const isChecked = checkedSteps.has(step.key);
         const isCurrent = step.key === firstUnchecked;
         const isExpanded = expandedStep === step.key;
-        const ingredients = ingredientMap.get(step.itemId) ?? [];
+        const recipe = ingredientMap.get(step.itemId);
+        const yieldPerCraft = recipe?.yieldPerCraft ?? 1;
+        const crafts = craftsNeeded(step.quantity, yieldPerCraft);
+        const made = crafts * yieldPerCraft;
+        const ingredients = recipe?.ingredients ?? [];
         const craftInfo =
           CRAFT_TYPE_INFO[step.craftType as CraftType] ?? null;
         const isLast = index === steps.length - 1;
@@ -205,8 +214,17 @@ export function CraftingStepsView({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-bold text-text-primary font-mono">
-                    ×{step.quantity}
+                  <span
+                    className="text-sm font-bold text-text-primary font-mono"
+                    title={`Makes ${made}, ${step.quantity} needed`}
+                  >
+                    {craftsLabel(crafts)}
+                    {yieldPerCraft > 1 && (
+                      <span className="font-normal text-text-muted">
+                        {" "}
+                        → {made}
+                      </span>
+                    )}
                   </span>
                   {ingredients.length > 0 &&
                     (isExpanded ? (
@@ -230,7 +248,7 @@ export function CraftingStepsView({
                     Ingredients
                   </div>
                   <div className="space-y-1.5">
-                    {ingredients.map((ing, i) => (
+                    {ingredients.map(({ node: ing, perCraft }, i) => (
                       <div
                         key={`${ing.itemId}-${i}`}
                         className="flex items-center gap-2"
@@ -247,7 +265,7 @@ export function CraftingStepsView({
                           className="shrink-0"
                         />
                         <span className="text-xs text-text-muted font-mono shrink-0">
-                          ×{ing.quantity}
+                          ×{perCraft * crafts}
                         </span>
                       </div>
                     ))}
