@@ -1,7 +1,7 @@
 use core::fmt;
 
-/// Why an action cannot execute. `Display` reproduces the C# `GetFailReason` strings verbatim,
-/// which is what saved simulations and the parity goldens carry.
+/// Why an action cannot execute. `Display` strings are pinned by the snapshot goldens; do not
+/// reword them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FailReason {
     NotInProgress,

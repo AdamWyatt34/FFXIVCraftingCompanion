@@ -66,6 +66,7 @@ public sealed class ApiFactory : WebApplicationFactory<IApiMarker>
             ["RateLimiting:AuthPerFiveMinutes"] = "1000",
             ["RateLimiting:RegisterPerHour"] = "1000",
             ["RateLimiting:PublicReadPerMinute"] = "1000",
+            ["RateLimiting:RotationWritePerHour"] = "1000",
             ["RateLimiting:FeedbackPerHour"] = "1000",
         };
         foreach (var (key, value) in _settings)

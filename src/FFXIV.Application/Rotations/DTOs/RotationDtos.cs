@@ -18,6 +18,9 @@ public sealed class SubmitRotationRequest
     [Required(ErrorMessage = "Stats are required.")]
     public CrafterStatsInput Stats { get; set; } = null!;
 
+    [Required(ErrorMessage = "Metrics are required. Please refresh the page and try again.")]
+    public RotationMetricsInput Metrics { get; set; } = null!;
+
     [MaxLength(32, ErrorMessage = "Source must be 32 characters or fewer.")]
     public string Source { get; set; } = "User";
 
@@ -78,6 +81,7 @@ public sealed record RotationDetailDto(
     int Control,
     int CP,
     int CrafterLevel,
+    // Always empty: clients build macros with the wasm engine. Clients that read macros.length need the key.
     List<string> Macros);
 
 public sealed record RotationListResultDto(
@@ -106,4 +110,18 @@ public sealed record CrafterStatsInput
     public int CP { get; init; }
 
     public bool IsSpecialist { get; init; } = false;
+}
+
+public sealed record RotationMetricsInput
+{
+    [Range(0, 100)]
+    public decimal QualityPercent { get; init; }
+
+    [Range(0, 100)]
+    public int HQPercent { get; init; }
+
+    [Range(1, SubmitRotationRequest.MaxActions)]
+    public int TotalSteps { get; init; }
+
+    public bool CraftCompleted { get; init; }
 }

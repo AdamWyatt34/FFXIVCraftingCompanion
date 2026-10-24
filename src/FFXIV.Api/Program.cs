@@ -107,6 +107,8 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartitions.FixedWindow(context, rateLimits.RegisterPerHour, TimeSpan.FromHours(1)));
     options.AddPolicy("public-read", context =>
         RateLimitPartitions.SlidingWindow(context, rateLimits.PublicReadPerMinute, TimeSpan.FromMinutes(1)));
+    options.AddPolicy("rotation-write", context =>
+        RateLimitPartitions.FixedWindow(context, rateLimits.RotationWritePerHour, TimeSpan.FromHours(1)));
     options.AddPolicy("feedback", context =>
         RateLimitPartitions.FixedWindow(context, rateLimits.FeedbackPerHour, TimeSpan.FromHours(1)));
 
@@ -145,10 +147,11 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter your JWT token"
     });
 
-    options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    // Without the host document the reference serializes as {}, and Swagger UI never sends the token.
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("Bearer"),
+            new OpenApiSecuritySchemeReference("Bearer", document),
             new List<string>()
         }
     });

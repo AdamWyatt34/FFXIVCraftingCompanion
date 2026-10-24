@@ -1,4 +1,4 @@
-//! Rotation solvers mirroring `FFXIV.Infrastructure/Solver`: the greedy heuristic and the MCTS
+//! Rotation solvers: the greedy heuristic and the MCTS
 //! search seeded by it. Both run on wasm32: no threads, and the wall clock is a caller-supplied
 //! callback (`now_ms`) so a Web Worker can pass `performance.now()`.
 

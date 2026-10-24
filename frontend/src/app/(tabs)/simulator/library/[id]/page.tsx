@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -74,6 +74,30 @@ export default function RotationDetailPage() {
   const [shareCopied, setShareCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [macroExport, setMacroExport] = useState<{
+    actionIds: number[];
+    macros: string[];
+    error: string | null;
+  } | null>(null);
+  const actionIds = rotation?.actionIds;
+  const currentExport = macroExport?.actionIds === actionIds ? macroExport : null;
+  const macros = currentExport?.macros;
+
+  useEffect(() => {
+    if (!actionIds) return;
+    let cancelled = false;
+    exportCraftingMacro({ actionIds }).then(
+      ({ macros }) => {
+        if (!cancelled) setMacroExport({ actionIds, macros, error: null });
+      },
+      () => {
+        if (!cancelled) {
+          setMacroExport({ actionIds, macros: [], error: "Could not generate macros. Please reload the page to try again." });
+        }
+      },
+    );
+    return () => { cancelled = true; };
+  }, [actionIds]);
 
   const handleUpvote = useCallback(async () => {
     if (!user || upvoteLoading) return;
@@ -90,21 +114,15 @@ export default function RotationDetailPage() {
   }, [id, user, upvoteLoading]);
 
   const handleCopyMacro = useCallback(async () => {
-    if (!rotation) return;
+    if (!macros?.length) return;
     try {
-      const macroText =
-        rotation.macros.length > 0
-          ? rotation.macros.join("\n\n")
-          : (
-              await exportCraftingMacro({ actionIds: rotation.actionIds })
-            ).macros.join("\n\n");
-      await navigator.clipboard.writeText(macroText);
+      await navigator.clipboard.writeText(macros.join("\n\n"));
       setMacroCopied(true);
       setTimeout(() => setMacroCopied(false), 2000);
     } catch {
       // Ignore clipboard errors
     }
-  }, [rotation]);
+  }, [macros]);
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}/simulator/library/${id}`;
@@ -367,14 +385,14 @@ export default function RotationDetailPage() {
           </div>
         </div>
 
-        {/* Macros */}
-        {rotation.macros.length > 0 && (
           <div className="bg-bg-surface border border-border rounded-lg p-5">
             <div className="text-xs font-medium text-text-muted mb-2">
-              In-Game Macros ({rotation.macros.length})
+              In-Game Macros {macros && !currentExport?.error ? `(${macros.length})` : ""}
             </div>
+            {!currentExport && <p className="text-sm text-text-muted" role="status">Generating macros...</p>}
+            {currentExport?.error && <p className="text-sm text-red-400" role="alert">{currentExport.error}</p>}
             <div className="space-y-3">
-              {rotation.macros.map((macro, i) => (
+              {macros?.map((macro, i) => (
                 <pre
                   key={i}
                   className="bg-bg-elevated rounded-md p-3 text-xs text-text-secondary overflow-x-auto whitespace-pre-wrap"
@@ -384,7 +402,6 @@ export default function RotationDetailPage() {
               ))}
             </div>
           </div>
-        )}
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2">
@@ -397,6 +414,7 @@ export default function RotationDetailPage() {
           </button>
           <button
             onClick={handleCopyMacro}
+            disabled={!macros?.length}
             className="flex items-center gap-1.5 px-4 py-2 bg-bg-surface border border-border text-text-secondary font-medium rounded-lg hover:text-text-primary transition-colors text-sm"
           >
             <Copy size={16} />

@@ -5,10 +5,8 @@ import type { CharacterProfileDto } from "@/types/profile";
 import type { CrafterStatsInput } from "@/types/simulator";
 
 // Port of StatSufficiencyService: the stat check a signed-in visitor sees on the journey page.
-// The minimums, the recommendation and the gear suggestions are proven by goldens/sufficiency.jsonl
-// (generated with a solver that returns no rotation, so the golden's HQ estimate is always zero);
-// the solve and the simulation run in the WASM engine, whose parity with the C# engine the
-// crate's own goldens prove.
+// Goldens pin minimums, recommendations and gear suggestions for a solve that finds no rotation;
+// estimates are not golden-checked.
 
 export interface SufficiencyProfile {
   activeJob: string;

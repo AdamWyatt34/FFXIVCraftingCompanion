@@ -15,9 +15,9 @@ struct Series {
     values: Vec<f64>,
 }
 
+// Frozen System.Random output: regenerating it with the Rust implementation would erase the independent oracle.
 fn golden_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/FFXIV.Tests/CraftingEngine/TestData/parity/dotnet-random.json")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/goldens/dotnet-random.json")
 }
 
 #[test]

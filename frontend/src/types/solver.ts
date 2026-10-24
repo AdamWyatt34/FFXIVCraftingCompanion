@@ -122,7 +122,6 @@ export interface RotationDetail extends RotationListItem {
   notes: string | null;
   actionNames: string[];
   algorithm: string | null;
-  macros: string[];
 }
 
 export interface RotationListResult {
@@ -141,6 +140,12 @@ export interface SubmitRotationRequest {
   recipeId: number;
   actionIds: number[];
   stats: CrafterStatsInput;
+  metrics: {
+    qualityPercent: number;
+    hqPercent: number;
+    totalSteps: number;
+    craftCompleted: boolean;
+  };
   source?: string;
   name?: string;
   notes?: string;

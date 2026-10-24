@@ -3,10 +3,10 @@ name: Backend CI
 on:
   push:
     branches: [main]
-    paths: ['src/**', 'tests/**', '*.slnx', 'Directory.Build.props', '.editorconfig', 'global.json', '.github/workflows/backend-ci.yml']
+    paths: ['crates/xiv-craft/tests/goldens/actions.json', 'src/**', 'tests/**', '*.slnx', 'Directory.Build.props', '.editorconfig', 'global.json', '.github/workflows/backend-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['src/**', 'tests/**', '*.slnx', 'Directory.Build.props', '.editorconfig', 'global.json', '.github/workflows/backend-ci.yml']
+    paths: ['crates/xiv-craft/tests/goldens/actions.json', 'src/**', 'tests/**', '*.slnx', 'Directory.Build.props', '.editorconfig', 'global.json', '.github/workflows/backend-ci.yml']
 
 permissions:
   contents: read

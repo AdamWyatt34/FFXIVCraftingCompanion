@@ -5,6 +5,7 @@ using FFXIV.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FFXIV.Api.Controllers;
 
@@ -29,10 +30,11 @@ public class RotationsController : ControllerBase
     }
 
     /// <summary>
-    /// Save a rotation to the public library. Auto-simulates to compute quality/HQ metrics.
+    /// Save a rotation and its client-reported quality/HQ metrics to the public library.
     /// </summary>
     [Authorize]
     [HttpPost]
+    [EnableRateLimiting("rotation-write")]
     [ProducesResponseType(typeof(RotationDetailDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -44,7 +46,7 @@ public class RotationsController : ControllerBase
             new CreateRotationCommand(_currentUser.UserId!, request), ct);
 
         if (result is null)
-            return Conflict(new { error = "Rotation quota exceeded (max 200) or invalid recipe/actions." });
+            return Conflict(new { error = "Rotation quota exceeded (max 200) or invalid recipe/actions/metrics (total steps must not exceed the action count)." });
 
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }

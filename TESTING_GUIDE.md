@@ -614,11 +614,12 @@ dotnet test FFXIVCraftingCompanion.slnx --configuration Release
 
 ### Test Organization
 
+Engine and solver tests live in `crates/xiv-craft`: run `cargo test --release` there. `tests/reference_parity.rs` checks Raphael/Teamcraft arithmetic, `tests/snapshot.rs` replays the snapshots, and `tests/solver_benchmarks.rs` checks the benchmark fixtures. The table below covers `tests/FFXIV.Tests/`.
+
 | Directory | What It Tests | Key Files |
 |-----------|---------------|-----------|
-| `CraftingEngine/Actions/` | All 36 crafting actions individually | Progress, Quality, Buffs, Repair, Registry tests |
-| `CraftingEngine/Solver/` | Greedy solver, MCTS solver, time budgets | `SolverJobServiceTests`, `GreedySolverTuningTests`, `MctsSolverEarlyTerminationTests`, `AdaptiveTimeBudgetTests` |
-| `CraftingEngine/` | Simulator, state, conditions, formulas, macros, HQ calc | `CraftingSimulatorTests`, `HQCalculatorTests` |
+| `Recipes/` | Recipe parameter data shapes used by the export | `RecipeParameterFactoryTests` |
+| `Rotations/` | Saved metrics validation and action catalog agreement with Rust | `CreateRotationCommandHandlerTests`, `RotationActionCatalogTests` |
 | `Gear/` | Gear scoring, stat weights, ring dedup, combat gear, batch loading | `GearRecommendationServiceTests`, `CombatGearRecommendationTests`, `GearBatchLoadingTests` |
 | `CraftPlans/` | Multi-recipe planning | — |
 | `DataSync/` | Data synchronization | — |

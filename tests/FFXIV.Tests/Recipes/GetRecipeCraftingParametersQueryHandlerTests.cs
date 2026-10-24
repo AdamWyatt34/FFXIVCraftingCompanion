@@ -1,6 +1,6 @@
-using FFXIV.Application.CraftingEngine;
+using FFXIV.Application.Recipes;
 using FFXIV.Application.Recipes.Queries;
-using FFXIV.Domain.CraftingEngine.Models;
+using FFXIV.Domain.Models;
 
 namespace FFXIV.Tests.Recipes;
 

@@ -3,8 +3,8 @@ import { quickSolve } from "@/lib/solver-client";
 import type { SufficiencyEngine } from "@/lib/static-data/sufficiency";
 
 /**
- * The stat check's engine calls on the WASM engine: the greedy quick solve (the API's
- * `SolverFactory.Create(Greedy)` with default constraints) and a plain simulation of its rotation.
+ * The stat check's engine calls on the WASM engine: the greedy quick solve with default
+ * constraints and a plain simulation of its rotation.
  */
 export const wasmSufficiencyEngine: SufficiencyEngine = {
   async solve(recipeId, stats) {

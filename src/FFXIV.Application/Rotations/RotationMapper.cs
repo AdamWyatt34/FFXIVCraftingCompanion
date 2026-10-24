@@ -1,6 +1,4 @@
 using FFXIV.Application.Rotations.DTOs;
-using FFXIV.Domain.CraftingEngine;
-using FFXIV.Domain.CraftingEngine.Actions;
 using FFXIV.Domain.Entities;
 
 namespace FFXIV.Application.Rotations;
@@ -34,10 +32,8 @@ public static class RotationMapper
     public static RotationDetailDto ToDetailDto(SharedRotation entity, string? authorName = null)
     {
         var actionNames = entity.ActionIds
-            .Select(id => CraftingActionRegistry.GetById(id)?.Name ?? $"Unknown({id})")
+            .Select(id => RotationActionCatalog.GetById(id)?.Name ?? $"Unknown({id})")
             .ToList();
-
-        var macros = MacroExporter.ExportToMacro(entity.ActionIds);
 
         return new RotationDetailDto(
             Id: entity.Id,
@@ -62,6 +58,6 @@ public static class RotationMapper
             Control: entity.Control,
             CP: entity.CP,
             CrafterLevel: entity.CrafterLevel,
-            Macros: macros);
+            Macros: []);
     }
 }

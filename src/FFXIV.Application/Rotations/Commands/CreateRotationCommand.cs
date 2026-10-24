@@ -1,8 +1,4 @@
-using FFXIV.Application.CraftingEngine;
 using FFXIV.Application.Rotations.DTOs;
-using FFXIV.Domain.CraftingEngine;
-using FFXIV.Domain.CraftingEngine.Actions;
-using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
 using FFXIV.Domain.Repositories;
@@ -19,19 +15,13 @@ public sealed class CreateRotationCommandHandler
 {
     private readonly ISharedRotationRepository _rotationRepo;
     private readonly IRecipeRepository _recipeRepo;
-    private readonly IRecipeParameterFactory _recipeParamFactory;
-    private readonly ICraftingSimulator _simulator;
 
     public CreateRotationCommandHandler(
         ISharedRotationRepository rotationRepo,
-        IRecipeRepository recipeRepo,
-        IRecipeParameterFactory recipeParamFactory,
-        ICraftingSimulator simulator)
+        IRecipeRepository recipeRepo)
     {
         _rotationRepo = rotationRepo;
         _recipeRepo = recipeRepo;
-        _recipeParamFactory = recipeParamFactory;
-        _simulator = simulator;
     }
 
     public async Task<RotationDetailDto?> Handle(
@@ -55,7 +45,7 @@ public sealed class CreateRotationCommandHandler
 
         foreach (var actionId in request.ActionIds)
         {
-            if (CraftingActionRegistry.GetById(actionId) is null)
+            if (RotationActionCatalog.GetById(actionId) is null)
                 return null;
         }
 
@@ -64,21 +54,10 @@ public sealed class CreateRotationCommandHandler
             request.Stats.Craftsmanship < 0 || request.Stats.Control < 0 || request.Stats.CP < 0)
             return null;
 
-        // Auto-simulate to compute metrics
-        var recipeParams = await _recipeParamFactory.CreateAsync(request.RecipeId, cancellationToken);
-        if (recipeParams is null)
+        if (request.Metrics is null || request.Metrics.TotalSteps < 1 ||
+            request.Metrics.TotalSteps > request.ActionIds.Count ||
+            request.Metrics.QualityPercent is < 0 or > 100 || request.Metrics.HQPercent is < 0 or > 100)
             return null;
-
-        var crafterStats = new CrafterStats
-        {
-            Level = request.Stats.Level,
-            Craftsmanship = request.Stats.Craftsmanship,
-            Control = request.Stats.Control,
-            CP = request.Stats.CP,
-            IsSpecialist = request.Stats.IsSpecialist
-        };
-
-        var simulation = _simulator.Simulate(recipeParams, crafterStats, request.ActionIds);
 
         // Parse source
         var source = Enum.TryParse<RotationSource>(request.Source, true, out var s)
@@ -97,10 +76,10 @@ public sealed class CreateRotationCommandHandler
             Control = request.Stats.Control,
             CP = request.Stats.CP,
             CrafterLevel = request.Stats.Level,
-            QualityPercent = (decimal)simulation.FinalState.QualityPercent,
-            HQPercent = (int)simulation.FinalState.HQPercent,
-            TotalSteps = simulation.Steps.Count,
-            CraftCompleted = simulation.Success,
+            QualityPercent = request.Metrics.QualityPercent,
+            HQPercent = request.Metrics.HQPercent,
+            TotalSteps = request.Metrics.TotalSteps,
+            CraftCompleted = request.Metrics.CraftCompleted,
             Source = source,
             Algorithm = request.Algorithm?.Trim(),
             Upvotes = 0,

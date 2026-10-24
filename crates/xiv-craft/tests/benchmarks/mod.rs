@@ -1,4 +1,4 @@
-//! Loader for the hand-maintained `tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json`,
+//! Loader for the hand-maintained `tests/benchmarks/solver-benchmarks.json`,
 //! shared by the benchmark tests and the bench example (which includes this file by path).
 
 #![allow(dead_code)]
@@ -112,8 +112,8 @@ impl Benchmark {
 }
 
 pub fn load() -> Vec<Benchmark> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/FFXIV.Tests/CraftingEngine/TestData/solver-benchmarks.json");
+    let path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/benchmarks/solver-benchmarks.json");
     let json =
         std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
     let dataset: Dataset = serde_json::from_str(&json).expect("benchmark json");

@@ -1,5 +1,5 @@
-//! The FFXIV.Api DTO shapes (`CraftingDtos.cs`, `SolverDtos.cs`) and the mappings in
-//! `CraftingMapper` / `SolverMapper`, so the frontend reads the same JSON from either engine.
+//! The JSON shapes `frontend/src/types/simulator.ts` and `solver.ts` declare, and the mappings
+//! between them and the engine's types.
 //! Field names follow System.Text.Json's camel case, which keeps an initial acronym upper case
 //! (`maxCP`, `finalHQPercent`, `canBeHQ`); those are renamed explicitly.
 
@@ -143,8 +143,8 @@ pub struct ActiveBuffDto {
     pub stacks: Option<i32>,
 }
 
-/// `CraftingStateDto`, buffs as the named list `CraftingMapper.ToDto` builds and the hidden
-/// fields it carries for the step-by-step round trip.
+/// The crafting state as the frontend holds it: buffs as a named list, plus the hidden fields
+/// that let a state round-trip through step-by-step execution.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CraftingStateDto {
@@ -209,7 +209,7 @@ pub fn condition_name(condition: Condition) -> &'static str {
     }
 }
 
-/// `Enum.TryParse(ignoreCase: true)`; an unknown name leaves the C# `out` at its default.
+/// Case-insensitive; an unknown name yields the default condition.
 pub fn parse_condition(name: &str) -> Condition {
     Condition::ALL
         .iter()
@@ -239,7 +239,6 @@ pub fn parse_status(name: &str) -> CraftStatus {
 }
 
 impl CraftingStateDto {
-    /// `CraftingMapper.ToDto(CraftingState)`.
     pub fn from_state(state: &CraftingState) -> CraftingStateDto {
         let mut active_buffs = Vec::new();
         let mut turns = |name: &str, remaining: i32| {
@@ -292,8 +291,7 @@ impl CraftingStateDto {
         }
     }
 
-    /// `CraftingMapper.ToDomain(CraftingStateDto)`: the first buff of each name wins, as
-    /// `FirstOrDefault` does there.
+    /// The first buff of each name wins.
     pub fn to_state(&self) -> CraftingState {
         let turns = |name: &str| {
             self.active_buffs
@@ -373,7 +371,6 @@ pub fn category_name(category: ActionCategory) -> &'static str {
 }
 
 impl StepResultDto {
-    /// `CraftingMapper.ToStepDto`.
     pub fn from_step(step: &StepResult) -> StepResultDto {
         StepResultDto {
             step_number: step.step_number,
@@ -427,7 +424,6 @@ pub struct SimulationResultDto {
 }
 
 impl SimulationResultDto {
-    /// `CraftingMapper.ToDto(SimulationResult, ...)` / `SolverMapper.ToSimulationDto`.
     pub fn from_simulation(result: &SimulationResult, macros: Vec<String>) -> SimulationResultDto {
         SimulationResultDto {
             success: result.success(),
@@ -442,7 +438,7 @@ impl SimulationResultDto {
     }
 }
 
-/// `SimulationOptionsInput`; absent fields take the C# defaults.
+/// Absent fields take `SimulationOptions::default()`.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SimulationOptionsDto {
@@ -453,7 +449,7 @@ pub struct SimulationOptionsDto {
 }
 
 impl SimulationOptionsDto {
-    /// `CraftingMapper.ToDomain(SimulationOptionsInput?)`; an unknown condition name is ignored.
+    /// An unknown condition name is ignored.
     pub fn to_options(&self) -> SimulationOptions {
         let defaults = SimulationOptions::default();
         let force_condition = self
@@ -498,7 +494,7 @@ pub struct ActionInfoDto {
 }
 
 impl ActionInfoDto {
-    /// `CraftingMapper.ToDto(ICraftingAction)`: costs read on the mapper's `DefaultState`.
+    /// Costs are read on a fresh default state.
     pub fn from_action(action: Action) -> ActionInfoDto {
         let default_state = CraftingState {
             max_progress: 1000,
@@ -540,8 +536,7 @@ pub struct ActionAvailabilityDto {
 }
 
 impl ActionAvailabilityDto {
-    /// `CraftingMapper.ToDto(ActionAvailability)`; the name is the in-game one, as in
-    /// `CraftingSimulator.GetAvailableActions`.
+    /// The name is the in-game one.
     pub fn from_availability(availability: &ActionAvailability) -> ActionAvailabilityDto {
         ActionAvailabilityDto {
             action_id: availability.action.id(),
@@ -558,7 +553,7 @@ impl ActionAvailabilityDto {
 
 // ── Macros ──
 
-/// `MacroOptionsInput`; absent fields take the C# defaults.
+/// Absent fields take `MacroOptions::default()`.
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MacroOptionsDto {

@@ -1,4 +1,4 @@
-//! Solver benchmark over the ten recipes in `solver-benchmarks.json`:
+//! Solver benchmark over the ten recipes in `tests/benchmarks/solver-benchmarks.json`:
 //!
 //! ```text
 //! cargo run --release --example bench [budget_ms] [seed] [id_filter]

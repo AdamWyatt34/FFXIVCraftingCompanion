@@ -1,10 +1,9 @@
 using FFXIV.Application.Journey;
 using FFXIV.Application.Journey.Queries;
 using FFXIV.Application.Recipes;
-using FFXIV.Domain.CraftingEngine.Models;
+using FFXIV.Domain.Models;
 using FFXIV.Domain.Entities;
 using FFXIV.Domain.Enums;
-using FFXIV.Domain.Models;
 using FFXIV.Domain.Repositories;
 using FFXIV.Tests.Recipes;
 using Microsoft.Extensions.Logging;

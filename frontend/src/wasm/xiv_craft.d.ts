@@ -50,7 +50,7 @@ export class SolverSession {
     finish(): SolverResult;
     /**
      * `max_nodes` caps the tree (about 130 bytes per node in practice). `early_termination`
-     * is the iterations-without-improvement stop; omit it for the C# default of 5000.
+     * is the iterations-without-improvement stop; omit it for the default of 5000.
      */
     constructor(max_nodes: number, early_termination?: number | null);
     progress(): SearchProgress;

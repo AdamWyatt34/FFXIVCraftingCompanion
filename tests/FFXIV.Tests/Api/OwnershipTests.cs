@@ -88,6 +88,7 @@ public sealed class OwnershipTests(ApiFactory factory) : IClassFixture<ApiFactor
             recipeId = ApiFactory.FixtureRecipeId,
             actionIds = new[] { 100002, 100001 }, // Basic Touch, Basic Synthesis
             stats = new { level = 90, craftsmanship = 3000, control = 3000, cp = 500 },
+            metrics = new { qualityPercent = 50m, hqPercent = 15, totalSteps = 2, craftCompleted = true },
             name = "Lumber in two",
         });
         created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
