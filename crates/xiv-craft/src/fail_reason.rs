@@ -21,6 +21,8 @@ pub enum FailReason {
     InnovationActive,
     TrainedPerfectionOnce,
     CarefulObservationLimit,
+    RequiresExpedience,
+    HastyTouchUnderExpedience,
     UnknownAction,
     SuccessRoll,
 }
@@ -58,6 +60,12 @@ impl fmt::Display for FailReason {
             }
             FailReason::CarefulObservationLimit => {
                 f.write_str("Careful Observation can only be used 3 times per craft")
+            }
+            FailReason::RequiresExpedience => {
+                f.write_str("Requires Expedience (a successful Hasty Touch)")
+            }
+            FailReason::HastyTouchUnderExpedience => {
+                f.write_str("Hasty Touch becomes Daring Touch under Expedience")
             }
             FailReason::UnknownAction => f.write_str("Unknown action"),
             FailReason::SuccessRoll => f.write_str("Action failed (success rate roll)"),

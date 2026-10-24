@@ -168,7 +168,7 @@ public sealed class GreedySolver : IRotationSolver
     {
         int baseProgress = FormulaCalculator.CalculateBaseProgress(
             stats.Craftsmanship, recipe.ProgressDivider,
-            recipe.ProgressModifier, stats.Level, recipe.RecipeLevel);
+            recipe.ProgressModifier, stats.Level, recipe.ClassJobLevel);
 
         // Groundwork (300 potency) + Veneration (+50%) = 450 effective potency
         return (int)Math.Floor(baseProgress * 450.0 / 100.0);
@@ -290,7 +290,6 @@ public sealed class GreedySolver : IRotationSolver
             // Progress actions in quality phase: penalize
             _ when availability.Category == ActionCategory.Progress => _config.ProgressInQualityPhaseScore,
 
-            // Everything else (InnerQuiet no-op, Observe, etc.)
             _ => _config.QualityFallbackScore,
         } - durabilityPenalty;
     }

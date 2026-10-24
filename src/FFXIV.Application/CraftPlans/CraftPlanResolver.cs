@@ -47,23 +47,21 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
             CraftType = t.Recipe.CraftType.ToString()
         }).ToList();
 
-        // 4. Aggregate raw materials
+        // Raw materials and crystals from one plan-wide demand map: an intermediate two plan
+        // items share is crafted for their combined need, and a contribution is what its item adds.
+        var intermediateDemand = new Dictionary<int, int>();
         var rawMaterials = new Dictionary<int, AggregatedMaterial>();
-        foreach (var (input, recipe, tree) in trees)
+        var crystals = new Dictionary<int, AggregatedMaterial>();
+        foreach (var (_, recipe, tree) in trees)
         {
+            var rawDemand = RecipeTreeResolver.AddRootDemand(tree.RootItem, intermediateDemand);
             foreach (var item in tree.ShoppingList)
             {
-                AggregateMaterial(rawMaterials, item, recipe.RecipeId, tree.RootItem.ItemName);
+                AggregateMaterial(rawMaterials, item, rawDemand.GetValueOrDefault(item.ItemId), recipe.RecipeId, tree.RootItem.ItemName);
             }
-        }
-
-        // 5. Aggregate crystals
-        var crystals = new Dictionary<int, AggregatedMaterial>();
-        foreach (var (input, recipe, tree) in trees)
-        {
             foreach (var item in tree.CrystalRequirements)
             {
-                AggregateMaterial(crystals, item, recipe.RecipeId, tree.RootItem.ItemName);
+                AggregateMaterial(crystals, item, rawDemand.GetValueOrDefault(item.ItemId), recipe.RecipeId, tree.RootItem.ItemName);
             }
         }
 
@@ -75,27 +73,22 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
             CollectIntermediateRecipes(tree.RootItem, intermediateRecipes, intermediateDepths, isRoot: true);
         }
 
-        // 7. Aggregate intermediate craft quantities
         var intermediates = new Dictionary<int, AggregatedIntermediateCraft>();
-        foreach (var (input, recipe, tree) in trees)
+        foreach (var (_, _, tree) in trees)
         {
             foreach (var item in tree.IntermediateCrafts)
             {
                 if (!intermediateRecipes.TryGetValue(item.ItemId, out var recipeSummary))
                     continue;
 
-                if (intermediates.TryGetValue(item.ItemId, out var existing))
-                {
-                    existing.TotalQuantity += item.TotalQuantity;
-                }
-                else
+                if (!intermediates.ContainsKey(item.ItemId))
                 {
                     intermediates[item.ItemId] = new AggregatedIntermediateCraft
                     {
                         ItemId = item.ItemId,
                         ItemName = item.ItemName,
                         IconUrl = item.IconUrl,
-                        TotalQuantity = item.TotalQuantity,
+                        TotalQuantity = intermediateDemand.GetValueOrDefault(item.ItemId),
                         RecipeId = recipeSummary.RecipeId,
                         CraftType = recipeSummary.CraftType,
                         RecipeLevel = recipeSummary.RecipeLevel,
@@ -152,17 +145,18 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
     private static void AggregateMaterial(
         Dictionary<int, AggregatedMaterial> lookup,
         ShoppingListItem item,
+        int quantity,
         int recipeId,
         string recipeItemName)
     {
         if (lookup.TryGetValue(item.ItemId, out var existing))
         {
-            existing.TotalQuantity += item.TotalQuantity;
+            existing.TotalQuantity += quantity;
             existing.Contributions.Add(new MaterialContribution
             {
                 RecipeId = recipeId,
                 ItemName = recipeItemName,
-                Quantity = item.TotalQuantity
+                Quantity = quantity
             });
         }
         else
@@ -172,7 +166,7 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
                 ItemId = item.ItemId,
                 ItemName = item.ItemName,
                 IconUrl = item.IconUrl,
-                TotalQuantity = item.TotalQuantity,
+                TotalQuantity = quantity,
                 PrimarySourceType = item.SourceType,
                 Sources = item.Sources,
                 SortCategory = item.SortCategory,
@@ -182,7 +176,7 @@ public sealed class CraftPlanResolver : ICraftPlanResolver
                     {
                         RecipeId = recipeId,
                         ItemName = recipeItemName,
-                        Quantity = item.TotalQuantity
+                        Quantity = quantity
                     }
                 ]
             };

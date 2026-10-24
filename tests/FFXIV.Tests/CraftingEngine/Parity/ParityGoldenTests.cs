@@ -65,30 +65,40 @@ public class ParityGoldenTests
     private static IEnumerable<HqGoldenCase> HqCases()
     {
         HqGoldenCase Case(string name, int maxQuality, int factor,
-            (int item, int qty, bool hq)[] ingredients, (int item, int hqQty)[] inputs)
+            (int item, int qty, bool hq, int ilvl)[] ingredients, (int item, int hqQty)[] inputs)
         {
-            var ingredientInfos = ingredients.Select(i => new RecipeIngredientInfo(i.item, i.qty, i.hq)).ToList();
+            var ingredientInfos = ingredients.Select(i => new RecipeIngredientInfo(i.item, i.qty, i.hq, i.ilvl)).ToList();
             var hqInputs = inputs.Select(i => new HQIngredientInput(i.item, i.hqQty)).ToList();
             var expected = HQCalculator.CalculateStartingQuality(maxQuality, factor, ingredientInfos, hqInputs);
             return new HqGoldenCase(name, maxQuality, factor,
-                ingredients.Select(i => new HqGoldenIngredient(i.item, i.qty, i.hq)).ToList(),
+                ingredients.Select(i => new HqGoldenIngredient(i.item, i.qty, i.hq, i.ilvl)).ToList(),
                 inputs.Select(i => new HqGoldenInput(i.item, i.hqQty)).ToList(),
                 expected);
         }
 
-        (int, int, bool)[] standard = [(1, 2, true), (2, 1, true), (3, 3, false)];
+        (int, int, bool, int)[] standard = [(1, 2, true, 560), (2, 1, true, 560), (3, 3, false, 560)];
 
         yield return Case("all-hq", 12000, 75, standard, [(1, 2), (2, 1)]);
         yield return Case("half-hq", 12000, 75, standard, [(1, 1)]);
         yield return Case("no-hq-inputs", 12000, 75, standard, []);
         yield return Case("zero-factor", 12000, 0, standard, [(1, 2)]);
         yield return Case("zero-max-quality", 0, 75, standard, [(1, 2)]);
-        yield return Case("no-hqable-ingredients", 12000, 75, [(3, 3, false)], [(3, 3)]);
+        yield return Case("no-hqable-ingredients", 12000, 75, [(3, 3, false, 560)], [(3, 3)]);
         yield return Case("hq-quantity-clamped", 12000, 75, standard, [(1, 99), (2, 99)]);
         yield return Case("hq-item-not-in-recipe", 12000, 75, standard, [(42, 5)]);
         yield return Case("duplicate-hq-input-first-wins", 12000, 75, standard, [(1, 1), (1, 2)]);
-        yield return Case("odd-rounding", 7777, 33, [(1, 3, true), (2, 4, true)], [(1, 2), (2, 1)]);
-        yield return Case("ingredient-hq-flag-false-with-input", 5000, 50, [(1, 1, true), (2, 1, false)], [(1, 1), (2, 1)]);
+        yield return Case("odd-rounding", 7777, 33, [(1, 3, true, 560), (2, 4, true, 560)], [(1, 2), (2, 1)]);
+        yield return Case("ingredient-hq-flag-false-with-input", 5000, 50, [(1, 1, true, 560), (2, 1, false, 560)], [(1, 1), (2, 1)]);
+
+        // Recipe 35423's materials: HQ-able item levels 610/610/620, so the weighting differs from a count.
+        (int, int, bool, int)[] alembic =
+            [(15, 5, false, 1), (17, 5, false, 1), (37830, 2, true, 610), (37833, 3, true, 610), (38932, 3, true, 620), (39595, 3, false, 620)];
+        yield return Case("item-level-alkahest", 12900, 50, alembic, [(38932, 3)]);
+        yield return Case("item-level-quartz", 12900, 50, alembic, [(37830, 2)]);
+        yield return Case("item-level-all", 12900, 50, alembic, [(38932, 3), (37833, 3), (37830, 2)]);
+        yield return Case("item-level-partial-quantities", 12900, 50, alembic, [(38932, 1), (37833, 2)]);
+        yield return Case("item-level-zero-among-weighted", 10000, 50, [(1, 2, true, 700), (2, 2, true, 0)], [(2, 2)]);
+        yield return Case("legacy-no-item-levels", 12900, 50, [.. alembic.Select(i => (i.Item1, i.Item2, i.Item3, 0))], [(38932, 3)]);
     }
 
     private static IEnumerable<MacroGoldenCase> MacroCases()
@@ -113,6 +123,9 @@ public class ParityGoldenTests
         yield return Case("empty", [], new MacroOptions());
         yield return Case("unknown-ids-skipped", [Id("BasicSynthesis"), 999999, Id("BasicTouch")], new MacroOptions());
         yield return Case("only-unknown", [999999], new MacroOptions());
+        yield return Case("dawntrail-touches", [Id("BasicTouch"), Id("RefinedTouch"), Id("PreciseTouch"), Id("HastyTouch"), Id("DaringTouch")],
+            new MacroOptions());
+        yield return Case("legacy-actions", [Id("InnerQuiet"), Id("FocusedSynthesis"), Id("Observe"), Id("FocusedTouch")], new MacroOptions());
     }
 
     private static void AssertOrWrite(string fileName, string text)

@@ -115,7 +115,11 @@ export function expandMaterialTree(
   const tree = build(graph.tree, quantity, 0);
 
   const agg: Aggregation = { shopping: new Map(), intermediates: [], maxDepth: 0 };
-  aggregate(tree, agg);
+  collect(tree, agg);
+  const intermediateDemand = new Map<number, number>();
+  const rawDemand = addRootDemand(tree, intermediateDemand);
+  for (const item of agg.shopping.values()) item.totalQuantity = rawDemand.get(item.itemId) ?? 0;
+  for (const { item } of agg.intermediates) item.totalQuantity = intermediateDemand.get(item.itemId) ?? 0;
 
   const crystalList: ShoppingListItemDto[] = [];
   const shoppingList: ShoppingListItemDto[] = [];
@@ -157,20 +161,18 @@ export function expandMaterialTree(
   };
 }
 
-// RecipeTreeResolver.AttachSourcesAndAggregate: pre-order, descending only into crafted nodes.
-function aggregate(node: MaterialTreeNodeDto, agg: Aggregation): void {
+// RecipeTreeResolver.AttachSourcesAndCollect: pre-order, descending only into crafted nodes. Each
+// item is listed at its first occurrence; addRootDemand supplies the totals.
+function collect(node: MaterialTreeNodeDto, agg: Aggregation): void {
   if (node.depth > agg.maxDepth) agg.maxDepth = node.depth;
 
   if (node.isRawMaterial) {
-    const existing = agg.shopping.get(node.itemId);
-    if (existing) {
-      existing.totalQuantity += node.quantity;
-    } else {
+    if (!agg.shopping.has(node.itemId)) {
       agg.shopping.set(node.itemId, {
         itemId: node.itemId,
         itemName: node.itemName,
         iconUrl: node.iconUrl,
-        totalQuantity: node.quantity,
+        totalQuantity: 0,
         primarySource: node.primarySource,
         sources: node.sources,
         category: sortCategory(node.itemId, node.primarySource),
@@ -181,29 +183,54 @@ function aggregate(node: MaterialTreeNodeDto, agg: Aggregation): void {
     return;
   }
 
-  if (node.depth > 0) {
-    const existing = agg.intermediates.find((x) => x.item.itemId === node.itemId);
-    if (existing) {
-      existing.item.totalQuantity += node.quantity;
-    } else {
-      agg.intermediates.push({
-        depth: node.depth,
-        recipe: node.recipe!,
-        item: {
-          itemId: node.itemId,
-          itemName: node.itemName,
-          iconUrl: node.iconUrl,
-          totalQuantity: node.quantity,
-          primarySource: "Crafted",
-          sources: node.sources,
-          category: "Crafted",
-          alsoAvailableFromVendor: false,
-        },
-      });
-    }
+  if (node.depth > 0 && !agg.intermediates.some((x) => x.item.itemId === node.itemId)) {
+    agg.intermediates.push({
+      depth: node.depth,
+      recipe: node.recipe!,
+      item: {
+        itemId: node.itemId,
+        itemName: node.itemName,
+        iconUrl: node.iconUrl,
+        totalQuantity: 0,
+        primarySource: "Crafted",
+        sources: node.sources,
+        category: "Crafted",
+        alsoAvailableFromVendor: false,
+      },
+    });
   }
 
-  for (const child of node.children) aggregate(child, agg);
+  for (const child of node.children) collect(child, agg);
+}
+
+// RecipeTreeResolver.AddRootDemand: the root's raw demand by item id. Intermediate demand accumulates
+// in the shared map, so spare yield carries over across occurrences and plan roots.
+export function addRootDemand(root: MaterialTreeNodeDto, intermediateDemand: Map<number, number>): Map<number, number> {
+  const rawDemand = new Map<number, number>();
+  if (root.isRawMaterial) {
+    rawDemand.set(root.itemId, root.quantity);
+    return rawDemand;
+  }
+
+  const addDemand = (node: MaterialTreeNodeDto, demand: number): void => {
+    if (node.isRawMaterial) {
+      rawDemand.set(node.itemId, (rawDemand.get(node.itemId) ?? 0) + demand);
+      return;
+    }
+    const yieldPerCraft = node.recipe!.yield;
+    const before = intermediateDemand.get(node.itemId) ?? 0;
+    intermediateDemand.set(node.itemId, before + demand);
+    const addedCrafts = craftsNeeded(before + demand, yieldPerCraft) - craftsNeeded(before, yieldPerCraft);
+    // Child quantities are per occurrence; dividing by its crafts recovers the per-craft amount.
+    const occurrenceCrafts = craftsNeeded(node.quantity, yieldPerCraft);
+    for (const child of node.children) {
+      const perCraft = occurrenceCrafts === 0 ? 0 : Math.floor(child.quantity / occurrenceCrafts);
+      addDemand(child, perCraft * addedCrafts);
+    }
+  };
+
+  for (const child of root.children) addDemand(child, child.quantity);
+  return rawDemand;
 }
 
 export interface DirectIngredientSummary {

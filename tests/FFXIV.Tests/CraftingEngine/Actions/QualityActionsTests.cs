@@ -1,3 +1,5 @@
+using FFXIV.Domain.CraftingEngine;
+using FFXIV.Domain.CraftingEngine.Actions.Buffs;
 using FFXIV.Domain.CraftingEngine.Actions.Quality;
 using FFXIV.Domain.CraftingEngine.Models;
 using FluentAssertions;
@@ -8,6 +10,24 @@ public class QualityActionsTests
 {
     private readonly CrafterStats _stats = CraftingTestHelpers.CreateDefaultStats();
     private readonly RecipeParameters _recipe = CraftingTestHelpers.CreateDefaultRecipe();
+    private readonly CraftingSimulator _simulator = new();
+
+    // Expected numbers on this recipe come from Raphael's simulator (base quality 226 at Lv100 4000 control),
+    // never from this engine's output.
+    private static readonly RecipeParameters Rlvl690 = new()
+    {
+        RecipeLevel = 690,
+        ClassJobLevel = 100,
+        Difficulty = 6600,
+        Quality = 12000,
+        Durability = 80,
+        ProgressDivider = 170,
+        ProgressModifier = 90,
+        QualityDivider = 150,
+        QualityModifier = 75,
+    };
+
+    private static readonly CrafterStats Lv100 = new() { Level = 100, Craftsmanship = 4000, Control = 4000, CP = 900 };
 
     // --- Basic Touch ---
 
@@ -70,14 +90,25 @@ public class QualityActionsTests
     }
 
     [Fact]
-    public void StandardTouch_Execute_SetsComboForAdvancedTouch()
+    public void StandardTouch_AfterBasicTouch_SetsComboForAdvancedTouch()
+    {
+        var action = new StandardTouch();
+        var state = CraftingTestHelpers.CreateDefaultState() with { ComboAction = BasicTouch.ActionId };
+
+        var result = action.Execute(state, _stats, _recipe);
+
+        result.ComboAction.Should().Be(StandardTouch.ActionId);
+    }
+
+    [Fact]
+    public void StandardTouch_WithoutCombo_DoesNotSetComboForAdvancedTouch()
     {
         var action = new StandardTouch();
         var state = CraftingTestHelpers.CreateDefaultState();
 
         var result = action.Execute(state, _stats, _recipe);
 
-        result.ComboAction.Should().Be(StandardTouch.ActionId);
+        result.ComboAction.Should().Be(0);
     }
 
     // --- Advanced Touch Combo ---
@@ -130,6 +161,17 @@ public class QualityActionsTests
         // Total combo CP: 18 + 18 + 18 = 54 instead of 18 + 32 + 46 = 96
     }
 
+    [Fact]
+    public void ComboChain_StandardTouchWithoutBasicTouch_AdvancedTouchCostsFull46CP()
+    {
+        var standard = new StandardTouch();
+        var advanced = new AdvancedTouch();
+
+        var afterStandard = standard.Execute(CraftingTestHelpers.CreateDefaultState(), _stats, _recipe);
+
+        advanced.GetCPCost(afterStandard).Should().Be(46);
+    }
+
     // --- Hasty Touch ---
 
     [Fact]
@@ -150,6 +192,201 @@ public class QualityActionsTests
         action.GetCPCost(state).Should().Be(0);
     }
 
+    [Theory]
+    [InlineData(95, false)]
+    [InlineData(96, true)]
+    [InlineData(100, true)]
+    public void HastyTouch_GrantsExpedienceFromLevel96(int level, bool expected)
+    {
+        var result = Simulate(Rlvl690, Lv100 with { Level = level }, "HastyTouch");
+
+        result.FinalState.ExpedienceActive.Should().Be(expected);
+    }
+
+    // Teamcraft simulation.ts runAction: execute, which grants Expedience, runs only on a successful roll.
+    [Fact]
+    public void HastyTouch_FailedRoll_GrantsNoExpedience()
+    {
+        var state = _simulator.CreateInitialState(Rlvl690, Lv100);
+
+        new HastyTouch().Execute(state, Lv100, Rlvl690, forceSuccess: false).ExpedienceActive.Should().BeFalse();
+    }
+
+    // Raphael raphael-sim/src/actions.rs:1120-1123: the refused Hasty Touch leaves the state, Expedience included,
+    // so the Daring Touch after it gains what it gains straight after the first Hasty Touch.
+    [Fact]
+    public void HastyTouch_UnderExpedience_IsBlocked()
+    {
+        var result = Simulate(Rlvl690, Lv100, "HastyTouch", "HastyTouch", "DaringTouch");
+
+        result.Steps[1].ActionSucceeded.Should().BeFalse();
+        result.Steps[1].FailReason.Should().Be("Hasty Touch becomes Daring Touch under Expedience");
+        result.Steps[2].ActionSucceeded.Should().BeTrue();
+        result.Steps.Select(s => s.QualityDelta).Should().Equal(226, 0, 372);
+        result.FinalState.ExpedienceActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public void HastyTouch_BelowLevel96_CanRepeat()
+    {
+        var result = Simulate(Rlvl690, Lv100 with { Level = 95 }, "HastyTouch", "HastyTouch");
+
+        result.Steps.Should().OnlyContain(s => s.ActionSucceeded);
+    }
+
+    // Raphael raphael-sim/src/actions.rs:392-438, replayed through its simulator; Teamcraft quality/precise-touch.ts.
+    [Theory]
+    [InlineData(CraftCondition.Good, 508)]
+    [InlineData(CraftCondition.Excellent, 1356)]
+    public void PreciseTouch_OnGoodOrExcellent_AddsQualityAndTwoInnerQuiet(CraftCondition condition, int expectedQuality)
+    {
+        var state = _simulator.CreateInitialState(Rlvl690, Lv100) with { Condition = condition };
+
+        var step = _simulator.ExecuteAction(state, PreciseTouch.ActionId, Lv100, Rlvl690);
+
+        step.QualityDelta.Should().Be(expectedQuality);
+        step.CPDelta.Should().Be(-18);
+        step.DurabilityDelta.Should().Be(-10);
+        step.StateAfter.InnerQuietStacks.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(CraftCondition.Normal)]
+    [InlineData(CraftCondition.Poor)]
+    [InlineData(CraftCondition.Centered)]
+    public void PreciseTouch_WithoutGoodOrHeartAndSoul_IsBlocked(CraftCondition condition)
+    {
+        var state = _simulator.CreateInitialState(Rlvl690, Lv100) with { Condition = condition };
+
+        new PreciseTouch().GetFailReason(state, Lv100, Rlvl690).Should().Contain("Good or Excellent");
+    }
+
+    // Raphael raphael-sim/src/actions.rs:392-438 transform: Heart and Soul is spent only when the condition did not
+    // already allow the action.
+    [Theory]
+    [InlineData(CraftCondition.Normal, 339, false)]
+    [InlineData(CraftCondition.Good, 508, true)]
+    public void PreciseTouch_UnderHeartAndSoul(CraftCondition condition, int expectedQuality, bool heartAndSoulKept)
+    {
+        var specialist = Lv100 with { IsSpecialist = true };
+        var state = _simulator.CreateInitialState(Rlvl690, specialist) with
+        {
+            Condition = condition,
+            HeartAndSoulActive = true,
+            HeartAndSoulUsed = true,
+        };
+
+        var step = _simulator.ExecuteAction(state, PreciseTouch.ActionId, specialist, Rlvl690);
+
+        step.QualityDelta.Should().Be(expectedQuality);
+        step.StateAfter.HeartAndSoulActive.Should().Be(heartAndSoulKept);
+    }
+
+    [Fact]
+    public void PreciseTouch_RequiresLevel53()
+    {
+        var state = _simulator.CreateInitialState(Rlvl690, Lv100) with { Condition = CraftCondition.Good };
+
+        new PreciseTouch().GetFailReason(state, Lv100 with { Level = 52 }, Rlvl690).Should().Be("Requires level 53");
+    }
+
+    // Raphael raphael-sim/src/actions.rs:923-966, replayed through its simulator; Teamcraft quality/refined-touch.ts.
+    [Fact]
+    public void RefinedTouch_AfterBasicTouch_GainsAnExtraInnerQuiet()
+    {
+        var result = Simulate(Rlvl690, Lv100, "BasicTouch", "RefinedTouch");
+
+        result.Steps.Select(s => s.QualityDelta).Should().Equal(226, 248);
+        result.Steps.Select(s => -s.CPDelta).Should().Equal(18, 24);
+        result.FinalState.InnerQuietStacks.Should().Be(3);
+    }
+
+    // Teamcraft quality/refined-touch.ts: usable outside the combo, which only adds the extra stack (Raphael's solver
+    // forbids that use). 310 is from Raphael's simulator; 271 is its quality formula at Inner Quiet 2.
+    [Fact]
+    public void RefinedTouch_AfterStandardTouch_GainsOneInnerQuiet()
+    {
+        var result = Simulate(Rlvl690, Lv100, "BasicTouch", "StandardTouch", "RefinedTouch");
+
+        result.Steps.Should().OnlyContain(s => s.ActionSucceeded);
+        result.Steps.Select(s => s.QualityDelta).Should().Equal(226, 310, 271);
+        result.FinalState.InnerQuietStacks.Should().Be(3);
+    }
+
+    [Fact]
+    public void RefinedTouch_RequiresLevel92()
+    {
+        var state = _simulator.CreateInitialState(Rlvl690, Lv100) with { ComboAction = BasicTouch.ActionId };
+
+        new RefinedTouch().GetFailReason(state, Lv100 with { Level = 91 }, Rlvl690).Should().Be("Requires level 92");
+    }
+
+    // Raphael raphael-sim/src/actions.rs:1142-1177, replayed through its simulator; Teamcraft quality/daring-touch.ts.
+    [Theory]
+    [InlineData(96)]
+    [InlineData(100)]
+    public void DaringTouch_AfterHastyTouch_AddsQuality(int level)
+    {
+        var result = Simulate(Rlvl690, Lv100 with { Level = level }, "HastyTouch", "DaringTouch");
+
+        result.Steps.Should().OnlyContain(s => s.ActionSucceeded);
+        result.Steps.Select(s => s.QualityDelta).Should().Equal(226, 372);
+        result.Steps.Select(s => -s.CPDelta).Should().Equal(0, 0);
+        result.FinalState.Durability.Should().Be(60);
+        result.FinalState.InnerQuietStacks.Should().Be(2);
+        result.FinalState.ExpedienceActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DaringTouch_BelowLevel96_IsBlocked()
+    {
+        var stats = Lv100 with { Level = 95 };
+
+        var result = Simulate(Rlvl690, stats, "HastyTouch", "DaringTouch");
+
+        result.Steps[1].ActionSucceeded.Should().BeFalse();
+        result.Steps[1].FailReason.Should().Contain("Expedience");
+        var underExpedience = _simulator.CreateInitialState(Rlvl690, stats) with { ExpedienceActive = true };
+        new DaringTouch().GetFailReason(underExpedience, stats, Rlvl690).Should().Be("Requires level 96");
+    }
+
+    // Raphael raphael-sim/src/effects.rs tick_down: any step ends Expedience, whatever the action.
+    [Fact]
+    public void DaringTouch_AfterAnInterveningStep_IsBlocked()
+    {
+        var result = Simulate(Rlvl690, Lv100, "HastyTouch", "BasicTouch", "DaringTouch");
+
+        result.Steps[2].ActionSucceeded.Should().BeFalse();
+        result.Steps[2].FailReason.Should().Contain("Expedience");
+    }
+
+    // Raphael's simulator (no tick without a step; Quick Innovation's Innovation gives 559) and Teamcraft
+    // heart-and-soul.ts skipsBuffTicks.
+    [Theory]
+    [InlineData("HeartAndSoul", 372)]
+    [InlineData("QuickInnovation", 559)]
+    public void Expedience_SurvivesStepFreeAbilities(string stepFree, int expectedQuality)
+    {
+        var specialist = Lv100 with { IsSpecialist = true };
+
+        var result = Simulate(Rlvl690, specialist, "HastyTouch", stepFree, "DaringTouch");
+
+        result.Steps.Should().OnlyContain(s => s.ActionSucceeded);
+        result.Steps[2].QualityDelta.Should().Be(expectedQuality);
+    }
+
+    // Teamcraft simulation.ts: a failed roll still ticks the buffs, so it spends Expedience.
+    [Fact]
+    public void DaringTouch_FailedRoll_SpendsExpedience()
+    {
+        var action = new DaringTouch();
+        var state = _simulator.CreateInitialState(Rlvl690, Lv100) with { ExpedienceActive = true };
+
+        action.GetCPCost(state).Should().Be(0);
+        action.GetSuccessRate(state).Should().Be(60);
+        action.Execute(state, Lv100, Rlvl690, forceSuccess: false).ExpedienceActive.Should().BeFalse();
+    }
+
     // --- Focused Touch ---
 
     [Fact]
@@ -162,12 +399,12 @@ public class QualityActionsTests
     }
 
     [Fact]
-    public void FocusedTouch_AfterObserve_Returns100()
+    public void FocusedTouch_AfterObserve_StaysAt50()
     {
         var action = new FocusedTouch();
-        var state = CraftingTestHelpers.CreateDefaultState() with { ObserveActive = true };
+        var state = new Observe().Execute(CraftingTestHelpers.CreateDefaultState(), _stats, _recipe);
 
-        action.GetSuccessRate(state).Should().Be(100);
+        action.GetSuccessRate(state).Should().Be(50);
     }
 
     // --- Preparatory Touch ---
@@ -420,4 +657,10 @@ public class QualityActionsTests
         action.CanExecute(state, _stats, recipe).Should().BeFalse();
         action.GetFailReason(state, _stats, recipe).Should().Contain("unavailable");
     }
+
+    private SimulationResult Simulate(RecipeParameters recipe, CrafterStats stats, params string[] actions) =>
+        _simulator.Simulate(recipe, stats, actions.Select(Id).ToList());
+
+    private static int Id(string name) =>
+        CraftingActionRegistry.GetByName(name)?.Id ?? throw new InvalidOperationException($"Unknown action '{name}'");
 }

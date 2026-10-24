@@ -17,7 +17,7 @@ namespace FFXIV.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -149,6 +149,40 @@ namespace FFXIV.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("CharacterProfiles", (string)null);
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.ConsumableBonus", b =>
+                {
+                    b.Property<int>("ItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Stat")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<bool>("IsRelative")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("Max")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxHQ")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ValueHQ")
+                        .HasColumnType("int");
+
+                    b.HasKey("ItemId", "Stat");
+
+                    b.ToTable("ConsumableBonuses", (string)null);
                 });
 
             modelBuilder.Entity("FFXIV.Domain.Entities.CraftPlan", b =>
@@ -1148,6 +1182,17 @@ namespace FFXIV.Infrastructure.Migrations
                         .HasForeignKey("FFXIV.Domain.Entities.CharacterProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FFXIV.Domain.Entities.ConsumableBonus", b =>
+                {
+                    b.HasOne("FFXIV.Domain.Entities.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Item");
                 });
 
             modelBuilder.Entity("FFXIV.Domain.Entities.CraftPlan", b =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,6 +10,8 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useJourney } from "@/hooks/useJourney";
+import { useProfile } from "@/hooks/useProfile";
+import { getRecipeCraftingParameters } from "@/lib/game-data";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { ItemIcon, ErrorState } from "@/components/ui";
@@ -30,7 +32,13 @@ import { recipePath } from "@/lib/routes";
 export default function JourneyPage({ recipeId }: { recipeId: number }) {
   const router = useRouter();
   const { journey, isLoading, error, retry } = useJourney(recipeId);
+  const { profile } = useProfile();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const [recommended, setRecommended] = useState<{
+    recipeId: number;
+    craftsmanship: number;
+    control: number;
+  } | null>(null);
 
   useEffect(() => {
     if (journey) {
@@ -42,6 +50,29 @@ export default function JourneyPage({ recipeId }: { recipeId: number }) {
       ]);
     }
   }, [journey, recipeId, setBreadcrumbs]);
+
+  // The stat check gates on required stats, which most recipes do not have; the recommended ones
+  // keep it saying something useful.
+  useEffect(() => {
+    if (isNaN(recipeId)) return;
+    let cancelled = false;
+    getRecipeCraftingParameters(recipeId)
+      .then((parameters) => {
+        if (!cancelled) {
+          setRecommended({
+            recipeId,
+            craftsmanship: parameters.suggestedCraftsmanship,
+            control: parameters.suggestedControl,
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("Recipe crafting parameters failed to load:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [recipeId]);
 
   if (isNaN(recipeId)) {
     return (
@@ -65,6 +96,8 @@ export default function JourneyPage({ recipeId }: { recipeId: number }) {
   const recipe = ctx.recipes[0];
   const craftInfo = recipe ? CRAFT_TYPE_INFO[recipe.craftType as CraftType] : null;
   const materials = journey.materials;
+  // Signed out there is no stat check and no gear to upgrade, so no second column to fill.
+  const hasStatColumn = !!journey.sufficiency || journey.gearUpgrades.length > 0;
 
   const handleCopyShoppingList = () => {
     const lines = materials.shoppingList
@@ -108,28 +141,30 @@ export default function JourneyPage({ recipeId }: { recipeId: number }) {
               </span>
             )}
             {recipe && (
-              <span className="text-text-muted text-sm">Lv. {recipe.level}</span>
+              <span className="text-text-muted text-sm">Recipe Lv. {recipe.level}</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Two-column on desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column */}
-        <div className="space-y-4">
-          {/* Stat Check */}
-          {journey.sufficiency && (
-            <StatCheck sufficiency={journey.sufficiency} recipeId={recipeId} />
-          )}
+      <div className={`grid grid-cols-1 gap-6 ${hasStatColumn ? "lg:grid-cols-2" : ""}`}>
+        {hasStatColumn && (
+          <div className="space-y-4">
+            {journey.sufficiency && (
+              <StatCheck
+                sufficiency={journey.sufficiency}
+                recipeId={recipeId}
+                recommended={recommended?.recipeId === recipeId ? recommended : null}
+                stats={profile?.stats ?? null}
+              />
+            )}
 
-          {/* Gear Upgrades */}
-          {journey.gearUpgrades.length > 0 && (
-            <GearUpgrades upgrades={journey.gearUpgrades} />
-          )}
-        </div>
+            {journey.gearUpgrades.length > 0 && (
+              <GearUpgrades upgrades={journey.gearUpgrades} />
+            )}
+          </div>
+        )}
 
-        {/* Right column */}
         <div className="space-y-4">
           {/* Materials / Shopping List */}
           <ShoppingListView

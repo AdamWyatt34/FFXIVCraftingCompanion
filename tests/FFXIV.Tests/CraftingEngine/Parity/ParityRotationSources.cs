@@ -1,4 +1,5 @@
 using FFXIV.Domain.CraftingEngine;
+using FFXIV.Domain.CraftingEngine.Actions.Quality;
 using FFXIV.Domain.CraftingEngine.Models;
 using FFXIV.Domain.CraftingEngine.Solver.Models;
 using FFXIV.Infrastructure.Solver;
@@ -117,7 +118,7 @@ internal static class ParityRotationSources
         var result = simulator.Simulate(scenario.Recipe, scenario.Stats, scenario.Actions, scenario.Options);
 
         var finalAvailability = scenario.IncludeAvailability
-            ? Availability(simulator, result.FinalState, scenario)
+            ? Availability(result.FinalState, scenario)
             : null;
 
         var steps = result.Steps.Select(s => new ParityStep(
@@ -128,7 +129,7 @@ internal static class ParityRotationSources
             s.FailReason,
             LegalIds(simulator, s.StateBefore, scenario),
             ToState(s.StateAfter),
-            scenario.IncludeAvailability ? Availability(simulator, s.StateBefore, scenario) : null)).ToList();
+            scenario.IncludeAvailability ? Availability(s.StateBefore, scenario) : null)).ToList();
 
         return new ParityCase(
             scenario.Name,
@@ -239,10 +240,48 @@ internal static class ParityRotationSources
             "CarefulObservation", "CarefulObservation", "CarefulObservation", "CarefulObservation", "IntensiveSynthesis", "TricksOfTheTrade");
         yield return Edge("manipulation-to-zero", recipe, stats, "Manipulation", "Groundwork", "Groundwork", "Groundwork", "Groundwork", "Groundwork", "Groundwork");
         yield return Edge("final-appraisal-cap", recipe, stats, "MuscleMemory", "FinalAppraisal", "Veneration", "Groundwork", "Groundwork", "Groundwork", "Groundwork", "Groundwork");
-        yield return Edge("observe-focused-combo", recipe, stats, "Observe", "FocusedSynthesis", "Observe", "FocusedTouch", "FocusedTouch");
+        yield return Edge("legacy-focused-after-observe", recipe, stats, "Observe", "FocusedSynthesis", "Observe", "FocusedTouch", "FocusedTouch");
         yield return Edge("touch-combo", recipe, stats, "BasicTouch", "StandardTouch", "AdvancedTouch", "AdvancedTouch", "StandardTouch");
         yield return Edge("masters-mend-cap", recipe, stats, "MastersMend", "Groundwork", "MastersMend", "Groundwork", "Groundwork", "Groundwork", "ImmaculateMend");
         yield return Edge("delicate-with-buffs", recipe, stats, "Innovation", "Veneration", "GreatStrides", "DelicateSynthesis", "DelicateSynthesis");
+        yield return Edge("lone-standard-then-advanced", recipe, stats, "StandardTouch", "AdvancedTouch", "StandardTouch", "StandardTouch", "AdvancedTouch");
+        yield return Edge("observe-then-advanced", recipe, stats, "Observe", "AdvancedTouch", "Observe", "StandardTouch", "AdvancedTouch");
+        yield return Edge("waste-not-replaces-waste-not-ii", recipe, stats, "WasteNotII", "WasteNot", "BasicTouch", "BasicTouch", "BasicTouch",
+            "BasicTouch", "BasicTouch", "PrudentTouch");
+        yield return Edge("waste-not-ii-replaces-waste-not", recipe, stats, "WasteNot", "WasteNotII", "BasicTouch", "BasicTouch", "BasicTouch",
+            "BasicTouch", "BasicTouch", "PrudentTouch");
+        yield return Edge("rapid-synthesis", recipe, stats, "RapidSynthesis", "Veneration", "RapidSynthesis");
+        yield return Edge("inner-quiet-below-level-11", recipe, stats with { Level = 8 }, "BasicTouch", "BasicTouch", "BasicSynthesis", "BasicTouch");
+        yield return Edge("legacy-inner-quiet", recipe, stats, "InnerQuiet", "BasicTouch", "InnerQuiet");
+        yield return Edge("precise-touch-needs-good", recipe, stats, "PreciseTouch", "BasicTouch", "PreciseTouch");
+        yield return Edge("precise-touch-under-heart-and-soul", recipe, specialist, "HeartAndSoul", "PreciseTouch", "PreciseTouch");
+        yield return Edge("refined-touch-combo", recipe, stats, "BasicTouch", "RefinedTouch", "RefinedTouch", "BasicTouch", "StandardTouch", "RefinedTouch");
+        yield return Edge("daring-touch-after-hasty", recipe, stats, "DaringTouch", "HastyTouch", "DaringTouch", "DaringTouch", "HastyTouch",
+            "BasicTouch", "DaringTouch");
+        yield return Edge("daring-touch-below-its-level", recipe, stats with { Level = DaringTouch.RequiredLevel - 1 }, "HastyTouch", "DaringTouch");
+        yield return Edge("hasty-touch-under-expedience", recipe, stats, "HastyTouch", "HastyTouch", "DaringTouch", "HastyTouch", "HastyTouch");
+        yield return Edge("hasty-touch-repeats-below-daring-level", recipe, stats with { Level = DaringTouch.RequiredLevel - 1 },
+            "HastyTouch", "HastyTouch");
+        yield return Edge("expedience-survives-step-free-abilities", recipe, specialist, "HastyTouch", "FinalAppraisal", "HeartAndSoul",
+            "CarefulObservation", "QuickInnovation", "DaringTouch");
+
+        // Rolled successes: a failed Hasty Touch grants no Expedience.
+        var rolled = new SimulationOptions { AssumeAllSuccess = false, RandomSeed = 31 };
+        yield return new ParityScenario("edge-seeded-hasty-daring", recipe, stats, rolled,
+            Enumerable.Repeat(new[] { "HastyTouch", "DaringTouch" }, 6).SelectMany(pair => pair).Select(Id).ToList(),
+            IncludeAvailability: true);
+
+        // The first step runs under Normal; every later step under the forced condition.
+        foreach (var condition in new[] { CraftCondition.Good, CraftCondition.Excellent, CraftCondition.Poor })
+        {
+            var forced = new SimulationOptions { ForceCondition = condition };
+            yield return new ParityScenario($"edge-forced-{condition}-touches", recipe, stats, forced,
+                new[] { "BasicTouch", "StandardTouch", "BasicTouch", "PreparatoryTouch", "ByregotsBlessing", "DelicateSynthesis" }.Select(Id).ToList(),
+                IncludeAvailability: true);
+            yield return new ParityScenario($"edge-forced-{condition}-precise", recipe, stats, forced,
+                new[] { "BasicTouch", "PreciseTouch", "PreciseTouch" }.Select(Id).ToList(),
+                IncludeAvailability: true);
+        }
 
         var unknownMidSequence = new List<int> { Id("BasicSynthesis"), UnknownActionId, Id("BasicTouch") };
         yield return new ParityScenario("edge-unknown-action", recipe, stats, Defaults, unknownMidSequence, IncludeAvailability: true);
@@ -262,11 +301,17 @@ internal static class ParityRotationSources
             .OrderBy(id => id)
             .ToList();
 
-    private static List<ParityAvailability> Availability(ICraftingSimulator simulator, CraftingState state, ParityScenario scenario) =>
-        simulator.GetAvailableActions(state, scenario.Stats, scenario.Recipe)
-            .OrderBy(a => a.ActionId)
-            .Select(a => new ParityAvailability(
-                a.ActionId, a.IsAvailable, a.UnavailableReason, a.CPCost, a.DurabilityCost, a.SuccessRate, (int)a.Category))
+    // The recognized set with its legacy flag, so the replay proves legacy actions resolve while LegalIds
+    // (the simulator's offered set) never lists them.
+    private static List<ParityAvailability> Availability(CraftingState state, ParityScenario scenario) =>
+        CraftingActionRegistry.GetAll(includeLegacy: true)
+            .OrderBy(a => a.Id)
+            .Select(a =>
+            {
+                var failReason = a.GetFailReason(state, scenario.Stats, scenario.Recipe);
+                return new ParityAvailability(a.Id, failReason is null, failReason, a.GetCPCost(state),
+                    a.GetDurabilityCost(state), a.GetSuccessRate(state), (int)a.Category, a.IsLegacy);
+            })
             .ToList();
 
     private static ParityRecipe ToRecipe(RecipeParameters r) => new(
@@ -282,7 +327,7 @@ internal static class ParityRotationSources
         s.Step, (int)s.Condition, (int)s.Status,
         s.InnerQuietStacks, s.WasteNotTurns, s.WasteNotIITurns, s.VenerationTurns, s.InnovationTurns,
         s.GreatStridesTurns, s.ManipulationTurns, s.FinalAppraisalTurns, s.MuscleMemoryTurns,
-        s.HeartAndSoulActive, s.TrainedPerfectionActive, s.QuickInnovationUsed, s.HeartAndSoulUsed,
-        s.TrainedPerfectionUsed, s.CarefulObservationCount, s.IsFirstStep, s.ComboAction, s.ObserveActive,
+        s.HeartAndSoulActive, s.TrainedPerfectionActive, s.ExpedienceActive, s.QuickInnovationUsed, s.HeartAndSoulUsed,
+        s.TrainedPerfectionUsed, s.CarefulObservationCount, s.IsFirstStep, s.ComboAction,
         s.IsComplete, s.IsFailed, s.QualityPercent, s.ProgressPercent, s.HQPercent);
 }

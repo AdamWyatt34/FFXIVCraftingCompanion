@@ -15,6 +15,15 @@ public class MacroExporterTests
     private const int Groundwork = 100403;
     private const int CarefulSynthesis = 100203;
     private const int MastersMend = 100003;
+    private const int Observe = 100010;
+    private const int HeartAndSoul = 100317;
+    private const int QuickInnovation = 100443;
+    private const int TrainedPerfection = 100451;
+    private const int WasteNot = 100279;
+    private const int WasteNotII = 100285;
+    private const int FinalAppraisal = 100364;
+    private const int HastyTouch = 100355;
+    private const int DaringTouch = 100503;
 
     [Fact]
     public void SingleMacro_FitsWithin14Actions()
@@ -53,17 +62,30 @@ public class MacroExporterTests
         secondLines.Last().Should().Contain("Craft complete");
     }
 
+    // Raphael raphael-sim/src/actions.rs time_cost; Teamcraft crafting-action.ts getWaitDuration.
     [Fact]
     public void BuffActions_GetWaitTime2()
     {
-        var buffIds = new List<int> { Veneration, Innovation, Manipulation, GreatStrides };
+        var buffIds = new List<int> { Veneration, Innovation, Manipulation, GreatStrides, WasteNot, WasteNotII, FinalAppraisal };
         var macros = MacroExporter.ExportToMacro(buffIds);
 
         var lines = macros[0].Split('\n');
-        lines[0].Should().Contain("<wait.2>");
-        lines[1].Should().Contain("<wait.2>");
-        lines[2].Should().Contain("<wait.2>");
-        lines[3].Should().Contain("<wait.2>");
+        lines.Take(buffIds.Count).Should().AllSatisfy(l => l.Should().EndWith("<wait.2>"));
+    }
+
+    // Raphael raphael-sim/src/actions.rs time_cost; Teamcraft observe.ts, heart-and-soul.ts and trained-perfection.ts
+    // are ActionType.OTHER and quick-innovation.ts overrides getWaitDuration.
+    [Fact]
+    public void BuffLikeAbilities_GetWaitTime3()
+    {
+        var actionIds = new List<int> { Observe, HeartAndSoul, QuickInnovation, TrainedPerfection };
+        var macros = MacroExporter.ExportToMacro(actionIds);
+
+        var lines = macros[0].Split('\n');
+        lines[0].Should().Be("/ac \"Observe\" <wait.3>");
+        lines[1].Should().Be("/ac \"Heart and Soul\" <wait.3>");
+        lines[2].Should().Be("/ac \"Quick Innovation\" <wait.3>");
+        lines[3].Should().Be("/ac \"Trained Perfection\" <wait.3>");
     }
 
     [Fact]
@@ -177,5 +199,18 @@ public class MacroExporterTests
 
         macros[0].Should().Contain("/ac \"Careful Synthesis\"");
         macros[0].Should().Contain("/ac \"Groundwork\"");
+    }
+
+    // Raphael raphael-data/src/locales.rs macro_name; Teamcraft commit a21776a ("output Hasty Touch in macros
+    // instead of Daring Touch").
+    [Fact]
+    public void DaringTouch_UsesHastyTouchsNameInMacros()
+    {
+        var macros = MacroExporter.ExportToMacro(new List<int> { HastyTouch, DaringTouch });
+
+        var lines = macros[0].Split('\n');
+        lines[0].Should().Be("/ac \"Hasty Touch\" <wait.3>");
+        lines[1].Should().Be("/ac \"Hasty Touch\" <wait.3>");
+        CraftingActionRegistry.GetById(DaringTouch)!.InGameName.Should().Be("Daring Touch");
     }
 }

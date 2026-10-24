@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   Sparkles,
   CheckCircle,
@@ -28,6 +28,7 @@ interface SolverButtonProps {
   onClearResult: () => void;
   onLoadPreview: () => void;
   configSummary: string;
+  /** Why solving is unavailable; any reason disables the button. */
   disabledReason?: string;
 }
 
@@ -55,6 +56,7 @@ export function SolverButton({
 }: SolverButtonProps) {
   // Local elapsed timer for smoother updates
   const [displayElapsed, setDisplayElapsed] = useState(0);
+  const reasonId = useId();
 
   useEffect(() => {
     if (!isSolving) {
@@ -123,7 +125,7 @@ export function SolverButton({
       >
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle size={18} className="text-emerald-400 shrink-0" />
-          <span className="font-semibold text-emerald-400">Solution Found</span>
+          <span className="font-semibold text-emerald-400">Rotation found</span>
           {metrics.solveTimeMs > 0 && (
             <span className="text-xs text-text-muted ml-auto">
               {formatElapsed(metrics.solveTimeMs)}
@@ -238,7 +240,8 @@ export function SolverButton({
   }
 
   // Idle state — primary trigger button
-  const disabled = !isSetupComplete;
+  const disabled = !isSetupComplete || disabledReason !== undefined;
+  const showReason = disabled && disabledReason !== undefined;
 
   const button = (
     <button
@@ -251,6 +254,7 @@ export function SolverButton({
       }`}
       aria-label="Auto-solve crafting rotation"
       aria-disabled={disabled}
+      aria-describedby={showReason ? reasonId : undefined}
     >
       <div className="flex items-center justify-center gap-2">
         <Sparkles size={20} />
@@ -262,8 +266,17 @@ export function SolverButton({
     </button>
   );
 
-  if (disabled && disabledReason) {
-    return <span title={disabledReason}>{button}</span>;
+  if (showReason) {
+    return (
+      <div>
+        <span title={disabledReason} className="block">
+          {button}
+        </span>
+        <p id={reasonId} className="text-xs text-text-muted mt-1">
+          {disabledReason}
+        </p>
+      </div>
+    );
   }
 
   return button;

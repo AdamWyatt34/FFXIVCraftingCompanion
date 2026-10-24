@@ -20,7 +20,7 @@ public sealed record Manifest(
     int BucketSize,
     ManifestCounts Counts);
 
-public sealed record ManifestCounts(int Recipes, int Items, int Equipment, int Jobs);
+public sealed record ManifestCounts(int Recipes, int Items, int Equipment, int Jobs, int Consumables);
 
 public sealed record RecipeExport(
     RecipeDto Recipe,

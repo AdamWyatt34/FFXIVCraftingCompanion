@@ -21,7 +21,12 @@ export interface UseSolverConfigReturn {
   setTargetQuality: (pct: number | null) => void;
   setAllowUnsafe: (allow: boolean) => void;
   resetToDefaults: () => void;
-  buildSolveRequest: (recipeId: number, stats: CrafterStatsInput, hqIngredients?: HQIngredientInput[]) => SolveRequest;
+  buildSolveRequest: (
+    recipeId: number,
+    stats: CrafterStatsInput,
+    hqIngredients?: HQIngredientInput[],
+    startingQuality?: number,
+  ) => SolveRequest;
   summaryText: string;
 }
 
@@ -103,7 +108,12 @@ export function useSolverConfig(): UseSolverConfigReturn {
   }, []);
 
   const buildSolveRequest = useCallback(
-    (recipeId: number, stats: CrafterStatsInput, hqIngredients?: HQIngredientInput[]): SolveRequest => {
+    (
+      recipeId: number,
+      stats: CrafterStatsInput,
+      hqIngredients?: HQIngredientInput[],
+      startingQuality?: number,
+    ): SolveRequest => {
       return {
         recipeId,
         stats,
@@ -122,6 +132,7 @@ export function useSolverConfig(): UseSolverConfigReturn {
               : config.timeBudgetMs,
         },
         hqIngredients: hqIngredients?.length ? hqIngredients : undefined,
+        startingQuality,
       };
     },
     [config],

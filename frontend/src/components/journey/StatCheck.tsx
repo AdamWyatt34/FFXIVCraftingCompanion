@@ -6,13 +6,31 @@ import { StatBar } from "@/components/ui";
 import { RECOMMENDATION_INFO } from "@/lib/constants";
 import type { StatSufficiencyResultDto } from "@/types/journey";
 
+interface CraftingStatPair {
+  craftsmanship: number;
+  control: number;
+}
+
 interface StatCheckProps {
   sufficiency: StatSufficiencyResultDto;
   recipeId: number;
+  /** The recipe's recommended stats; null until its crafting parameters load. */
+  recommended?: CraftingStatPair | null;
+  stats?: CraftingStatPair | null;
 }
 
-export function StatCheck({ sufficiency, recipeId }: StatCheckProps) {
+export function StatCheck({ sufficiency, recipeId, recommended, stats }: StatCheckProps) {
   const rec = RECOMMENDATION_INFO[sufficiency.recommendation] ?? RECOMMENDATION_INFO.StatsAdequate;
+  const recommendedParts = recommended
+    ? [
+        recommended.craftsmanship > 0 && `${recommended.craftsmanship.toLocaleString("en-US")} craftsmanship`,
+        recommended.control > 0 && `${recommended.control.toLocaleString("en-US")} control`,
+      ].filter(Boolean)
+    : [];
+  const belowRecommended =
+    !!recommended &&
+    !!stats &&
+    (stats.craftsmanship < recommended.craftsmanship || stats.control < recommended.control);
 
   const Icon = sufficiency.meetsMinimumRequirements
     ? sufficiency.recommendation === "StatsExcellent"
@@ -54,6 +72,13 @@ export function StatCheck({ sufficiency, recipeId }: StatCheckProps) {
       {!sufficiency.meetsMinimumRequirements && (
         <p className="text-xs text-red-400">
           Your stats are below the minimum requirements. Upgrade gear or level up before attempting this craft.
+        </p>
+      )}
+
+      {recommendedParts.length > 0 && (
+        <p className={`text-xs ${belowRecommended ? "text-amber-400" : "text-text-muted"}`}>
+          Recommended: {recommendedParts.join(" / ")}
+          {belowRecommended && ". Your stats are below it; the craft can still be started."}
         </p>
       )}
 

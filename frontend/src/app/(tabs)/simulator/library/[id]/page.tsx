@@ -64,7 +64,8 @@ export default function RotationDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const id = Number(params.id);
-  const { rotation, isLoading, error, retry } = useRotationDetail(id);
+  const { rotation, isLoading, error, retry, live, liveSkipReason, isRecomputing } =
+    useRotationDetail(id);
 
   const [upvoteLoading, setUpvoteLoading] = useState(false);
   const [localUpvotes, setLocalUpvotes] = useState<number | null>(null);
@@ -201,6 +202,14 @@ export default function RotationDetailPage() {
     ROTATION_SOURCE_INFO[rotation.source] ?? ROTATION_SOURCE_INFO.User;
   const groups = collapseActionIds(rotation.actionIds, rotation.actionNames);
   const upvotes = localUpvotes ?? rotation.upvotes;
+  const metrics = live ?? rotation;
+  const metricsCaption = live
+    ? "Recomputed with the current engine"
+    : liveSkipReason === "specialist"
+      ? "Saved before the engine update"
+      : isRecomputing
+        ? "Recomputing with the current engine..."
+        : "As saved; the current engine could not replay this rotation";
 
   return (
     <div className="p-4">
@@ -225,33 +234,36 @@ export default function RotationDetailPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-bg-elevated rounded-md p-3 text-center">
               <div
-                className={`text-xl font-bold ${getQualityColor(rotation.hqPercent)}`}
+                className={`text-xl font-bold ${getQualityColor(metrics.hqPercent)}`}
               >
-                {rotation.hqPercent}%
+                {metrics.hqPercent}%
               </div>
               <div className="text-xs text-text-muted mt-0.5">HQ</div>
             </div>
             <div className="bg-bg-elevated rounded-md p-3 text-center">
               <div className="text-xl font-bold text-text-primary">
-                {Math.round(rotation.qualityPercent)}%
+                {Math.round(metrics.qualityPercent)}%
               </div>
               <div className="text-xs text-text-muted mt-0.5">Quality</div>
             </div>
             <div className="bg-bg-elevated rounded-md p-3 text-center">
               <div className="text-xl font-bold text-text-primary">
-                {rotation.totalSteps}
+                {metrics.totalSteps}
               </div>
               <div className="text-xs text-text-muted mt-0.5">Steps</div>
             </div>
             <div className="bg-bg-elevated rounded-md p-3 text-center">
               <div
-                className={`text-xl font-bold ${rotation.craftCompleted ? "text-emerald-400" : "text-red-400"}`}
+                className={`text-xl font-bold ${metrics.craftCompleted ? "text-emerald-400" : "text-red-400"}`}
               >
-                {rotation.craftCompleted ? "Yes" : "No"}
+                {metrics.craftCompleted ? "Yes" : "No"}
               </div>
               <div className="text-xs text-text-muted mt-0.5">Completed</div>
             </div>
           </div>
+          <p className="text-xs text-text-muted" role="status">
+            {metricsCaption}
+          </p>
 
           {/* Recipe info row */}
           <div className="flex items-center gap-2 flex-wrap">

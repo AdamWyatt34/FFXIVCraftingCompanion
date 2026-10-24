@@ -105,7 +105,7 @@ export function RecipeSelector({
                 </span>
               )}
               <span className="text-sm text-text-secondary">
-                Lv. {selectedRecipe.recipeLevel}
+                Recipe Lv. {selectedRecipe.recipeLevel}
               </span>
             </div>
           </div>

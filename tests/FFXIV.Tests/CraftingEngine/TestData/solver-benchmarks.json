@@ -3,21 +3,21 @@
     {
       "id": "lv100_4star_endgame",
       "name": "Lv100 4-Star Endgame (rlvl 690)",
-      "description": "Dawntrail 4-star craft, well-geared crafter. Standard endgame rotation.",
+      "description": "Real recipe 6118 (Ra'Kaznar Saw, BSM) from XIVAPI v2 Recipe + RecipeLevelTable 690, game data 0874aee069e1e7c4: Lv100, 0 stars; the 4-star label predates the real data. Well-geared crafter, standard endgame rotation. Reference rotation: Raphael 723b17ea7d1a719bba212944ebd357fe36b4ac08, recipe 6118, stats Lv100 4500/4400/700 non-specialist, options: Manipulation on, Heart and Soul and Quick Innovation off, no HQ ingredients, target max quality.",
       "recipe": {
-        "recipeId": 1001,
+        "recipeId": 6118,
         "recipeLevel": 690,
         "classJobLevel": 100,
-        "difficulty": 3800,
+        "difficulty": 6600,
         "quality": 12000,
-        "durability": 70,
-        "stars": 4,
-        "progressDivider": 130,
-        "progressModifier": 80,
-        "qualityDivider": 115,
-        "qualityModifier": 70,
-        "suggestedCraftsmanship": 4300,
-        "suggestedControl": 4200
+        "durability": 80,
+        "stars": 0,
+        "progressDivider": 170,
+        "progressModifier": 90,
+        "qualityDivider": 150,
+        "qualityModifier": 75,
+        "suggestedCraftsmanship": 4207,
+        "suggestedControl": 0
       },
       "stats": {
         "level": 100,
@@ -27,51 +27,58 @@
         "isSpecialist": false
       },
       "communityRotation": {
-        "source": "Teamcraft / Community Standard Lv100 4-star",
+        "source": "Raphael solver, raphael-rs 723b17ea7d1a719bba212944ebd357fe36b4ac08: raphael-cli solve --recipe-id 6118 --level 100 --stats 4500 4400 700 --manipulation",
         "actions": [
-          "MuscleMemory",
-          "Veneration",
-          "Manipulation",
-          "Groundwork",
-          "Groundwork",
+          "Reflect",
           "WasteNotII",
-          "TrainedPerfection",
           "Innovation",
           "PreparatoryTouch",
           "PreparatoryTouch",
           "PreparatoryTouch",
+          "PreparatoryTouch",
+          "Veneration",
+          "Groundwork",
+          "Groundwork",
+          "ImmaculateMend",
+          "Groundwork",
+          "GreatStrides",
+          "Innovation",
+          "PreparatoryTouch",
+          "DelicateSynthesis",
           "GreatStrides",
           "ByregotsBlessing",
+          "TrainedPerfection",
           "Veneration",
+          "Groundwork",
           "Groundwork"
         ],
         "expectedCompletion": true,
-        "expectedMinQualityPercent": 30
+        "expectedMinQualityPercent": 100
       },
       "solverTargets": {
         "greedyMustComplete": true,
-        "mctsMinQualityPercentOfCommunity": 80,
+        "mctsMinQualityPercentOfCommunity": 20,
         "mctsTimeBudgetMs": 10000
       }
     },
     {
       "id": "lv90_3star_standard",
       "name": "Lv90 3-Star (rlvl 580)",
-      "description": "Endwalker 3-star craft. Classic quality-heavy rotation.",
+      "description": "Real recipe 34800 (Classical Longsword, BSM) from XIVAPI v2 Recipe + RecipeLevelTable 580, game data 0874aee069e1e7c4: Lv90, 2 stars; the 3-star label predates the real data. Classic quality-heavy rotation. Reference rotation: Raphael 723b17ea7d1a719bba212944ebd357fe36b4ac08, recipe 34800, stats Lv90 3800/3600/600 non-specialist, options: Manipulation on, Heart and Soul and Quick Innovation off, no HQ ingredients, target max quality.",
       "recipe": {
-        "recipeId": 1002,
+        "recipeId": 34800,
         "recipeLevel": 580,
         "classJobLevel": 90,
-        "difficulty": 3200,
-        "quality": 7200,
+        "difficulty": 3900,
+        "quality": 10920,
         "durability": 70,
-        "stars": 3,
+        "stars": 2,
         "progressDivider": 130,
         "progressModifier": 80,
         "qualityDivider": 115,
         "qualityModifier": 70,
-        "suggestedCraftsmanship": 3700,
-        "suggestedControl": 3280
+        "suggestedCraftsmanship": 3180,
+        "suggestedControl": 0
       },
       "stats": {
         "level": 90,
@@ -81,29 +88,36 @@
         "isSpecialist": false
       },
       "communityRotation": {
-        "source": "Standard Lv90 3-star rotation",
+        "source": "Raphael solver, raphael-rs 723b17ea7d1a719bba212944ebd357fe36b4ac08: raphael-cli solve --recipe-id 34800 --level 90 --stats 3800 3600 600 --manipulation",
         "actions": [
-          "MuscleMemory",
+          "Reflect",
+          "Innovation",
+          "PrudentTouch",
+          "PrudentTouch",
           "Manipulation",
           "Veneration",
+          "WasteNotII",
+          "Groundwork",
           "Groundwork",
           "Groundwork",
           "Innovation",
+          "PreparatoryTouch",
           "BasicTouch",
           "StandardTouch",
           "AdvancedTouch",
           "GreatStrides",
+          "Innovation",
+          "PreparatoryTouch",
+          "GreatStrides",
           "ByregotsBlessing",
-          "MastersMend",
-          "Veneration",
-          "Groundwork"
+          "BasicSynthesis"
         ],
         "expectedCompletion": true,
-        "expectedMinQualityPercent": 20
+        "expectedMinQualityPercent": 100
       },
       "solverTargets": {
         "greedyMustComplete": true,
-        "mctsMinQualityPercentOfCommunity": 80,
+        "mctsMinQualityPercentOfCommunity": 40,
         "mctsTimeBudgetMs": 10000
       }
     },
@@ -365,21 +379,21 @@
     {
       "id": "lv100_40dur_potion",
       "name": "Lv100 40-Durability Potion",
-      "description": "Dawntrail potion with tight durability. Tests resource management.",
+      "description": "Real recipe 35580 (Grade 8 Strength Alkahest, ALC) from XIVAPI v2 Recipe + RecipeLevelTable 640, game data 0874aee069e1e7c4: Lv90, 4 stars, 35 durability; the Lv100 and 40-durability labels predate the real data. Tight durability tests resource management. Reference rotation: Raphael 723b17ea7d1a719bba212944ebd357fe36b4ac08, recipe 35580, stats Lv100 4500/4400/700 non-specialist, options: Manipulation on, Heart and Soul and Quick Innovation off, no HQ ingredients, target max quality.",
       "recipe": {
-        "recipeId": 1008,
+        "recipeId": 35580,
         "recipeLevel": 640,
-        "classJobLevel": 100,
-        "difficulty": 3500,
-        "quality": 8000,
-        "durability": 40,
-        "stars": 0,
+        "classJobLevel": 90,
+        "difficulty": 4488,
+        "quality": 9090,
+        "durability": 35,
+        "stars": 4,
         "progressDivider": 130,
         "progressModifier": 80,
         "qualityDivider": 115,
         "qualityModifier": 70,
-        "suggestedCraftsmanship": 3900,
-        "suggestedControl": 3800
+        "suggestedCraftsmanship": 3700,
+        "suggestedControl": 0
       },
       "stats": {
         "level": 100,
@@ -389,50 +403,42 @@
         "isSpecialist": false
       },
       "communityRotation": {
-        "source": "Lv100 40-dur potion rotation",
+        "source": "Raphael solver, raphael-rs 723b17ea7d1a719bba212944ebd357fe36b4ac08: raphael-cli solve --recipe-id 35580 --level 100 --stats 4500 4400 700 --manipulation",
         "actions": [
-          "MuscleMemory",
-          "Manipulation",
+          "TrainedEye",
+          "WasteNotII",
           "Veneration",
           "Groundwork",
-          "TrainedPerfection",
           "Groundwork",
-          "Innovation",
-          "PrudentTouch",
-          "PrudentTouch",
-          "PrudentTouch",
-          "GreatStrides",
-          "ByregotsBlessing",
-          "Veneration",
-          "PrudentSynthesis"
+          "DelicateSynthesis"
         ],
         "expectedCompletion": true,
-        "expectedMinQualityPercent": 15
+        "expectedMinQualityPercent": 100
       },
       "solverTargets": {
         "greedyMustComplete": true,
-        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsMinQualityPercentOfCommunity": 95,
         "mctsTimeBudgetMs": 10000
       }
     },
     {
       "id": "lv100_undergeared",
       "name": "Lv100 Undergeared (minimum stats)",
-      "description": "Lv100 recipe with stats barely meeting minimum. Tests solver robustness.",
+      "description": "Real recipe 35707 (Martial Artist's Vest, WVR) from XIVAPI v2 Recipe + RecipeLevelTable 640, game data 0874aee069e1e7c4: Lv90, 4 stars, no stat requirement; the Lv100 label predates the real data. Stats just above the suggested 3700 craftsmanship test solver robustness. Reference rotation: Raphael 723b17ea7d1a719bba212944ebd357fe36b4ac08, recipe 35707, stats Lv100 3900/3800/550 non-specialist, options: Manipulation on, Heart and Soul and Quick Innovation off, no HQ ingredients, target max quality.",
       "recipe": {
-        "recipeId": 1009,
+        "recipeId": 35707,
         "recipeLevel": 640,
-        "classJobLevel": 100,
-        "difficulty": 3300,
-        "quality": 8000,
+        "classJobLevel": 90,
+        "difficulty": 4400,
+        "quality": 9000,
         "durability": 70,
-        "stars": 0,
+        "stars": 4,
         "progressDivider": 130,
         "progressModifier": 80,
         "qualityDivider": 115,
         "qualityModifier": 70,
-        "suggestedCraftsmanship": 3900,
-        "suggestedControl": 3800
+        "suggestedCraftsmanship": 3700,
+        "suggestedControl": 0
       },
       "stats": {
         "level": 100,
@@ -442,49 +448,41 @@
         "isSpecialist": false
       },
       "communityRotation": {
-        "source": "Undergeared basic rotation",
+        "source": "Raphael solver, raphael-rs 723b17ea7d1a719bba212944ebd357fe36b4ac08: raphael-cli solve --recipe-id 35707 --level 100 --stats 3900 3800 550 --manipulation",
         "actions": [
-          "MuscleMemory",
-          "Manipulation",
+          "TrainedEye",
           "Veneration",
           "Groundwork",
           "Groundwork",
-          "Innovation",
-          "BasicTouch",
-          "StandardTouch",
-          "AdvancedTouch",
-          "GreatStrides",
-          "ByregotsBlessing",
-          "Veneration",
           "Groundwork"
         ],
         "expectedCompletion": true,
-        "expectedMinQualityPercent": 10
+        "expectedMinQualityPercent": 100
       },
       "solverTargets": {
         "greedyMustComplete": true,
-        "mctsMinQualityPercentOfCommunity": 70,
+        "mctsMinQualityPercentOfCommunity": 95,
         "mctsTimeBudgetMs": 10000
       }
     },
     {
       "id": "lv100_4star_progress_heavy",
       "name": "Lv100 4-Star Progress-Heavy",
-      "description": "High difficulty recipe where completing progress is the primary challenge.",
+      "description": "Real recipe 6170 (Thunderyards Silk Shirt of Crafting, WVR) from XIVAPI v2 Recipe + RecipeLevelTable 690, game data 0874aee069e1e7c4: Lv100, 0 stars; the 4-star label predates the real data. Craftsmanship 4300 against difficulty 6600 makes completing progress the primary challenge. Reference rotation: Raphael 723b17ea7d1a719bba212944ebd357fe36b4ac08, recipe 6170, stats Lv100 4300/4200/650 non-specialist, options: Manipulation on, Heart and Soul and Quick Innovation off, no HQ ingredients, target max quality.",
       "recipe": {
-        "recipeId": 1010,
+        "recipeId": 6170,
         "recipeLevel": 690,
         "classJobLevel": 100,
-        "difficulty": 3700,
+        "difficulty": 6600,
         "quality": 12000,
-        "durability": 70,
-        "stars": 4,
-        "progressDivider": 130,
-        "progressModifier": 80,
-        "qualityDivider": 115,
-        "qualityModifier": 70,
-        "suggestedCraftsmanship": 4300,
-        "suggestedControl": 4200
+        "durability": 80,
+        "stars": 0,
+        "progressDivider": 170,
+        "progressModifier": 90,
+        "qualityDivider": 150,
+        "qualityModifier": 75,
+        "suggestedCraftsmanship": 4207,
+        "suggestedControl": 0
       },
       "stats": {
         "level": 100,
@@ -494,29 +492,43 @@
         "isSpecialist": false
       },
       "communityRotation": {
-        "source": "Progress-focused 4-star rotation (just-meeting-stats)",
+        "source": "Raphael solver, raphael-rs 723b17ea7d1a719bba212944ebd357fe36b4ac08: raphael-cli solve --recipe-id 6170 --level 100 --stats 4300 4200 650 --manipulation",
         "actions": [
-          "MuscleMemory",
+          "Reflect",
           "Veneration",
           "WasteNot",
           "Groundwork",
           "Groundwork",
-          "Manipulation",
+          "Groundwork",
+          "DelicateSynthesis",
           "Innovation",
           "BasicTouch",
           "StandardTouch",
           "AdvancedTouch",
+          "ImmaculateMend",
+          "Innovation",
+          "DelicateSynthesis",
+          "BasicTouch",
+          "StandardTouch",
+          "AdvancedTouch",
+          "TrainedPerfection",
+          "GreatStrides",
+          "Innovation",
+          "PreparatoryTouch",
           "GreatStrides",
           "ByregotsBlessing",
           "Veneration",
-          "Groundwork"
+          "CarefulSynthesis",
+          "CarefulSynthesis",
+          "PrudentSynthesis",
+          "BasicSynthesis"
         ],
         "expectedCompletion": true,
-        "expectedMinQualityPercent": 10
+        "expectedMinQualityPercent": 97
       },
       "solverTargets": {
         "greedyMustComplete": true,
-        "mctsMinQualityPercentOfCommunity": 75,
+        "mctsMinQualityPercentOfCommunity": 15,
         "mctsTimeBudgetMs": 10000
       }
     }

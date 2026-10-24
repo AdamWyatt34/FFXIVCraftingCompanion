@@ -51,6 +51,9 @@ pub struct IngredientDto {
     pub quantity: i32,
     #[serde(rename = "canBeHQ")]
     pub can_be_hq: bool,
+    /// Absent from data sets without item levels; 0 weighs HQ materials by count.
+    #[serde(default)]
+    pub item_level: i32,
 }
 
 impl RecipeParametersDto {
@@ -83,6 +86,7 @@ impl RecipeParametersDto {
                 item_id: i.item_id,
                 quantity: i.quantity,
                 can_be_hq: i.can_be_hq,
+                item_level: i.item_level,
             })
             .collect()
     }
@@ -166,7 +170,7 @@ pub struct CraftingStateDto {
     #[serde(default)]
     pub combo_action: i32,
     #[serde(default)]
-    pub observe_active: bool,
+    pub expedience_active: bool,
     #[serde(default)]
     pub is_first_step: bool,
     #[serde(default)]
@@ -279,7 +283,7 @@ impl CraftingStateDto {
             active_buffs,
             inner_quiet_stacks: state.inner_quiet_stacks,
             combo_action: state.combo_action,
-            observe_active: state.observe_active,
+            expedience_active: state.expedience_active,
             is_first_step: state.is_first_step,
             quick_innovation_used: state.quick_innovation_used,
             heart_and_soul_used: state.heart_and_soul_used,
@@ -323,13 +327,13 @@ impl CraftingStateDto {
             muscle_memory_turns: turns(MUSCLE_MEMORY),
             heart_and_soul_active: active(HEART_AND_SOUL),
             trained_perfection_active: active(TRAINED_PERFECTION),
+            expedience_active: self.expedience_active,
             quick_innovation_used: self.quick_innovation_used,
             heart_and_soul_used: self.heart_and_soul_used,
             trained_perfection_used: self.trained_perfection_used,
             careful_observation_count: self.careful_observation_count,
             is_first_step: self.is_first_step,
             combo_action: self.combo_action,
-            observe_active: self.observe_active,
         }
     }
 }
@@ -489,6 +493,8 @@ pub struct ActionInfoDto {
     pub base_cp_cost: i32,
     pub base_durability_cost: i32,
     pub base_success_rate: i32,
+    /// Removed from the game: a saved rotation still replays it, but a palette does not offer it.
+    pub is_legacy: bool,
 }
 
 impl ActionInfoDto {
@@ -515,6 +521,7 @@ impl ActionInfoDto {
             base_cp_cost: action.cp_cost(&default_state),
             base_durability_cost: action.durability_cost(&default_state),
             base_success_rate: action.success_rate(&default_state),
+            is_legacy: action.is_legacy(),
         }
     }
 }

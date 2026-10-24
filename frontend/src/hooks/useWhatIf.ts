@@ -5,12 +5,20 @@ import { ApiClientError } from "@/lib/api-client";
 import { getBisStats } from "@/lib/game-data";
 import { quickSolve } from "@/lib/solver-client";
 import { WHAT_IF_CONSTANTS, WHAT_IF_PRESETS } from "@/lib/constants";
+import { craftStartKey, type CraftStart } from "@/lib/simulator-setup";
+import { applyConsumables } from "@/lib/static-data/consumables";
+import type { CraftingConsumableDto } from "@/types/api";
+import type { ConsumableSelection } from "@/types/simulator";
 import type { WhatIfStatSet, WhatIfResult, SolverResult } from "@/types/solver";
 
 type VariedStat = "craftsmanship" | "control" | "cp";
 
 function statKey(s: WhatIfStatSet): string {
   return `${s.craftsmanship}-${s.control}-${s.cp}-${s.level}`;
+}
+
+function cacheKey(recipeId: number, stats: WhatIfStatSet, start: CraftStart): string {
+  return `${recipeId}-${statKey(stats)}-${craftStartKey(start)}`;
 }
 
 // Module-level LRU cache for solver results
@@ -51,12 +59,18 @@ export interface UseWhatIfReturn {
   addCustomEntry: (stats: WhatIfStatSet, label: string) => void;
   clearAll: () => void;
   recipeId: number | null;
-  setRecipeId: (id: number) => void;
+  /** A no-op while the recipe and its craft type are unchanged, so re-syncing never clears results. */
+  setRecipeId: (id: number, craftType: string) => void;
   activePreset: string | null;
   isBisLoading: boolean;
 }
 
-export function useWhatIf(): UseWhatIfReturn {
+/** Solves on the simulator's consumables and start quality, so every row compares on the same setup as Quick Solve. */
+export function useWhatIf(
+  consumables: ConsumableSelection,
+  consumableOptions: readonly CraftingConsumableDto[],
+  start: CraftStart,
+): UseWhatIfReturn {
   const [baseStats, setBaseStatsState] = useState<WhatIfStatSet | null>(null);
   const [results, setResults] = useState<WhatIfResult[]>([]);
   const [variedStat, setVariedStatState] = useState<VariedStat | null>(null);
@@ -67,6 +81,21 @@ export function useWhatIf(): UseWhatIfReturn {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const nextIdRef = useRef(0);
+  // The callbacks read these instead of state so they stay stable: the page syncs into
+  // setBaseStats and setRecipeId from effects, and a new identity would re-run those effects.
+  const recipeIdRef = useRef<number | null>(null);
+  const craftTypeRef = useRef<string | null>(null);
+  const variedStatRef = useRef<VariedStat | null>(null);
+  const baseStatsRef = useRef<WhatIfStatSet | null>(null);
+  const { startingQuality, hqIngredients } = start;
+  const startKey = craftStartKey(start);
+  const startRef = useRef<CraftStart>({ startingQuality, hqIngredients });
+  const startKeyRef = useRef(startKey);
+
+  const changeVariedStat = useCallback((stat: VariedStat | null) => {
+    variedStatRef.current = stat;
+    setVariedStatState(stat);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -78,9 +107,11 @@ export function useWhatIf(): UseWhatIfReturn {
 
   const solveEntry = useCallback(
     async (entry: WhatIfResult, signal: AbortSignal): Promise<WhatIfResult> => {
+      const recipeId = recipeIdRef.current;
       if (!recipeId) return { ...entry, error: "No recipe selected" };
 
-      const key = `${recipeId}-${statKey(entry.stats)}`;
+      const start = startRef.current;
+      const key = cacheKey(recipeId, entry.stats, start);
       const cached = cacheGet(key);
       if (cached) {
         return {
@@ -101,6 +132,8 @@ export function useWhatIf(): UseWhatIfReturn {
             control: entry.stats.control,
             cp: entry.stats.cp,
             level: entry.stats.level,
+            hqIngredients: start.hqIngredients,
+            startingQuality: start.startingQuality,
           },
           signal,
         );
@@ -130,8 +163,15 @@ export function useWhatIf(): UseWhatIfReturn {
         return { ...entry, isLoading: false, error: msg };
       }
     },
-    [recipeId],
+    [],
   );
+
+  // Rows added beside the others share one controller, so every reset aborts all of their solves
+  // and adding a row never aborts a sibling's, which would leave that row loading.
+  const sharedSignal = useCallback((): AbortSignal => {
+    if (!abortRef.current || abortRef.current.signal.aborted) abortRef.current = new AbortController();
+    return abortRef.current.signal;
+  }, []);
 
   const dispatchSolves = useCallback(
     (entries: WhatIfResult[]) => {
@@ -157,6 +197,7 @@ export function useWhatIf(): UseWhatIfReturn {
 
   const generateDataPoints = useCallback(
     (base: WhatIfStatSet, stat: VariedStat): WhatIfResult[] => {
+      const recipeId = recipeIdRef.current;
       const step = WHAT_IF_CONSTANTS.STAT_STEP;
       const count = WHAT_IF_CONSTANTS.MAX_DATA_POINTS;
       const halfCount = Math.floor(count / 2);
@@ -172,8 +213,7 @@ export function useWhatIf(): UseWhatIfReturn {
         if (seen.has(key)) continue;
         seen.add(key);
 
-        const cacheKey = recipeId ? `${recipeId}-${key}` : key;
-        const cached = cacheGet(cacheKey);
+        const cached = recipeId ? cacheGet(cacheKey(recipeId, stats, startRef.current)) : undefined;
 
         points.push({
           id: `dp-${nextIdRef.current++}`,
@@ -189,43 +229,72 @@ export function useWhatIf(): UseWhatIfReturn {
       }
       return points;
     },
-    [recipeId],
+    [],
   );
+
+  // Rows solved from another start would sit beside a Quick Solve that uses this one.
+  useEffect(() => {
+    startRef.current = { startingQuality, hqIngredients };
+    if (startKeyRef.current === startKey) return;
+    startKeyRef.current = startKey;
+    abortRef.current?.abort();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const stat = variedStatRef.current;
+    const base = baseStatsRef.current;
+    if (stat && base && recipeIdRef.current) {
+      dispatchSolves(generateDataPoints(base, stat));
+    } else {
+      setResults([]);
+      setActivePreset(null);
+    }
+  }, [startKey, startingQuality, hqIngredients, dispatchSolves, generateDataPoints]);
 
   const setBaseStats = useCallback(
     (stats: WhatIfStatSet) => {
+      baseStatsRef.current = stats;
       setBaseStatsState(stats);
       setActivePreset(null);
 
       // If there's a varied stat, regenerate data points with debounce
-      if (variedStat && recipeId) {
+      const stat = variedStatRef.current;
+      if (stat && recipeIdRef.current) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-          const entries = generateDataPoints(stats, variedStat);
-          dispatchSolves(entries);
+          dispatchSolves(generateDataPoints(stats, stat));
         }, WHAT_IF_CONSTANTS.DEBOUNCE_MS);
       }
     },
-    [variedStat, recipeId, generateDataPoints, dispatchSolves],
+    [generateDataPoints, dispatchSolves],
   );
 
+  // setBaseStats' debounce already re-sweeps on every slider move, so re-choosing the same stat has nothing to redo.
   const setVariedStat = useCallback(
     (stat: VariedStat) => {
-      setVariedStatState(stat);
-      if (!baseStats || !recipeId) return;
+      if (variedStatRef.current === stat) return;
+      changeVariedStat(stat);
+      const base = baseStatsRef.current;
+      if (!base || !recipeIdRef.current) return;
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      const entries = generateDataPoints(baseStats, stat);
-      dispatchSolves(entries);
+      dispatchSolves(generateDataPoints(base, stat));
     },
-    [baseStats, recipeId, generateDataPoints, dispatchSolves],
+    [changeVariedStat, generateDataPoints, dispatchSolves],
   );
 
-  const setRecipeId = useCallback((id: number) => {
-    setRecipeIdState(id);
-    setResults([]);
-    setVariedStatState(null);
-  }, []);
+  const setRecipeId = useCallback(
+    (id: number, craftType: string) => {
+      if (recipeIdRef.current === id && craftTypeRef.current === craftType) return;
+      recipeIdRef.current = id;
+      craftTypeRef.current = craftType;
+      abortRef.current?.abort();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setRecipeIdState(id);
+      setResults([]);
+      setActivePreset(null);
+      changeVariedStat(null);
+    },
+    [changeVariedStat],
+  );
 
   const applyPreset = useCallback(
     (key: string) => {
@@ -234,14 +303,15 @@ export function useWhatIf(): UseWhatIfReturn {
       setActivePreset(key);
 
       if (key === "bis") {
+        const craftType = craftTypeRef.current;
+        if (!craftType) return;
+        const bisStatsOf = (gear: { craftsmanship: number; control: number; cp: number }): WhatIfStatSet =>
+          applyConsumables({ ...gear, level: baseStats.level }, consumables, consumableOptions);
         // Fetch BiS stats from gear recommendations
         setIsBisLoading(true);
-        const bisCacheKey = `bis-${baseStats.level}`;
+        const bisCacheKey = `bis-${craftType}-${baseStats.level}`;
         if (bisCache && bisCache.key === bisCacheKey) {
-          const bisStats: WhatIfStatSet = {
-            ...bisCache.stats,
-            level: baseStats.level,
-          };
+          const bisStats = bisStatsOf(bisCache.stats);
           const entry: WhatIfResult = {
             id: `preset-${nextIdRef.current++}`,
             label: "BiS",
@@ -259,10 +329,9 @@ export function useWhatIf(): UseWhatIfReturn {
             return [...filtered, entry];
           });
           // Solve it
-          const controller = new AbortController();
-          abortRef.current = controller;
-          solveEntry(entry, controller.signal).then((resolved) => {
-            if (!controller.signal.aborted) {
+          const signal = sharedSignal();
+          solveEntry(entry, signal).then((resolved) => {
+            if (!signal.aborted) {
               setResults((prev) =>
                 prev.map((r) => (r.id === entry.id ? resolved : r)),
               );
@@ -271,15 +340,10 @@ export function useWhatIf(): UseWhatIfReturn {
           return;
         }
 
-        // Need to determine the job. We'll try "CRP" as a fallback since we don't
-        // have job context here — the caller should set up the proper job.
-        getBisStats("CRP", baseStats.level)
+        getBisStats(craftType, baseStats.level)
           .then((stats) => {
             bisCache = { key: bisCacheKey, stats };
-            const bisStats: WhatIfStatSet = {
-              ...stats,
-              level: baseStats.level,
-            };
+            const bisStats = bisStatsOf(stats);
             const entry: WhatIfResult = {
               id: `preset-${nextIdRef.current++}`,
               label: "BiS",
@@ -295,10 +359,9 @@ export function useWhatIf(): UseWhatIfReturn {
               const filtered = prev.filter((r) => r.label !== "BiS");
               return [...filtered, entry];
             });
-            const controller = new AbortController();
-            abortRef.current = controller;
-            solveEntry(entry, controller.signal).then((resolved) => {
-              if (!controller.signal.aborted) {
+            const signal = sharedSignal();
+            solveEntry(entry, signal).then((resolved) => {
+              if (!signal.aborted) {
                 setResults((prev) =>
                   prev.map((r) => (r.id === entry.id ? resolved : r)),
                 );
@@ -356,17 +419,16 @@ export function useWhatIf(): UseWhatIfReturn {
       });
 
       // Solve
-      const controller = new AbortController();
-      abortRef.current = controller;
-      solveEntry(entry, controller.signal).then((resolved) => {
-        if (!controller.signal.aborted) {
+      const signal = sharedSignal();
+      solveEntry(entry, signal).then((resolved) => {
+        if (!signal.aborted) {
           setResults((prev) =>
             prev.map((r) => (r.id === entry.id ? resolved : r)),
           );
         }
       });
     },
-    [baseStats, recipeId, solveEntry],
+    [baseStats, recipeId, solveEntry, sharedSignal, consumables, consumableOptions],
   );
 
   const addCustomEntry = useCallback(
@@ -378,8 +440,7 @@ export function useWhatIf(): UseWhatIfReturn {
         const existing = prev.find((r) => statKey(r.stats) === newKey);
         if (existing) return prev;
 
-        const cacheKey = `${recipeId}-${newKey}`;
-        const cached = cacheGet(cacheKey);
+        const cached = cacheGet(cacheKey(recipeId, stats, startRef.current));
 
         const entry: WhatIfResult = {
           id: `custom-${nextIdRef.current++}`,
@@ -394,10 +455,9 @@ export function useWhatIf(): UseWhatIfReturn {
         };
 
         if (!cached) {
-          const controller = new AbortController();
-          abortRef.current = controller;
-          solveEntry(entry, controller.signal).then((resolved) => {
-            if (!controller.signal.aborted) {
+          const signal = sharedSignal();
+          solveEntry(entry, signal).then((resolved) => {
+            if (!signal.aborted) {
               setResults((p) =>
                 p.map((r) => (r.id === entry.id ? resolved : r)),
               );
@@ -408,16 +468,16 @@ export function useWhatIf(): UseWhatIfReturn {
         return [...prev, entry];
       });
     },
-    [recipeId, solveEntry],
+    [recipeId, solveEntry, sharedSignal],
   );
 
   const clearAll = useCallback(() => {
     abortRef.current?.abort();
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setResults([]);
-    setVariedStatState(null);
+    changeVariedStat(null);
     setActivePreset(null);
-  }, []);
+  }, [changeVariedStat]);
 
   const isAnyLoading = results.some((r) => r.isLoading) || isBisLoading;
 

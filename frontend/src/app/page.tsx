@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Form from "next/form";
 import Link from "next/link";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { CRAFT_JOBS, LATEST_BRACKET } from "@/lib/static-data/hubs";
@@ -6,7 +7,6 @@ import { DAWNTRAIL_RECIPES_PATH, recipesByJobPath } from "@/lib/routes";
 import {
   ChefHat,
   FlaskConical,
-  Sparkles,
   ShoppingCart,
   Shield,
   BarChart3,
@@ -31,17 +31,10 @@ const FEATURES = [
   },
   {
     Icon: FlaskConical,
-    title: "Crafting Simulator",
+    title: "Crafting Simulator & Rotation Solver",
     href: "/simulator",
     description:
-      "Test rotations without wasting materials. Full simulation of every Dawntrail crafting action.",
-  },
-  {
-    Icon: Sparkles,
-    title: "Rotation Solver",
-    href: "/simulator",
-    description:
-      "AI-powered solver finds optimal rotations for your stats. Supports greedy and MCTS strategies.",
+      "Test rotations without wasting materials, or let the greedy and MCTS solvers find one for your stats. Simulates every Dawntrail crafting action.",
   },
   {
     Icon: ShoppingCart,
@@ -87,6 +80,32 @@ export default function HomePage() {
           One-stop crafting, gear &amp; materials platform for Final Fantasy XIV.
           Explore recipes, simulate rotations, and plan your crafting sessions.
         </p>
+        <Form action="/recipes" role="search" className="flex gap-2 max-w-xl mx-auto">
+          <label htmlFor="home-search" className="sr-only">
+            Search recipes and items
+          </label>
+          <div className="relative flex-1">
+            <Search
+              size={18}
+              aria-hidden="true"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+            />
+            <input
+              id="home-search"
+              name="q"
+              type="search"
+              autoComplete="off"
+              placeholder="Search a recipe or item"
+              className="w-full h-12 pl-10 pr-3 bg-bg-secondary text-text-primary placeholder:text-text-muted rounded-lg border border-border focus:border-border-focus focus:outline-none transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            className="h-12 px-5 rounded-lg bg-gold text-bg-primary font-semibold hover:bg-gold-light transition-colors"
+          >
+            Search
+          </button>
+        </Form>
         <div className="flex justify-center gap-4 flex-wrap">
           <Link
             href="/recipes"

@@ -1,6 +1,4 @@
-//! The 36 crafting actions as one enum. Ids, names, level requirements and base costs are the
-//! C# values; `execute` is `CraftingActionBase.Execute` step for step, and each category module
-//! holds the `ApplyEffect` overrides.
+//! The crafting actions as one enum. Ids, names and costs are the C# values; `execute` mirrors `CraftingActionBase.Execute`.
 
 mod buffs;
 mod other;
@@ -48,6 +46,9 @@ pub enum Action {
     ByregotsBlessing,
     TrainedFinesse,
     TrainedEye,
+    PreciseTouch,
+    RefinedTouch,
+    DaringTouch,
 
     InnerQuiet,
     WasteNot,
@@ -120,8 +121,11 @@ const fn meta(
 }
 
 impl Action {
-    /// Every action in C# registry order.
-    pub const ALL: [Action; 36] = [
+    pub const COUNT: usize = 39;
+
+    /// The recognized set in C# registry order, legacy ones included: every action a saved rotation may hold.
+    /// `offered` is the subset a palette or solver picks.
+    pub const ALL: [Action; Action::COUNT] = [
         Action::BasicSynthesis,
         Action::CarefulSynthesis,
         Action::RapidSynthesis,
@@ -142,6 +146,9 @@ impl Action {
         Action::ByregotsBlessing,
         Action::TrainedFinesse,
         Action::TrainedEye,
+        Action::PreciseTouch,
+        Action::RefinedTouch,
+        Action::DaringTouch,
         Action::InnerQuiet,
         Action::WasteNot,
         Action::WasteNotII,
@@ -185,6 +192,10 @@ impl Action {
             Action::ByregotsBlessing => meta(100339, "ByregotsBlessing", "Byregot's Blessing", 50, Quality, 24, 10, 100),
             Action::TrainedFinesse => meta(100435, "TrainedFinesse", "Trained Finesse", 90, Quality, 32, 0, 100),
             Action::TrainedEye => meta(100283, "TrainedEye", "Trained Eye", 80, Quality, 250, 0, 100),
+            // Ids in our own range, not the game's 100128/100443/100451; see CLAUDE.md.
+            Action::PreciseTouch => meta(100501, "PreciseTouch", "Precise Touch", 53, Quality, 18, 10, 100),
+            Action::RefinedTouch => meta(100502, "RefinedTouch", "Refined Touch", 92, Quality, 24, 10, 100),
+            Action::DaringTouch => meta(100503, "DaringTouch", "Daring Touch", 96, Quality, 0, 10, 60),
 
             Action::InnerQuiet => meta(100252, "InnerQuiet", "Inner Quiet", 11, Buff, 18, 0, 100),
             Action::WasteNot => meta(100279, "WasteNot", "Waste Not", 15, Buff, 56, 0, 100),
@@ -207,6 +218,11 @@ impl Action {
         }
     }
 
+    pub fn offered() -> impl Iterator<Item = Action> {
+        Action::ALL.into_iter().filter(|a| !a.is_legacy())
+    }
+
+    /// Resolves every recognized id, legacy ones included, so saved rotations still load.
     pub fn from_id(id: ActionId) -> Option<Action> {
         Action::ALL.iter().copied().find(|a| a.id() == id)
     }
@@ -261,6 +277,23 @@ impl Action {
         self.meta().success
     }
 
+    /// Removed from the game but kept resolvable by id so saved rotations and macros still load; never offered or picked by a solver.
+    pub const fn is_legacy(self) -> bool {
+        matches!(
+            self,
+            Action::FocusedSynthesis | Action::FocusedTouch | Action::InnerQuiet
+        )
+    }
+
+    /// The name a macro's `/ac` line uses: under Expedience the Hasty Touch slot becomes Daring Touch, which the game
+    /// resolves by Hasty Touch's name (Raphael `raphael-data/src/locales.rs` macro_name; Teamcraft commit a21776a).
+    pub const fn macro_name(self) -> &'static str {
+        match self {
+            Action::DaringTouch => Action::HastyTouch.in_game_name(),
+            _ => self.in_game_name(),
+        }
+    }
+
     /// False for the abilities the game resolves without advancing the craft: no buff tick, no
     /// step count, first-step actions stay available afterwards.
     pub const fn consumes_step(self) -> bool {
@@ -277,6 +310,20 @@ impl Action {
     /// consuming a step; that is its entire purpose.
     pub const fn advances_condition(self) -> bool {
         self.consumes_step() || matches!(self, Action::CarefulObservation)
+    }
+
+    pub const fn macro_wait_seconds(self) -> i32 {
+        match self {
+            Action::InnerQuiet
+            | Action::WasteNot
+            | Action::WasteNotII
+            | Action::Veneration
+            | Action::Innovation
+            | Action::GreatStrides
+            | Action::Manipulation
+            | Action::FinalAppraisal => 2,
+            _ => 3,
+        }
     }
 
     pub fn cp_cost(self, state: &CraftingState) -> i32 {
@@ -308,9 +355,6 @@ impl Action {
     }
 
     pub fn success_rate(self, state: &CraftingState) -> i32 {
-        if matches!(self, Action::FocusedSynthesis | Action::FocusedTouch) && state.observe_active {
-            return 100;
-        }
         let mut rate = self.base_success_rate();
         if state.condition == Condition::Centered {
             rate += 25;
@@ -329,10 +373,15 @@ impl Action {
         let waste_not_active = state.waste_not_turns > 0 || state.waste_not_ii_turns > 0;
 
         let specific = match self {
-            Action::IntensiveSynthesis | Action::TricksOfTheTrade
+            Action::IntensiveSynthesis | Action::TricksOfTheTrade | Action::PreciseTouch
                 if !good_or_excellent && !state.heart_and_soul_active =>
             {
                 Some(FailReason::RequiresGoodOrExcellent)
+            }
+            Action::DaringTouch if !state.expedience_active => Some(FailReason::RequiresExpedience),
+            // The slot is Daring Touch under Expedience (Raphael raphael-sim/src/actions.rs:1120-1123).
+            Action::HastyTouch if state.expedience_active => {
+                Some(FailReason::HastyTouchUnderExpedience)
             }
             Action::MuscleMemory | Action::Reflect if !state.is_first_step => {
                 Some(FailReason::FirstActionOnly)
@@ -434,7 +483,9 @@ impl Action {
         recipe: &Recipe,
         succeeded: bool,
     ) -> CraftingState {
-        // Costs are read from the state the action was used on, before its own effects land.
+        // Costs and the combo token are read from the state the action was used on, before its
+        // own effects land.
+        let combo_before = state.combo_action;
         let durability_cost = self.durability_cost(&state);
         state.cp -= self.cp_cost(&state);
 
@@ -459,14 +510,15 @@ impl Action {
             state.step += 1;
             state.is_first_step = false;
             state.combo_action = if succeeded {
-                self.combo_action_after()
+                self.combo_action_after(combo_before)
             } else {
                 0
             };
-            state.observe_active = succeeded && self == Action::Observe;
+            // Expedience lasts the one step after the Hasty Touch that granted it; step-free abilities keep it
+            // (Raphael raphael-sim/src/effects.rs tick_down; Teamcraft simulation.ts tickBuffs/skipsBuffTicks).
+            state.expedience_active = succeeded && self.grants_expedience(stats);
         } else {
             state.combo_action = 0;
-            state.observe_active = false;
         }
 
         // Granted buffs land after the tick so they last their full duration.
@@ -483,11 +535,20 @@ impl Action {
         state
     }
 
-    fn combo_action_after(self) -> i32 {
+    // Only a comboed Standard Touch or an Observe opens Advanced Touch's discount (Raphael
+    // raphael-sim/src/actions.rs:158-172,236-280; Teamcraft quality/advanced-touch.ts hasCombo).
+    fn combo_action_after(self, combo_before: i32) -> i32 {
         match self {
-            Action::BasicTouch | Action::StandardTouch => self.id(),
+            Action::BasicTouch => self.id(),
+            Action::StandardTouch if combo_before == Action::BasicTouch.id() => self.id(),
+            Action::Observe => Action::StandardTouch.id(),
             _ => 0,
         }
+    }
+
+    // Raphael raphael-sim/src/actions.rs HastyTouch transform; Teamcraft quality/hasty-touch.ts execute.
+    fn grants_expedience(self, stats: &CrafterStats) -> bool {
+        self == Action::HastyTouch && stats.level >= Action::DaringTouch.level_requirement()
     }
 
     fn apply_effect(
@@ -563,6 +624,69 @@ mod tests {
     }
 
     #[test]
+    fn advanced_touch_is_discounted_after_a_comboed_standard_touch_or_observe() {
+        let stats = CrafterStats {
+            level: 100,
+            craftsmanship: 4000,
+            control: 4000,
+            cp: 900,
+            is_specialist: false,
+        };
+        let recipe = Recipe {
+            recipe_level: 690,
+            class_job_level: 100,
+            difficulty: 6600,
+            quality: 12000,
+            durability: 80,
+            progress_divider: 170,
+            progress_modifier: 90,
+            quality_divider: 150,
+            quality_modifier: 75,
+            ..Default::default()
+        };
+        let costs = |actions: &[Action]| {
+            let mut state = CraftingState::create_initial(&recipe, &stats);
+            actions
+                .iter()
+                .map(|action| {
+                    let before = state.cp;
+                    state = action.execute(state, &stats, &recipe, true);
+                    before - state.cp
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            costs(&[Action::StandardTouch, Action::AdvancedTouch]),
+            [32, 46]
+        );
+        assert_eq!(costs(&[Action::Observe, Action::AdvancedTouch]), [7, 18]);
+        assert_eq!(
+            costs(&[
+                Action::BasicTouch,
+                Action::StandardTouch,
+                Action::AdvancedTouch
+            ]),
+            [18, 18, 18]
+        );
+        assert_eq!(
+            costs(&[
+                Action::Observe,
+                Action::StandardTouch,
+                Action::AdvancedTouch
+            ]),
+            [7, 32, 46]
+        );
+
+        let observed = Action::Observe.execute(
+            CraftingState::create_initial(&recipe, &stats),
+            &stats,
+            &recipe,
+            true,
+        );
+        assert_eq!(observed.combo_action, Action::StandardTouch.id());
+    }
+
+    #[test]
     fn durability_halves_stack_and_round_up() {
         let mut state = CraftingState {
             waste_not_turns: 1,
@@ -576,16 +700,79 @@ mod tests {
     }
 
     #[test]
-    fn centered_caps_success_at_100_and_observe_guarantees_focused() {
-        let mut state = CraftingState {
+    fn centered_caps_success_at_100() {
+        let state = CraftingState {
             condition: Condition::Centered,
             ..Default::default()
         };
         assert_eq!(Action::RapidSynthesis.success_rate(&state), 75);
+        assert_eq!(Action::DaringTouch.success_rate(&state), 85);
         assert_eq!(Action::BasicTouch.success_rate(&state), 100);
-        state.condition = Condition::Normal;
-        state.observe_active = true;
-        assert_eq!(Action::FocusedTouch.success_rate(&state), 100);
+    }
+
+    #[test]
+    fn legacy_focused_actions_keep_their_base_rate_after_observe() {
+        let stats = CrafterStats {
+            level: 90,
+            cp: 600,
+            ..Default::default()
+        };
+        let recipe = Recipe {
+            difficulty: 3500,
+            quality: 7200,
+            durability: 70,
+            ..Default::default()
+        };
+        let observed = Action::Observe.execute(
+            CraftingState::create_initial(&recipe, &stats),
+            &stats,
+            &recipe,
+            true,
+        );
+        assert_eq!(Action::FocusedSynthesis.success_rate(&observed), 50);
+        assert_eq!(Action::FocusedTouch.success_rate(&observed), 50);
+    }
+
+    #[test]
+    fn legacy_actions_are_recognized_but_not_offered() {
+        let legacy: Vec<Action> = Action::ALL.into_iter().filter(|a| a.is_legacy()).collect();
+        assert_eq!(
+            legacy,
+            [
+                Action::FocusedSynthesis,
+                Action::FocusedTouch,
+                Action::InnerQuiet
+            ]
+        );
+        for action in &legacy {
+            assert_eq!(Action::from_id(action.id()), Some(*action));
+        }
+        let offered: Vec<Action> = Action::offered().collect();
+        assert_eq!(offered.len(), Action::COUNT - 3);
+        assert!(offered.iter().all(|a| !a.is_legacy()));
+    }
+
+    #[test]
+    fn new_touches_sit_after_trained_eye_with_our_ids() {
+        let position = |action: Action| Action::ALL.iter().position(|a| *a == action);
+        let trained_eye = position(Action::TrainedEye).unwrap();
+        assert_eq!(position(Action::PreciseTouch), Some(trained_eye + 1));
+        assert_eq!(position(Action::RefinedTouch), Some(trained_eye + 2));
+        assert_eq!(position(Action::DaringTouch), Some(trained_eye + 3));
+        assert_eq!(Action::PreciseTouch.id(), 100501);
+        assert_eq!(Action::RefinedTouch.id(), 100502);
+        assert_eq!(Action::DaringTouch.id(), 100503);
+    }
+
+    #[test]
+    fn macro_name_is_the_in_game_name_except_daring_touch() {
+        assert_eq!(Action::DaringTouch.macro_name(), "Hasty Touch");
+        assert_eq!(Action::PreciseTouch.macro_name(), "Precise Touch");
+        for action in Action::ALL {
+            if action != Action::DaringTouch {
+                assert_eq!(action.macro_name(), action.in_game_name());
+            }
+        }
     }
 
     #[test]
@@ -616,6 +803,36 @@ mod tests {
         assert_eq!(
             Action::BasicSynthesis.fail_reason(&state, &stats, &recipe),
             None
+        );
+        assert_eq!(
+            Action::PreciseTouch.fail_reason(&state, &stats, &recipe),
+            Some(FailReason::RequiresGoodOrExcellent)
+        );
+        assert_eq!(
+            Action::DaringTouch.fail_reason(&state, &stats, &recipe),
+            Some(FailReason::RequiresExpedience)
+        );
+        assert_eq!(
+            Action::RefinedTouch.fail_reason(&state, &stats, &recipe),
+            Some(FailReason::RequiresLevel(92))
+        );
+
+        let gates_open = CraftingState {
+            heart_and_soul_active: true,
+            expedience_active: true,
+            ..state
+        };
+        assert_eq!(
+            Action::PreciseTouch.fail_reason(&gates_open, &stats, &recipe),
+            Some(FailReason::RequiresLevel(53))
+        );
+        assert_eq!(
+            Action::DaringTouch.fail_reason(&gates_open, &stats, &recipe),
+            Some(FailReason::RequiresLevel(96))
+        );
+        assert_eq!(
+            Action::HastyTouch.fail_reason(&gates_open, &stats, &recipe),
+            Some(FailReason::HastyTouchUnderExpedience)
         );
     }
 

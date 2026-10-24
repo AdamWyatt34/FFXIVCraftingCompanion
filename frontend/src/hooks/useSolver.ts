@@ -104,6 +104,8 @@ export function useSolver(): UseSolverReturn {
             control: request.stats.control,
             cp: request.stats.cp,
             level: request.stats.level,
+            hqIngredients: request.hqIngredients,
+            startingQuality: request.startingQuality,
           },
           controller.signal,
         )

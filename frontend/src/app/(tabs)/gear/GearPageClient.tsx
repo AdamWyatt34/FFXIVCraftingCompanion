@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { User, FlaskConical, SlidersHorizontal, ClipboardList, Hammer } from "lucide-react";
 import Link from "next/link";
@@ -30,11 +31,15 @@ import {
 import { GearSlotExpandedContent, BottomSheet } from "@/components/gear";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { ErrorState, LoadingSkeleton } from "@/components/ui/LoadingStates";
-import { JOB_INFO, type GearJob } from "@/lib/gear-constants";
+import { JOB_INFO, LEVEL_PRESETS, type GearJob } from "@/lib/gear-constants";
 import { gearSetToProfileSlots } from "@/lib/slot-mapping";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import type { GearSlotDto } from "@/types/gear";
+
+// Level 1 gear is never what a visitor came for: with no level from the link or the profile the
+// page opens at the level cap, the highest preset.
+const DEFAULT_LEVEL = LEVEL_PRESETS[LEVEL_PRESETS.length - 1];
 
 function GearPageContent() {
   const searchParams = useSearchParams();
@@ -54,11 +59,8 @@ function GearPageContent() {
   // Auto-fill from profile when no URL job param
   const autoFilledFromProfile = !urlJob && !!userProfile;
   const initialJob = urlJob ?? (userProfile?.activeJob || null);
-  const initialLevel = urlLevel
-    ? Number(urlLevel)
-    : autoFilledFromProfile
-      ? userProfile?.activeJobLevel
-      : undefined;
+  const profileLevel = autoFilledFromProfile ? userProfile?.activeJobLevel : undefined;
+  const initialLevel = urlLevel ? Number(urlLevel) : profileLevel || DEFAULT_LEVEL;
 
   const initialMode = urlMode === "search" ? "search" : "recommend";
   const [mode, setMode] = useState<"recommend" | "search">(initialMode);
@@ -109,6 +111,18 @@ function GearPageContent() {
 
   const equipSearch = useEquipmentSearch(urlSearch ?? "");
   const isDesktop = useMediaQuery("(min-width: 640px)");
+  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // The recommendations render below the whole job grid, out of sight on most screens. The
+  // synchronous render puts them in the DOM before the scroll.
+  const handleJobSelect = (selected: string) => {
+    flushSync(() => setJob(selected));
+    resultsRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  };
 
   // Search result expansion
   const [expandedSearchIdx, setExpandedSearchIdx] = useState<number | null>(null);
@@ -204,11 +218,12 @@ function GearPageContent() {
                   Select a job to see gear recommendations
                 </p>
               )}
-              <JobSelector selectedJob={job} onJobSelect={setJob} />
+              <JobSelector selectedJob={job} onJobSelect={handleJobSelect} />
 
               {/* Step 2: Level + Profile (after job selected) */}
               {job && (
-                <div className="space-y-4 animate-slide-up">
+                // scroll-mt clears the sticky app header plus the 1rem the slide-up starts from.
+                <div ref={resultsRef} className="space-y-4 animate-slide-up scroll-mt-20">
                   <div className="flex flex-col sm:flex-row sm:items-end gap-4">
                     <LevelInput value={level} onChange={setLevel} />
                     <div className="flex-1">

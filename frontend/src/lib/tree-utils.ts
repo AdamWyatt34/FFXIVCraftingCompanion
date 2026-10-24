@@ -3,6 +3,7 @@ import type {
   ShoppingListItemDto,
   IntermediateCraftDto,
 } from "@/types/api";
+import { craftsNeeded } from "@/lib/static-data/materials";
 
 // --- Types ---
 
@@ -27,20 +28,33 @@ export interface CategorizedShoppingList {
 
 // --- Tree Walking ---
 
+export interface CraftRecipe {
+  yieldPerCraft: number;
+  /** The direct ingredients, each with the quantity one craft needs. */
+  ingredients: { node: MaterialTreeNodeDto; perCraft: number }[];
+}
+
 /**
- * BFS walk of the material tree to build a map of itemId → direct children (ingredients).
- * Used by CraftingStepsView to show ingredients for each intermediate craft.
+ * itemId → yield and per-craft ingredients of each crafted item. Node quantities hold one
+ * occurrence's own crafts, so a step multiplies the per-craft amounts by its total crafts.
  */
 export function buildIngredientMap(
   tree: MaterialTreeNodeDto,
-): Map<number, MaterialTreeNodeDto[]> {
-  const map = new Map<number, MaterialTreeNodeDto[]>();
+): Map<number, CraftRecipe> {
+  const map = new Map<number, CraftRecipe>();
   const queue: MaterialTreeNodeDto[] = [tree];
 
   while (queue.length > 0) {
     const node = queue.shift()!;
-    if (node.children.length > 0 && !map.has(node.itemId)) {
-      map.set(node.itemId, node.children);
+    if (node.recipe && node.children.length > 0 && !map.has(node.itemId)) {
+      const crafts = craftsNeeded(node.quantity, node.recipe.yield);
+      map.set(node.itemId, {
+        yieldPerCraft: Math.max(node.recipe.yield, 1),
+        ingredients: node.children.map((child) => ({
+          node: child,
+          perCraft: crafts === 0 ? 0 : child.quantity / crafts,
+        })),
+      });
     }
     for (const child of node.children) {
       queue.push(child);

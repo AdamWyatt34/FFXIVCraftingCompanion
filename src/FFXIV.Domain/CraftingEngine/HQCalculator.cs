@@ -4,6 +4,8 @@ namespace FFXIV.Domain.CraftingEngine;
 
 public static class HQCalculator
 {
+    // Each HQ material weighs its item level times its count (Raphael raphael-data/src/lib.rs:203-239; Teamcraft
+    // recipes.extractor.ts:60-73,100-106); data without item levels weighs by count, so the total is never zero.
     public static int CalculateStartingQuality(
         int maxQuality,
         int materialQualityFactor,
@@ -16,28 +18,36 @@ public static class HQCalculator
         if (hqIngredients is null || hqIngredients.Count == 0)
             return 0;
 
-        int totalHQableItems = 0;
-        int totalHQItems = 0;
+        long totalItemLevel = 0;
+        long providedItemLevel = 0;
+        long totalCount = 0;
+        long providedCount = 0;
 
         foreach (var ingredient in ingredients)
         {
             if (!ingredient.CanBeHQ)
                 continue;
 
-            totalHQableItems += ingredient.Quantity;
+            totalItemLevel += (long)ingredient.ItemLevel * ingredient.Quantity;
+            totalCount += ingredient.Quantity;
 
             var hqInput = hqIngredients.FirstOrDefault(h => h.ItemId == ingredient.ItemId);
             if (hqInput is not null)
             {
-                totalHQItems += Math.Min(hqInput.HQQuantity, ingredient.Quantity);
+                var hqQuantity = Math.Min(hqInput.HQQuantity, ingredient.Quantity);
+                providedItemLevel += (long)ingredient.ItemLevel * hqQuantity;
+                providedCount += hqQuantity;
             }
         }
 
-        if (totalHQableItems == 0 || totalHQItems == 0)
+        var (provided, total) = totalItemLevel > 0
+            ? (providedItemLevel, totalItemLevel)
+            : (providedCount, totalCount);
+
+        if (total == 0 || provided <= 0)
             return 0;
 
-        int maxStartingQuality = (int)Math.Floor((double)maxQuality * materialQualityFactor / 100);
-        return (int)Math.Floor((double)maxStartingQuality * totalHQItems / totalHQableItems);
+        return (int)((long)maxQuality * materialQualityFactor * provided / total / 100);
     }
 }
 

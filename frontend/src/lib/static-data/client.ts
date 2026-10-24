@@ -271,7 +271,7 @@ export async function getRecipeCost(
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     warnings.push(`Could not fetch some market board prices from Universalis: ${err instanceof Error ? err.message : String(err)}`);
   }
-  return estimateCost(materials, finalItemId, world, options, prices, Date.now(), warnings);
+  return estimateCost(materials, finalItemId, world, options, quantity, prices, Date.now(), warnings);
 }
 
 export { getSearchIndex };

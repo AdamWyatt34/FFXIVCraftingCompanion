@@ -1,21 +1,19 @@
 /**
- * Compact rotation encoding for URL sharing.
- *
- * Format: action IDs packed as Uint8Array (IDs 1-255), then base64url encoded.
- * If any ID > 255, falls back to Uint16BE with a 0xFF prefix byte marker.
- *
- * For typical 25-step rotations:
- *   base64url: ~34 chars vs comma-separated: ~75 chars
+ * Format: action IDs packed as Uint8Array (IDs 1-253), then base64url encoded.
+ * Wider IDs carry a prefix byte (0xFF Uint16BE, 0xFE 3-byte BE); the narrow form stops below both so its first byte is never read as one.
  */
 
 import { SIMULATOR_CONSTANTS } from "@/lib/constants";
 import { isValidCrafterStats } from "@/lib/stat-limits";
+import type { ConsumableChoice, ConsumableSelection } from "@/types/simulator";
 
 const PREFIX_WIDE = 0xff;
+const PREFIX_WIDE24 = 0xfe;
 
 /** A shared rotation never carries more steps than a craft can. */
 export const MAX_SHARED_ACTIONS = SIMULATOR_CONSTANTS.MAX_ACTIONS_PER_CRAFT;
-const MAX_ACTION_ID = 0xffff;
+/** The widest id the 3-byte form carries; every shared-rotation reader bounds ids by it. */
+export const MAX_ACTION_ID = 0xffffff;
 
 function boundedIds(ids: number[]): number[] | null {
   if (ids.length === 0 || ids.length > MAX_SHARED_ACTIONS) return null;
@@ -26,28 +24,27 @@ function boundedIds(ids: number[]): number[] | null {
 export function encodeRotation(actionIds: number[]): string {
   if (actionIds.length === 0) return "";
 
-  const needsWide = actionIds.some((id) => id > 255);
+  const highest = Math.max(...actionIds);
+  const width = highest > 0xffff ? 3 : highest >= PREFIX_WIDE24 ? 2 : 1;
 
   let bytes: Uint8Array;
-  if (needsWide) {
-    bytes = new Uint8Array(1 + actionIds.length * 2);
-    bytes[0] = PREFIX_WIDE;
-    for (let i = 0; i < actionIds.length; i++) {
-      bytes[1 + i * 2] = (actionIds[i] >> 8) & 0xff;
-      bytes[1 + i * 2 + 1] = actionIds[i] & 0xff;
-    }
-  } else {
+  if (width === 1) {
     bytes = new Uint8Array(actionIds);
+  } else {
+    bytes = new Uint8Array(1 + actionIds.length * width);
+    bytes[0] = width === 3 ? PREFIX_WIDE24 : PREFIX_WIDE;
+    actionIds.forEach((id, i) => {
+      for (let b = 0; b < width; b++) {
+        bytes[1 + i * width + b] = (id >> (8 * (width - 1 - b))) & 0xff;
+      }
+    });
   }
 
   const base64 = btoa(String.fromCharCode(...bytes));
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/**
- * Decode a base64url rotation string back into action IDs. Returns null on invalid input, on an
- * empty rotation, on an id of zero in the wide form, and on more steps than a craft can hold.
- */
+/** Null on invalid input, an empty rotation, a zero id in a wide form, a wide payload that is not a whole number of ids, or more steps than a craft holds. */
 export function decodeRotation(encoded: string): number[] | null {
   if (!encoded) return null;
 
@@ -62,28 +59,78 @@ export function decodeRotation(encoded: string): number[] | null {
 
     if (bytes.length === 0) return null;
 
-    if (bytes[0] === PREFIX_WIDE) {
-      const count = (bytes.length - 1) / 2;
-      if (count !== Math.floor(count)) return null;
-      const ids: number[] = [];
-      for (let i = 0; i < count; i++) {
-        ids.push((bytes[1 + i * 2] << 8) | bytes[1 + i * 2 + 1]);
-      }
-      return boundedIds(ids);
-    }
+    const width = bytes[0] === PREFIX_WIDE24 ? 3 : bytes[0] === PREFIX_WIDE ? 2 : 1;
+    if (width === 1) return boundedIds(Array.from(bytes).filter((b) => b > 0));
 
-    return boundedIds(Array.from(bytes).filter((b) => b > 0));
+    const count = (bytes.length - 1) / width;
+    if (!Number.isInteger(count)) return null;
+    const ids: number[] = [];
+    for (let i = 0; i < count; i++) {
+      let id = 0;
+      for (let b = 0; b < width; b++) id = (id << 8) | bytes[1 + i * width + b];
+      ids.push(id);
+    }
+    return boundedIds(ids);
   } catch {
     return null;
   }
 }
 
-/** Build a solver share URL with compact encoded rotation. */
+/** What a shared craft starts from besides the four base stats. */
+export interface ShareContext {
+  consumables: ConsumableSelection;
+  isSpecialist: boolean;
+  startingQuality: number;
+}
+
+const MAX_INT32 = 2147483647;
+
+export function encodeShareContext(search: URLSearchParams, ctx: ShareContext): void {
+  const slots = [
+    ["meal", ctx.consumables.meal],
+    ["medicine", ctx.consumables.medicine],
+  ] as const;
+  for (const [name, choice] of slots) {
+    if (!choice) continue;
+    search.set(name, String(choice.itemId));
+    if (choice.hq) search.set(`${name}Hq`, "1");
+  }
+  if (ctx.isSpecialist) search.set("sp", "1");
+  if (ctx.startingQuality > 0) search.set("sq", String(Math.trunc(ctx.startingQuality)));
+}
+
+/** Tolerant reader: an unusable item id empties its slot, only "1" sets a flag, and a non-integer starting quality reads as 0. The simulator clamps the quality to the recipe's. */
+export function decodeShareContext(search: URLSearchParams): ShareContext {
+  return {
+    consumables: {
+      meal: decodeChoice(search, "meal"),
+      medicine: decodeChoice(search, "medicine"),
+    },
+    isSpecialist: search.get("sp") === "1",
+    startingQuality: decodeStartingQuality(search.get("sq")),
+  };
+}
+
+function decodeChoice(search: URLSearchParams, name: string): ConsumableChoice | null {
+  const raw = search.get(name);
+  if (raw === null || !/^\d+$/.test(raw)) return null;
+  const itemId = Number(raw);
+  if (itemId < 1 || itemId > MAX_INT32) return null;
+  return { itemId, hq: search.get(`${name}Hq`) === "1" };
+}
+
+function decodeStartingQuality(raw: string | null): number {
+  if (raw === null || !/^-?\d+$/.test(raw)) return 0;
+  return Math.min(MAX_INT32, Math.max(0, Number(raw)));
+}
+
+/** `stats` are the base stats; the consumables travel in `context`. */
 export function buildSolverShareUrl(params: {
   recipeId: number;
   stats: { craftsmanship: number; control: number; cp: number; level: number };
   actionIds: number[];
   algorithm?: string;
+  context?: ShareContext;
 }): string {
   const base = typeof window !== "undefined" ? window.location.origin : "";
   const search = new URLSearchParams({
@@ -97,6 +144,7 @@ export function buildSolverShareUrl(params: {
   if (params.algorithm) {
     search.set("alg", params.algorithm);
   }
+  if (params.context) encodeShareContext(search, params.context);
   return `${base}/simulator?solve=1&${search.toString()}`;
 }
 
@@ -108,6 +156,7 @@ export function parseSolverShareUrl(
   stats: { craftsmanship: number; control: number; cp: number; level: number };
   actionIds: number[];
   algorithm?: string;
+  context: ShareContext;
 } | null {
   if (searchParams.get("solve") !== "1") return null;
 
@@ -119,7 +168,7 @@ export function parseSolverShareUrl(
   const rotation = searchParams.get("r");
   const algorithm = searchParams.get("alg") ?? undefined;
 
-  if (!Number.isInteger(recipeId) || recipeId < 1) return null;
+  if (!Number.isSafeInteger(recipeId) || recipeId < 1) return null;
 
   const stats = { craftsmanship, control, cp, level };
   if (!isValidCrafterStats(stats)) return null;
@@ -132,5 +181,6 @@ export function parseSolverShareUrl(
     stats,
     actionIds,
     algorithm: algorithm && /^[a-z]{1,16}$/.test(algorithm) ? algorithm : undefined,
+    context: decodeShareContext(searchParams),
   };
 }

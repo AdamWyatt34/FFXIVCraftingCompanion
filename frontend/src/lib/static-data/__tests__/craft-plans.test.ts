@@ -41,6 +41,18 @@ describe("craft plan resolution", () => {
     },
   );
 
+  it("crafts an intermediate two plan items share once for both", () => {
+    // Each Grade 8 Tincture craft (yield 3) needs 1 Grade 5 Strength Alkahest (yield 3, per craft
+    // 8 Water Crystal and 2 Sweet Alyssum). x2 is 1 craft and x4 is 2: 3 Alkahest, one craft.
+    const result = resolve([{ recipeId: 35585, quantity: 2 }, { recipeId: 35585, quantity: 4 }]);
+    expect(result.intermediateCrafts).toMatchObject([{ itemName: "Grade 5 Strength Alkahest", totalQuantity: 3, yieldPerCraft: 3 }]);
+    expect(result.crystals.find((c) => c.itemName === "Water Crystal")?.totalQuantity).toBe(8);
+    const alyssum = result.rawMaterials.find((m) => m.itemName === "Sweet Alyssum")!;
+    expect(alyssum.totalQuantity).toBe(2);
+    // The second plan item's Alkahest comes out of the first one's craft.
+    expect(alyssum.contributions.map((c) => c.quantity)).toEqual([2, 0]);
+  });
+
   it("validates like CraftPlansController", () => {
     expect(validatePlanItems([])).toBe("At least one item is required.");
     expect(validatePlanItems(Array.from({ length: 21 }, () => ({ recipeId: 1, quantity: 1 })))).toBe("Maximum of 20 items per plan.");

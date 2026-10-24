@@ -5,6 +5,7 @@ import { FlaskConical, Map, Shield, Sparkles } from "lucide-react";
 import { getCrystalsServer, listRecipesServer } from "@/lib/static-data/server";
 import { recipeSlug } from "@/lib/static-data/slug";
 import { directIngredients } from "@/lib/static-data/materials";
+import { withRequiredStats } from "@/lib/static-data/recipes";
 import { CRAFT_TYPE_INFO } from "@/lib/constants";
 import { itemPath, recipeJourneyPath, recipePath, recipesByJobPath, simulatorPath } from "@/lib/routes";
 import { breadcrumbListJsonLd } from "@/lib/structured-data";
@@ -79,6 +80,7 @@ export default async function RecipeDetailPage({ params }: Props) {
   if (route.status === "redirect") permanentRedirect(recipePath(route.recipeId, route.itemName));
 
   const { recipe, craftingParameters, materials } = route.data;
+  const statTargets = withRequiredStats(craftingParameters, recipe);
   const name = recipe.resultItem.name;
   const craftInfo = CRAFT_TYPE_INFO[recipe.craftType as CraftType];
   const jobName = craftInfo?.fullName ?? recipe.craftType;
@@ -144,8 +146,10 @@ export default async function RecipeDetailPage({ params }: Props) {
         recipe={{
           craftType: recipe.craftType,
           recipeLevel: craftingParameters.classJobLevel,
-          requiredCraftsmanship: recipe.requiredCraftsmanship,
-          requiredControl: recipe.requiredControl,
+          requiredCraftsmanship: statTargets.requiredCraftsmanship,
+          requiredControl: statTargets.requiredControl,
+          suggestedCraftsmanship: statTargets.suggestedCraftsmanship,
+          suggestedControl: statTargets.suggestedControl,
         }}
       />
 
@@ -161,37 +165,33 @@ export default async function RecipeDetailPage({ params }: Props) {
         </section>
         <section className="bg-bg-surface rounded-lg p-4 space-y-3 border border-border">
           <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-            Required Stats
+            Recommended Stats
           </h2>
-          <StatBar label="Craftsmanship" value={recipe.requiredCraftsmanship} />
-          <StatBar label="Control" value={recipe.requiredControl} />
+          <StatBar label="Craftsmanship" value={statTargets.suggestedCraftsmanship} />
+          <StatBar label="Control" value={statTargets.suggestedControl} />
+          {statTargets.requiredCraftsmanship > 0 && (
+            <StatBar label="Required Craftsmanship" value={statTargets.requiredCraftsmanship} />
+          )}
+          {statTargets.requiredControl > 0 && (
+            <StatBar label="Required Control" value={statTargets.requiredControl} />
+          )}
         </section>
       </div>
 
-      {/* Journey button */}
-      <Link
-        href={recipeJourneyPath(recipe.recipeId, name)}
-        className="flex items-center gap-2 p-3 rounded-lg bg-gold/10 border border-gold/30 hover:bg-gold/20 transition-colors"
-      >
-        <Map className="text-gold shrink-0" size={18} />
-        <span className="text-sm font-medium text-gold">Start Crafting Journey</span>
-      </Link>
-
-      {/* Simulate + Auto-Solve links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
           href={simulatorPath(recipe.recipeId)}
-          className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
+          className="flex items-center justify-center gap-2 p-3 rounded-lg bg-gold text-bg-primary font-semibold hover:bg-gold-light transition-colors"
         >
-          <FlaskConical className="text-gold shrink-0" size={18} />
-          <span className="text-sm text-text-primary">Simulate this Recipe</span>
+          <FlaskConical className="shrink-0" size={18} />
+          <span className="text-sm">Simulate and solve</span>
         </Link>
         <Link
-          href={simulatorPath(recipe.recipeId, { solve: true })}
-          className="flex items-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
+          href={recipeJourneyPath(recipe.recipeId, name)}
+          className="flex items-center justify-center gap-2 p-3 rounded-lg bg-bg-surface border border-border hover:border-gold transition-colors"
         >
-          <Sparkles className="text-gold shrink-0" size={18} />
-          <span className="text-sm text-text-primary">Auto-Solve this Recipe</span>
+          <Map className="text-gold shrink-0" size={18} />
+          <span className="text-sm text-text-primary">Cost and journey</span>
         </Link>
       </div>
 

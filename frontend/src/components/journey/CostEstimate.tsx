@@ -13,7 +13,7 @@ interface CostEstimateProps {
 }
 
 export function CostEstimate({ recipeId, quantity = 1 }: CostEstimateProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [useMinPrice, setUseMinPrice] = useState(false);
   const [includeGathered, setIncludeGathered] = useState(true);
   const { selectedWorld, setSelectedWorld } = useWorldList();
@@ -30,6 +30,7 @@ export function CostEstimate({ recipeId, quantity = 1 }: CostEstimateProps) {
     <div className="bg-bg-surface rounded-lg border border-border overflow-hidden">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
         className="w-full flex items-center gap-2 px-4 py-3 bg-bg-elevated/50 border-b border-border hover:bg-bg-elevated transition-colors min-h-[44px]"
       >
         {isExpanded ? (
@@ -47,11 +48,14 @@ export function CostEstimate({ recipeId, quantity = 1 }: CostEstimateProps) {
         <div className="p-4 space-y-4">
           {/* World selector + fetch button */}
           <div className="flex items-center gap-2">
-            <WorldSelector
-              value={selectedWorld}
-              onChange={setSelectedWorld}
-              className="flex-1"
-            />
+            <label className="flex-1 min-w-0">
+              <span className="sr-only">World or data center</span>
+              <WorldSelector
+                value={selectedWorld}
+                onChange={setSelectedWorld}
+                className="w-full"
+              />
+            </label>
             <button
               onClick={handleFetch}
               disabled={!selectedWorld || isLoading}
@@ -100,7 +104,7 @@ export function CostEstimate({ recipeId, quantity = 1 }: CostEstimateProps) {
 
           {error && <ErrorState message={error} />}
 
-          {cost && <CostBreakdown cost={cost} />}
+          {cost && <CostBreakdown cost={cost} quantity={quantity} />}
 
           {includeGathered && cost && (
             <p className="text-[10px] text-text-muted italic">
@@ -123,7 +127,7 @@ function staleLabelFor(isoDate?: string): string | null {
   return `~${days}d old`;
 }
 
-function CostBreakdown({ cost }: { cost: CostEstimateDto }) {
+function CostBreakdown({ cost, quantity }: { cost: CostEstimateDto; quantity: number }) {
   const [showAll, setShowAll] = useState(false);
   const displayMats = showAll ? cost.materialCosts : cost.materialCosts.slice(0, 30);
   const hasMore = cost.materialCosts.length > 30;
@@ -193,13 +197,19 @@ function CostBreakdown({ cost }: { cost: CostEstimateDto }) {
           <span className={cost.craftingIsCheaper ? "text-emerald-400" : "text-red-400"}>
             {cost.craftingIsCheaper
               ? `Crafting saves ~${cost.savings?.toLocaleString() ?? 0} Gil vs buying`
-              : `Buying is cheaper (MB: ${Math.round(cost.finalItemMarketPrice).toLocaleString()} Gil)`
+              : `Buying is cheaper (MB: ${buyPriceLabel(cost.finalItemMarketPrice, quantity)})`
             }
           </span>
         </div>
       )}
     </div>
   );
+}
+
+function buyPriceLabel(unitPrice: number, quantity: number): string {
+  const unit = `${Math.round(unitPrice).toLocaleString()} Gil`;
+  if (quantity <= 1) return unit;
+  return `${quantity} × ${unit} = ${Math.round(unitPrice * quantity).toLocaleString()} Gil`;
 }
 
 function MaterialRow({ mat }: { mat: MaterialCostDto }) {

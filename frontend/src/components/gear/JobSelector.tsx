@@ -1,9 +1,12 @@
 "use client";
 
+import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { ItemIcon } from "@/components/ui/ItemIcon";
 import {
   DOH_JOBS,
   DOL_JOBS,
+  COMBAT_JOBS,
   TANK_JOBS,
   HEALER_JOBS,
   MELEE_DPS_JOBS,
@@ -20,15 +23,33 @@ interface JobSelectorProps {
 }
 
 export function JobSelector({ selectedJob, onJobSelect }: JobSelectorProps) {
+  // The page is for crafters and gatherers; a link to a combat job opens with them shown.
+  const [showCombat, setShowCombat] = useState(() =>
+    COMBAT_JOBS.includes(selectedJob as GearJob),
+  );
+  const combatJobsId = useId();
+
   return (
     <div className="space-y-4">
       <JobRow label="Disciples of the Hand" jobs={DOH_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
       <JobRow label="Disciples of the Land" jobs={DOL_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
-      <JobRow label="Tank" jobs={TANK_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
-      <JobRow label="Healer" jobs={HEALER_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
-      <JobRow label="Melee DPS" jobs={MELEE_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
-      <JobRow label="Ranged DPS" jobs={RANGED_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
-      <JobRow label="Magic DPS" jobs={MAGIC_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      <button
+        type="button"
+        onClick={() => setShowCombat(!showCombat)}
+        aria-expanded={showCombat}
+        aria-controls={combatJobsId}
+        className="inline-flex items-center gap-1.5 min-h-[44px] text-sm text-text-secondary hover:text-gold transition-colors"
+      >
+        <ChevronDown size={16} className={`transition-transform ${showCombat ? "rotate-180" : ""}`} />
+        {showCombat ? "Hide combat jobs" : "Show combat jobs"}
+      </button>
+      <div id={combatJobsId} hidden={!showCombat} className="space-y-4">
+        <JobRow label="Tank" jobs={TANK_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+        <JobRow label="Healer" jobs={HEALER_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+        <JobRow label="Melee DPS" jobs={MELEE_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+        <JobRow label="Ranged DPS" jobs={RANGED_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+        <JobRow label="Magic DPS" jobs={MAGIC_DPS_JOBS} selectedJob={selectedJob} onSelect={onJobSelect} />
+      </div>
     </div>
   );
 }

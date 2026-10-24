@@ -8,6 +8,7 @@ public class HeartAndSoul : BuffAction
     public override string Name => "HeartAndSoul";
     public override string InGameName => "Heart and Soul";
     public override int LevelRequirement => 86;
+    public override int MacroWaitSeconds => 3;
     public override bool ConsumesStep => false;
     protected override int BaseCPCost => 0;
     protected override int BuffDuration => 0;

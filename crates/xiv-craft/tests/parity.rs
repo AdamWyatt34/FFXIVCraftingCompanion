@@ -4,8 +4,8 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 use xiv_craft::{
-    action_availability, create_initial, execute_action, export_to_macro, simulate_with, Condition,
-    CraftStatus, CrafterStats, CraftingState, MacroOptions, Recipe, SimulationOptions,
+    action_availability, create_initial, execute_action, export_to_macro, simulate_with, Action,
+    Condition, CraftStatus, CrafterStats, CraftingState, MacroOptions, Recipe, SimulationOptions,
 };
 
 const MIN_GOLDEN_FILES: usize = 10;
@@ -90,6 +90,7 @@ struct AvailabilityJson {
     durability_cost: i32,
     success_rate: i32,
     category: i32,
+    is_legacy: bool,
 }
 
 #[derive(Deserialize)]
@@ -117,13 +118,13 @@ struct StateJson {
     muscle_memory_turns: i32,
     heart_and_soul_active: bool,
     trained_perfection_active: bool,
+    expedience_active: bool,
     quick_innovation_used: bool,
     heart_and_soul_used: bool,
     trained_perfection_used: bool,
     careful_observation_count: i32,
     is_first_step: bool,
     combo_action: i32,
-    observe_active: bool,
     is_complete: bool,
     is_failed: bool,
     quality_percent: f64,
@@ -156,13 +157,13 @@ impl StateJson {
             muscle_memory_turns: self.muscle_memory_turns,
             heart_and_soul_active: self.heart_and_soul_active,
             trained_perfection_active: self.trained_perfection_active,
+            expedience_active: self.expedience_active,
             quick_innovation_used: self.quick_innovation_used,
             heart_and_soul_used: self.heart_and_soul_used,
             trained_perfection_used: self.trained_perfection_used,
             careful_observation_count: self.careful_observation_count,
             is_first_step: self.is_first_step,
             combo_action: self.combo_action,
-            observe_active: self.observe_active,
         }
     }
 }
@@ -298,6 +299,7 @@ fn assert_availability(
             want.category,
             "{ctx}: category"
         );
+        assert_eq!(row.action.is_legacy(), want.is_legacy, "{ctx}: isLegacy");
     }
 }
 
@@ -333,6 +335,12 @@ fn replay(file: &str, case: &Case) {
         let mut legal = xiv_craft::legal_actions(&before, &stats, &recipe);
         legal.sort_unstable();
         assert_eq!(legal, want.legal_before, "{ctx}: legalBefore");
+        assert!(
+            legal
+                .iter()
+                .all(|id| Action::from_id(*id).is_some_and(|a| !a.is_legacy())),
+            "{ctx}: legalBefore lists a legacy action"
+        );
 
         if let Some(table) = &want.availability {
             assert_availability(&ctx, table, &before, &stats, &recipe);

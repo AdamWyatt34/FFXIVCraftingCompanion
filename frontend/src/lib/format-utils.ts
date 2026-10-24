@@ -1,5 +1,6 @@
 import type { StepResult, CrafterStatsInput } from "@/types/simulator";
 import { SIMULATOR_CONSTANTS } from "@/lib/constants";
+import { encodeShareContext, MAX_ACTION_ID, type ShareContext } from "@/lib/rotation-codec";
 
 /** Collapse consecutive identical actions: [{name, count}] */
 export function collapseActions(
@@ -41,11 +42,12 @@ export function formatRotationSummary(
   return `${parts.join(" \u2192 ")}\n(${stats})`;
 }
 
-/** Build a shareable URL for a rotation */
+/** Build a shareable URL for a rotation; `stats` are the base stats. */
 export function buildShareUrl(params: {
   recipeId: number;
   stats: CrafterStatsInput;
   actionIds: number[];
+  context?: ShareContext;
 }): string {
   const base = typeof window !== "undefined" ? window.location.origin : "";
   const search = new URLSearchParams({
@@ -56,6 +58,7 @@ export function buildShareUrl(params: {
     level: String(params.stats.level),
     rotation: params.actionIds.join(","),
   });
+  if (params.context) encodeShareContext(search, params.context);
   return `${base}/simulator?${search.toString()}`;
 }
 
@@ -68,5 +71,5 @@ export function parseRotationFromUrl(param: string | null): number[] | null {
   const parts = param.split(",").filter((part) => part.trim().length > 0);
   if (parts.length === 0 || parts.length > SIMULATOR_CONSTANTS.MAX_ACTIONS_PER_CRAFT) return null;
   const ids = parts.map((part) => Number(part.trim()));
-  return ids.every((n) => Number.isInteger(n) && n >= 1 && n <= 0xffff) ? ids : null;
+  return ids.every((n) => Number.isInteger(n) && n >= 1 && n <= MAX_ACTION_ID) ? ids : null;
 }

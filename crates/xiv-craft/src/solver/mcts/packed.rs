@@ -11,7 +11,7 @@ const QUICK_INNOVATION_USED: u8 = 1 << 2;
 const HEART_AND_SOUL_USED: u8 = 1 << 3;
 const TRAINED_PERFECTION_USED: u8 = 1 << 4;
 const IS_FIRST_STEP: u8 = 1 << 5;
-const OBSERVE_ACTIVE: u8 = 1 << 6;
+const EXPEDIENCE_ACTIVE: u8 = 1 << 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct PackedState {
@@ -71,7 +71,7 @@ impl PackedState {
             (state.heart_and_soul_used, HEART_AND_SOUL_USED),
             (state.trained_perfection_used, TRAINED_PERFECTION_USED),
             (state.is_first_step, IS_FIRST_STEP),
-            (state.observe_active, OBSERVE_ACTIVE),
+            (state.expedience_active, EXPEDIENCE_ACTIVE),
         ] {
             if on {
                 flags |= bit;
@@ -137,6 +137,7 @@ impl PackedState {
             muscle_memory_turns: self.turns[7] as i32,
             heart_and_soul_active: flag(HEART_AND_SOUL_ACTIVE),
             trained_perfection_active: flag(TRAINED_PERFECTION_ACTIVE),
+            expedience_active: flag(EXPEDIENCE_ACTIVE),
             quick_innovation_used: flag(QUICK_INNOVATION_USED),
             heart_and_soul_used: flag(HEART_AND_SOUL_USED),
             trained_perfection_used: flag(TRAINED_PERFECTION_USED),
@@ -147,7 +148,6 @@ impl PackedState {
                 1 => Action::BasicTouch.id(),
                 _ => Action::StandardTouch.id(),
             },
-            observe_active: flag(OBSERVE_ACTIVE),
         }
     }
 
@@ -202,18 +202,21 @@ mod tests {
             Action::GreatStrides,
             Action::ByregotsBlessing,
             Action::Observe,
-            Action::FocusedSynthesis,
+            Action::HastyTouch,
             Action::CarefulObservation,
             Action::QuickInnovation,
+            Action::DaringTouch,
             Action::Veneration,
             Action::Groundwork,
             Action::Groundwork,
             Action::Groundwork,
         ];
         let mut state = base;
+        let mut packed_expedience = false;
         for action in walk {
             let packed = PackedState::pack(&state);
             assert_eq!(packed.unpack(&base), state, "before {action:?}");
+            packed_expedience |= state.expedience_active;
             let mut forced_good = state;
             forced_good.condition = Condition::Good;
             assert_eq!(PackedState::pack(&forced_good).unpack(&base), forced_good);
@@ -222,6 +225,7 @@ mod tests {
             }
         }
         assert_eq!(PackedState::pack(&state).unpack(&base), state);
+        assert!(packed_expedience, "the walk packs an Expedience state");
     }
 
     #[test]

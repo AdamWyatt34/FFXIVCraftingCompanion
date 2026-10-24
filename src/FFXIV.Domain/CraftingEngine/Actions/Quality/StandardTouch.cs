@@ -21,5 +21,7 @@ public class StandardTouch : QualityAction
         return baseCost;
     }
 
-    protected override int GetComboAction() => ActionId;
+    // Standard Touch continues only a Basic Touch combo; Advanced Touch's discount reads it (Raphael raphael-sim/src/actions.rs:236-280; Teamcraft quality/advanced-touch.ts hasCombo).
+    protected override int GetComboAction(CraftingState before) =>
+        before.ComboAction == BasicTouch.ActionId ? ActionId : 0;
 }

@@ -1,4 +1,5 @@
 using FFXIV.Domain.CraftingEngine.Actions.Buffs;
+using FFXIV.Domain.CraftingEngine.Actions.Quality;
 using FFXIV.Domain.CraftingEngine.Models;
 using FluentAssertions;
 
@@ -36,6 +37,18 @@ public class BuffActionsTests
         result.WasteNotTurns.Should().Be(4);
     }
 
+    [Fact]
+    public void WasteNot_ReplacesWasteNotII()
+    {
+        var action = new WasteNot();
+        var state = CraftingTestHelpers.CreateDefaultState() with { WasteNotIITurns = 6 };
+
+        var result = action.Execute(state, _stats, _recipe);
+
+        result.WasteNotTurns.Should().Be(4);
+        result.WasteNotIITurns.Should().Be(0);
+    }
+
     // --- Waste Not II ---
 
     [Fact]
@@ -47,6 +60,18 @@ public class BuffActionsTests
         var result = action.Execute(state, _stats, _recipe);
 
         result.WasteNotIITurns.Should().Be(8);
+    }
+
+    [Fact]
+    public void WasteNotII_ReplacesWasteNot()
+    {
+        var action = new WasteNotII();
+        var state = CraftingTestHelpers.CreateDefaultState() with { WasteNotTurns = 3 };
+
+        var result = action.Execute(state, _stats, _recipe);
+
+        result.WasteNotIITurns.Should().Be(8);
+        result.WasteNotTurns.Should().Be(0);
     }
 
     // --- Veneration ---
@@ -126,14 +151,14 @@ public class BuffActionsTests
     // --- Observe ---
 
     [Fact]
-    public void Observe_SetsObserveActive()
+    public void Observe_SetsComboForAdvancedTouch()
     {
         var action = new Observe();
         var state = CraftingTestHelpers.CreateDefaultState();
 
         var result = action.Execute(state, _stats, _recipe);
 
-        result.ObserveActive.Should().BeTrue();
+        result.ComboAction.Should().Be(StandardTouch.ActionId);
     }
 
     [Fact]

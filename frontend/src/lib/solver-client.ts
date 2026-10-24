@@ -14,6 +14,9 @@ import { ApiClientError } from "@/lib/api-client";
 import { FATAL_MESSAGE } from "@/lib/solver-runner";
 import { SOLVER_CONSTANTS } from "@/lib/constants";
 import { getRecipeParameters } from "@/lib/crafting-engine";
+import { getRecipe } from "@/lib/game-data";
+import { startingQualityProblem } from "@/lib/simulator-setup";
+import { withRequiredStats, type CraftingParameters } from "@/lib/static-data/recipes";
 import type { RecipeCraftingParametersDto } from "@/types/api";
 import type { CrafterStatsInput } from "@/types/simulator";
 import type {
@@ -217,23 +220,29 @@ function validateStats(stats: CrafterStatsInput): void {
   if (stats.control < 0) throw reject(400, "Control must be non-negative.");
 }
 
-function checkRecipeMinimums(
-  recipe: RecipeCraftingParametersDto,
+function validateStartingQuality(startingQuality: number | undefined): void {
+  const problem = startingQualityProblem(startingQuality);
+  if (problem) throw reject(400, problem);
+}
+
+/** The game refuses to start a craft below a required stat; below the recommended ones it only warns. */
+export function checkRecipeMinimums(
+  recipe: Pick<CraftingParameters, "requiredCraftsmanship" | "requiredControl">,
   stats: CrafterStatsInput,
 ): void {
   if (
-    recipe.suggestedCraftsmanship > 0 &&
-    stats.craftsmanship < recipe.suggestedCraftsmanship
+    recipe.requiredCraftsmanship > 0 &&
+    stats.craftsmanship < recipe.requiredCraftsmanship
   ) {
     throw reject(
       422,
-      `Craftsmanship ${stats.craftsmanship} is below the recipe minimum of ${recipe.suggestedCraftsmanship}.`,
+      `Craftsmanship ${stats.craftsmanship} is below the recipe's required ${recipe.requiredCraftsmanship}.`,
     );
   }
-  if (recipe.suggestedControl > 0 && stats.control < recipe.suggestedControl) {
+  if (recipe.requiredControl > 0 && stats.control < recipe.requiredControl) {
     throw reject(
       422,
-      `Control ${stats.control} is below the recipe minimum of ${recipe.suggestedControl}.`,
+      `Control ${stats.control} is below the recipe's required ${recipe.requiredControl}.`,
     );
   }
 }
@@ -267,10 +276,14 @@ export async function startSolve(
     );
   }
   validateStats(stats);
+  validateStartingQuality(request.startingQuality);
 
-  const recipe = await getRecipeParameters(request.recipeId, signal);
+  const [recipe, summary] = await Promise.all([
+    getRecipeParameters(request.recipeId, signal),
+    getRecipe(request.recipeId),
+  ]);
   throwIfAborted(signal);
-  checkRecipeMinimums(recipe, stats);
+  checkRecipeMinimums(withRequiredStats(recipe, summary), stats);
 
   const constraints: SolverConstraints = { ...request.constraints, maxSteps };
   return solveInWorker(
@@ -284,12 +297,12 @@ export async function startSolve(
         randomSeed: request.settings?.randomSeed,
       },
       hqIngredients: request.hqIngredients,
+      startingQuality: request.startingQuality,
     },
     options,
   );
 }
 
-/** `GET solve/quick`: greedy, default constraints, no HQ materials. */
 export async function quickSolve(
   params: QuickSolveParams,
   signal?: AbortSignal,
@@ -301,8 +314,13 @@ export async function quickSolve(
     cp: params.cp,
   };
   validateStats(stats);
-  const recipe = await getRecipeParameters(params.recipeId, signal);
+  validateStartingQuality(params.startingQuality);
+  const [recipe, summary] = await Promise.all([
+    getRecipeParameters(params.recipeId, signal),
+    getRecipe(params.recipeId),
+  ]);
   throwIfAborted(signal);
+  checkRecipeMinimums(withRequiredStats(recipe, summary), stats);
 
   const job = await solveInWorker(
     {
@@ -311,6 +329,8 @@ export async function quickSolve(
       stats,
       constraints: {},
       settings: { timeBudgetMs: SOLVER_CONSTANTS.QUICK_SOLVE_TIMEOUT_MS },
+      hqIngredients: params.hqIngredients,
+      startingQuality: params.startingQuality,
     },
     { signal },
   );

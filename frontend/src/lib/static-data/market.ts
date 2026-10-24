@@ -125,6 +125,7 @@ export function estimateCost(
   finalItemId: number | null,
   worldOrDc: string,
   opts: CostEstimationOptions,
+  quantity: number,
   prices: Map<number, MarketBoardData>,
   nowMs: number,
   warnings: string[] = [],
@@ -163,8 +164,10 @@ export function estimateCost(
     if (finalPrice > 0) {
       finalItemMarketPrice = finalPrice;
       if (hasMeaningfulCosts) {
-        craftingIsCheaper = totalEstimatedCost < truncate(finalPrice);
-        savings = truncate(finalPrice) - totalEstimatedCost;
+        // The materials already cover all the crafts, so they are weighed against buying as many.
+        const buyCost = truncate(finalPrice * quantity);
+        craftingIsCheaper = totalEstimatedCost < buyCost;
+        savings = buyCost - totalEstimatedCost;
       } else {
         allWarnings.push("Craft vs. buy comparison unavailable — too many materials lack price data.");
       }

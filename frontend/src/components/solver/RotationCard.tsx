@@ -18,6 +18,8 @@ interface RotationCardProps {
   compact?: boolean;
 }
 
+const SAVED_METRIC_TITLE = "At save time; open the rotation for the current engine's numbers";
+
 function getQualityColor(pct: number): string {
   if (pct >= 90) return "text-emerald-400";
   if (pct >= 60) return "text-amber-400";
@@ -68,10 +70,11 @@ export function RotationCard({
       <div className="flex items-center gap-3 p-2 bg-bg-surface border border-border rounded-lg hover:border-gold/30 transition-colors">
         <span
           className={`text-sm font-bold ${getQualityColor(rotation.hqPercent)}`}
+          title={SAVED_METRIC_TITLE}
         >
           {rotation.hqPercent}% HQ
         </span>
-        <span className="text-xs text-text-muted">
+        <span className="text-xs text-text-muted" title={SAVED_METRIC_TITLE}>
           {rotation.totalSteps} steps
         </span>
         <span className="text-sm text-text-secondary truncate flex-1">
@@ -93,10 +96,11 @@ export function RotationCard({
       <div className="flex items-center gap-2 flex-wrap">
         <span
           className={`text-lg font-bold ${getQualityColor(rotation.hqPercent)}`}
+          title={SAVED_METRIC_TITLE}
         >
           {rotation.hqPercent}% HQ
         </span>
-        <span className="text-sm text-text-muted">
+        <span className="text-sm text-text-muted" title={SAVED_METRIC_TITLE}>
           {rotation.totalSteps} steps
         </span>
         <span
@@ -110,7 +114,10 @@ export function RotationCard({
           </span>
         )}
         {!rotation.craftCompleted && (
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400">
+          <span
+            className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400"
+            title={SAVED_METRIC_TITLE}
+          >
             Incomplete
           </span>
         )}

@@ -14,7 +14,7 @@ public abstract class ProgressAction : CraftingActionBase
     protected override CraftingState ApplyEffect(
         CraftingState state, CrafterStats stats, RecipeParameters recipe)
     {
-        var progressIncrease = CalculateProgress(state, stats, recipe);
+        var progressIncrease = CalculateProgress(state, stats, recipe, GetPotency(state, stats));
         var newProgress = state.Progress + progressIncrease;
 
         // Final Appraisal: cap progress at MaxProgress - 1
@@ -35,20 +35,21 @@ public abstract class ProgressAction : CraftingActionBase
         };
     }
 
-    protected int CalculateProgress(CraftingState state, CrafterStats stats, RecipeParameters recipe)
+    // Buffs sum into one multiplier on the potency, in Raphael's integer order (raphael-sim/src/effects.rs:70-80,
+    // actions.rs:28-52; Teamcraft progress-action.ts:26-36); Delicate Synthesis shares it.
+    protected internal static int CalculateProgress(
+        CraftingState state, CrafterStats stats, RecipeParameters recipe, int potency)
     {
         var baseProgress = FormulaCalculator.CalculateBaseProgress(
             stats.Craftsmanship, recipe.ProgressDivider, recipe.ProgressModifier,
-            stats.Level, recipe.RecipeLevel);
+            stats.Level, recipe.ClassJobLevel);
 
-        var efficiency = GetPotency(state, stats);
-
-        if (state.VenerationTurns > 0)
-            efficiency += 50;
-
+        var modifier = 10;
         if (state.MuscleMemoryTurns > 0)
-            efficiency += 100;
+            modifier += 10;
+        if (state.VenerationTurns > 0)
+            modifier += 5;
 
-        return (int)(baseProgress * efficiency / 100.0);
+        return (int)((long)baseProgress * potency * modifier / 1000);
     }
 }

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FFXIV.Application.Journey.Queries;
 
-public sealed record GetCraftingJourneyQuery(int RecipeId, string? UserId)
+public sealed record GetCraftingJourneyQuery(int RecipeId, string? UserId, bool IsSpecialist = false)
     : IRequest<(CraftingJourneyDto? Result, string? Error)>;
 
 public sealed class GetCraftingJourneyQueryHandler
@@ -81,7 +81,7 @@ public sealed class GetCraftingJourneyQueryHandler
         StatSufficiencyResultDto? sufficiency = null;
         if (!string.IsNullOrEmpty(request.UserId))
         {
-            sufficiency = await ResolveSufficiencyAsync(request.RecipeId, request.UserId, cancellationToken);
+            sufficiency = await ResolveSufficiencyAsync(request.RecipeId, request.UserId, request.IsSpecialist, cancellationToken);
         }
 
         var materialsDto = MaterialTreeMapper.ToDto(materials, 1);
@@ -98,7 +98,7 @@ public sealed class GetCraftingJourneyQueryHandler
     }
 
     private async Task<StatSufficiencyResultDto?> ResolveSufficiencyAsync(
-        int recipeId, string userId, CancellationToken ct)
+        int recipeId, string userId, bool isSpecialist, CancellationToken ct)
     {
         try
         {
@@ -112,6 +112,7 @@ public sealed class GetCraftingJourneyQueryHandler
                 Craftsmanship = profile.Craftsmanship,
                 Control = profile.Control,
                 CP = profile.CP,
+                IsSpecialist = isSpecialist,
             };
 
             var result = await _sufficiencyService.AnalyzeAsync(recipeId, stats, profile, ct);

@@ -116,6 +116,49 @@ public class CraftPlanResolverTests
     }
 
     [Fact]
+    public async Task MultipleItems_SharedMultiYieldIntermediate_CraftedOnceForBoth()
+    {
+        // Sword and Shield each need 1 Rivet (yield 3); a Rivet needs 1 Ore. Two Rivets in all:
+        // one craft, so 1 Ore, not one per plan item.
+        SetupRecipe(CreateRecipe(10, 200, "Sword", CraftType.BSM));
+        SetupRecipe(CreateRecipe(20, 300, "Shield", CraftType.ARM));
+        _treeResolver.ResolveTreeAsync(200, 1, Arg.Any<CancellationToken>()).Returns(
+            CreateTreeWithIntermediate(200, "Sword", 400, "Rivet", 1, 500, "Ore", 1, intermediateYield: 3));
+        _treeResolver.ResolveTreeAsync(300, 1, Arg.Any<CancellationToken>()).Returns(
+            CreateTreeWithIntermediate(300, "Shield", 400, "Rivet", 1, 500, "Ore", 1, intermediateYield: 3));
+
+        var result = await _resolver.ResolveAsync([new CraftPlanInput(10, 1), new CraftPlanInput(20, 1)]);
+
+        result.Should().NotBeNull();
+        result!.IntermediateCrafts.Single().TotalQuantity.Should().Be(2);
+        var ore = result.RawMaterials.Single();
+        ore.TotalQuantity.Should().Be(1);
+        // The Shield's Rivet comes out of the Sword's craft, so it adds no Ore.
+        ore.Contributions.Select(c => (c.RecipeId, c.Quantity)).Should().Equal((10, 1), (20, 0));
+    }
+
+    [Fact]
+    public async Task MultipleItems_SharedMultiYieldIntermediate_QuantitiesApplyBeforeRounding()
+    {
+        // Sword x4 needs 4 Rivets (alone: 2 crafts, 2 Ore); Shield x1 needs 1 (alone: 1 craft, 1 Ore).
+        // Together 5 Rivets: ceil(5/3) = 2 crafts, so 2 Ore, not 3.
+        SetupRecipe(CreateRecipe(10, 200, "Sword", CraftType.BSM));
+        SetupRecipe(CreateRecipe(20, 300, "Shield", CraftType.ARM));
+        _treeResolver.ResolveTreeAsync(200, 4, Arg.Any<CancellationToken>()).Returns(
+            CreateTreeWithIntermediate(200, "Sword", 400, "Rivet", 4, 500, "Ore", 2, intermediateYield: 3, rootQty: 4));
+        _treeResolver.ResolveTreeAsync(300, 1, Arg.Any<CancellationToken>()).Returns(
+            CreateTreeWithIntermediate(300, "Shield", 400, "Rivet", 1, 500, "Ore", 1, intermediateYield: 3));
+
+        var result = await _resolver.ResolveAsync([new CraftPlanInput(10, 4), new CraftPlanInput(20, 1)]);
+
+        result.Should().NotBeNull();
+        result!.IntermediateCrafts.Single().TotalQuantity.Should().Be(5);
+        var ore = result.RawMaterials.Single();
+        ore.TotalQuantity.Should().Be(2);
+        ore.Contributions.Select(c => (c.RecipeId, c.Quantity)).Should().Equal((10, 2), (20, 0));
+    }
+
+    [Fact]
     public async Task IntermediateCrafts_SortedByDepth_DeepestFirst()
     {
         // Arrange: Sword → Ingot (depth 1) → Ore Cluster (depth 2)
@@ -251,7 +294,7 @@ public class CraftPlanResolverTests
             Quantity = 1,
             IsRawMaterial = false,
             Depth = 0,
-            Children = raw.Select(r => new MaterialTreeNode
+            Children = raw.Select(r => (r.Id, r.Name, r.Qty)).Concat(crystals).Select(r => new MaterialTreeNode
             {
                 ItemId = r.Id,
                 ItemName = r.Name,
@@ -287,10 +330,13 @@ public class CraftPlanResolverTests
         };
     }
 
+    // Shaped like RecipeTreeResolver's output for that root alone: the raw quantity is the
+    // ingredient amount times ceil(intermediateQty / intermediateYield).
     private static MaterialTreeResult CreateTreeWithIntermediate(
         int rootId, string rootName,
         int intermediateId, string intermediateName, int intermediateQty,
-        int rawId, string rawName, int rawQty)
+        int rawId, string rawName, int rawQty,
+        int intermediateYield = 1, int rootQty = 1)
     {
         var intermediateNode = new MaterialTreeNode
         {
@@ -304,7 +350,7 @@ public class CraftPlanResolverTests
                 RecipeId = intermediateId + 1000,
                 CraftType = CraftType.BSM,
                 RecipeLevel = 50,
-                YieldPerCraft = 1
+                YieldPerCraft = intermediateYield
             },
             Children =
             [
@@ -324,7 +370,7 @@ public class CraftPlanResolverTests
         {
             ItemId = rootId,
             ItemName = rootName,
-            Quantity = 1,
+            Quantity = rootQty,
             IsRawMaterial = false,
             Depth = 0,
             Children = [intermediateNode]
@@ -363,16 +409,15 @@ public class CraftPlanResolverTests
 
     private static MaterialTreeResult CreateDeepTree()
     {
-        // Sword (depth 0) → Ingot (depth 1) → Ore Cluster (depth 2) → Raw Ore (depth 3)
         var rawOreNode = new MaterialTreeNode
         {
-            ItemId = 600, ItemName = "Raw Ore", Quantity = 10,
+            ItemId = 600, ItemName = "Raw Ore", Quantity = 12,
             IsRawMaterial = true, Depth = 3, SourceType = ItemSourceType.Gathered
         };
 
         var oreClusterNode = new MaterialTreeNode
         {
-            ItemId = 500, ItemName = "Ore Cluster", Quantity = 5,
+            ItemId = 500, ItemName = "Ore Cluster", Quantity = 6,
             IsRawMaterial = false, Depth = 2,
             Recipe = new RecipeSummary
             {
@@ -406,7 +451,7 @@ public class CraftPlanResolverTests
             [
                 new ShoppingListItem
                 {
-                    ItemId = 600, ItemName = "Raw Ore", TotalQuantity = 10,
+                    ItemId = 600, ItemName = "Raw Ore", TotalQuantity = 12,
                     SourceType = ItemSourceType.Gathered, SortCategory = "Material"
                 }
             ],
@@ -415,7 +460,7 @@ public class CraftPlanResolverTests
             [
                 new ShoppingListItem
                 {
-                    ItemId = 500, ItemName = "Ore Cluster", TotalQuantity = 5,
+                    ItemId = 500, ItemName = "Ore Cluster", TotalQuantity = 6,
                     SourceType = ItemSourceType.Crafted, SortCategory = "Crafted"
                 },
                 new ShoppingListItem

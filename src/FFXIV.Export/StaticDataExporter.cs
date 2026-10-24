@@ -1,5 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using FFXIV.Application.Consumables.DTOs;
+using FFXIV.Application.Consumables.Queries;
 using FFXIV.Application.DTOs;
 using FFXIV.Application.Gear;
 using FFXIV.Application.Gear.DTOs;
@@ -60,7 +62,10 @@ public sealed class StaticDataExporter(
         var version = $"{SanitizeForPath(versionName)}-{exportedAt:yyyyMMdd-HHmm}";
         logger.LogInformation("Exporting game version {Version} ({Key}) as {ExportVersion}", versionName, versionKey, version);
 
+        var consumables = await LoadConsumablesAsync(ct);
+
         Directory.CreateDirectory(options.OutDir);
+        await WriteAsync("consumables.json", consumables, ct);
 
         var recipeIds = await db.Recipes.AsNoTracking().Select(r => r.RecipeId).OrderBy(id => id).ToListAsync(ct);
         var itemIds = await db.Items.AsNoTracking().Where(i => i.Name != "").Select(i => i.ItemId).OrderBy(id => id).ToListAsync(ct);
@@ -83,14 +88,26 @@ public sealed class StaticDataExporter(
 
         var manifest = new Manifest(
             SchemaVersion, version, versionName, versionKey, exportedAt, options.BucketSize,
-            new ManifestCounts(recipeIds.Count, itemIds.Count, equipmentCount, JobClassification.AllJobs.Length));
+            new ManifestCounts(recipeIds.Count, itemIds.Count, equipmentCount, JobClassification.AllJobs.Length, consumables.Count));
         await WriteAsync("manifest.json", manifest, ct);
 
         if (options.FixtureOut is not null)
             await fixtureWriter.WriteAsync(options.FixtureRecipeIds, options.FixtureJobs, options.FixtureOut, ct);
 
-        logger.LogInformation("Export complete: {Recipes} recipes, {Items} items, {Equipment} equipment rows",
-            recipeIds.Count, itemIds.Count, equipmentCount);
+        logger.LogInformation("Export complete: {Recipes} recipes, {Items} items, {Equipment} equipment rows, {Consumables} consumables",
+            recipeIds.Count, itemIds.Count, equipmentCount, consumables.Count);
+    }
+
+    // An empty catalogue means the sync never stored consumables; publishing it would empty the
+    // site's meal and medicine picker.
+    private async Task<IReadOnlyList<CraftingConsumableDto>> LoadConsumablesAsync(CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var consumables = await scope.ServiceProvider.GetRequiredService<IMediator>()
+            .Send(new GetCraftingConsumablesQuery(), ct);
+        if (consumables.Count == 0)
+            throw new InvalidOperationException("No crafting consumables in the database; run the sync first.");
+        return consumables;
     }
 
     private async Task<(string Key, string Name)> ResolveGameVersionAsync(CancellationToken ct)

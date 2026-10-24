@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import Image from "next/image";
 import {
   Play,
@@ -17,14 +17,12 @@ import { getActionIconUrl, ACTION_CATEGORY_COLORS } from "@/lib/action-icons";
 import { HQProbabilityDisplay } from "@/components/simulator/HQProbabilityDisplay";
 import { SolverMetrics } from "./SolverMetrics";
 import type { SolverResult } from "@/types/solver";
-import type { SimulationResult, CrafterStatsInput, ActionCategory } from "@/types/simulator";
+import type { SimulationResult, ActionCategory } from "@/types/simulator";
 
 interface RotationResultPanelProps {
   solverResult: SolverResult;
   quickResult: SolverResult | null;
   simulation: SimulationResult;
-  recipeId: number;
-  crafterStats: CrafterStatsInput;
   onReplay: () => void;
   onJumpToStep: (stepIndex: number) => void;
   onExportMacro: () => void;
@@ -34,6 +32,8 @@ interface RotationResultPanelProps {
   onDismiss: () => void;
   shareConfirmation: boolean;
   onSaveToLibrary?: () => void;
+  /** Why the result cannot be saved; any reason disables Save. */
+  saveDisabledReason?: string;
   isSaving?: boolean;
   saveSuccess?: boolean;
 }
@@ -93,9 +93,11 @@ export function RotationResultPanel({
   onDismiss,
   shareConfirmation,
   onSaveToLibrary,
+  saveDisabledReason,
   isSaving,
   saveSuccess,
 }: RotationResultPanelProps) {
+  const saveReasonId = useId();
   const { metrics } = solverResult;
   const { finalState } = simulation;
 
@@ -118,7 +120,7 @@ export function RotationResultPanel({
         <div className="flex items-center gap-2">
           <CheckCircle size={20} className="text-emerald-400" />
           <h3 className="text-lg font-bold text-emerald-400">
-            Optimal Rotation Found
+            Rotation found
           </h3>
         </div>
         <button
@@ -173,6 +175,17 @@ export function RotationResultPanel({
           </div>
         </div>
       </div>
+
+      {metrics.finalHQPercent < 50 && (
+        <p className="text-sm">
+          <a
+            href="#consumables"
+            className="text-amber-400 underline underline-offset-2 hover:text-amber-300 transition-colors"
+          >
+            Raise HQ with food, medicine or HQ materials.
+          </a>
+        </p>
+      )}
 
       {/* Improvement indicator */}
       {improvement !== null && improvement > 0 && (
@@ -280,7 +293,9 @@ export function RotationResultPanel({
         {onSaveToLibrary && (
           <button
             onClick={onSaveToLibrary}
-            disabled={isSaving || saveSuccess}
+            disabled={isSaving || saveSuccess || saveDisabledReason !== undefined}
+            title={saveDisabledReason}
+            aria-describedby={saveDisabledReason !== undefined ? saveReasonId : undefined}
             className={`flex items-center gap-1.5 px-4 py-2 font-medium rounded-lg border transition-colors text-sm ${
               saveSuccess
                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
@@ -306,6 +321,11 @@ export function RotationResultPanel({
           </button>
         )}
       </div>
+      {onSaveToLibrary && saveDisabledReason !== undefined && (
+        <p id={saveReasonId} className="text-xs text-text-muted">
+          {saveDisabledReason}
+        </p>
+      )}
 
       {/* Solver metrics (collapsible) */}
       <SolverMetrics

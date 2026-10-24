@@ -5,12 +5,15 @@ using System.Globalization;
 
 namespace FFXIV.Application.CraftPlans;
 
+// Line breaks are '\n' on every platform (never Environment.NewLine), so the output is the same
+// bytes the frontend port and the goldens produce.
 public static class ShoppingListExporter
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
+        NewLine = "\n",
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
@@ -19,51 +22,51 @@ public static class ShoppingListExporter
         var sb = new StringBuilder();
 
         // Items to Craft
-        sb.AppendLine("=== Items to Craft ===");
+        sb.Append("=== Items to Craft ===").Append('\n');
         foreach (var item in result.Items)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {item.ItemName} x{item.Quantity} ({item.CraftType})");
+            sb.Append(CultureInfo.InvariantCulture, $"  {item.ItemName} x{item.Quantity} ({item.CraftType})").Append('\n');
         }
-        sb.AppendLine();
+        sb.Append('\n');
 
         // Intermediate Crafts
         if (result.IntermediateCrafts.Count > 0)
         {
-            sb.AppendLine("=== Intermediate Crafts ===");
+            sb.Append("=== Intermediate Crafts ===").Append('\n');
             foreach (var craft in result.IntermediateCrafts)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  {craft.CraftOrder}. {craft.ItemName} x{craft.TotalQuantity} ({craft.CraftType}, Lv.{craft.RecipeLevel})");
+                sb.Append(CultureInfo.InvariantCulture, $"  {craft.CraftOrder}. {craft.ItemName} x{craft.TotalQuantity} ({craft.CraftType}, Lv.{craft.RecipeLevel})").Append('\n');
             }
-            sb.AppendLine();
+            sb.Append('\n');
         }
 
         // Raw Materials
-        sb.AppendLine("=== Raw Materials ===");
+        sb.Append("=== Raw Materials ===").Append('\n');
         foreach (var mat in result.RawMaterials)
         {
             var sourceDesc = mat.Sources.Count > 0 ? mat.Sources[0].Description : "";
-            sb.AppendLine($"  {mat.ItemName} x{mat.TotalQuantity}" +
-                (string.IsNullOrEmpty(sourceDesc) ? "" : $" — {sourceDesc}"));
+            sb.Append($"  {mat.ItemName} x{mat.TotalQuantity}" +
+                (string.IsNullOrEmpty(sourceDesc) ? "" : $" — {sourceDesc}")).Append('\n');
         }
-        sb.AppendLine();
+        sb.Append('\n');
 
         // Crystals
         if (result.Crystals.Count > 0)
         {
-            sb.AppendLine("=== Crystals ===");
+            sb.Append("=== Crystals ===").Append('\n');
             foreach (var crystal in result.Crystals)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  {crystal.ItemName} x{crystal.TotalQuantity}");
+                sb.Append(CultureInfo.InvariantCulture, $"  {crystal.ItemName} x{crystal.TotalQuantity}").Append('\n');
             }
-            sb.AppendLine();
+            sb.Append('\n');
         }
 
         // Summary
-        sb.AppendLine("=== Summary ===");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Plan Items: {result.Summary.TotalPlanItems}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Raw Materials: {result.Summary.TotalUniqueRawMaterials} types");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Crystals: {result.Summary.TotalUniqueCrystals} types");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Intermediate Crafts: {result.Summary.TotalIntermediateCrafts}");
+        sb.Append("=== Summary ===").Append('\n');
+        sb.Append(CultureInfo.InvariantCulture, $"  Plan Items: {result.Summary.TotalPlanItems}").Append('\n');
+        sb.Append(CultureInfo.InvariantCulture, $"  Raw Materials: {result.Summary.TotalUniqueRawMaterials} types").Append('\n');
+        sb.Append(CultureInfo.InvariantCulture, $"  Crystals: {result.Summary.TotalUniqueCrystals} types").Append('\n');
+        sb.Append(CultureInfo.InvariantCulture, $"  Intermediate Crafts: {result.Summary.TotalIntermediateCrafts}").Append('\n');
 
         return sb.ToString();
     }
@@ -81,25 +84,25 @@ public static class ShoppingListExporter
         // Final items
         foreach (var item in result.Items)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{item.ItemId},{item.Quantity}");
+            sb.Append(CultureInfo.InvariantCulture, $"{item.ItemId},{item.Quantity}").Append('\n');
         }
 
         // Intermediate crafts
         foreach (var craft in result.IntermediateCrafts)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{craft.ItemId},{craft.TotalQuantity}");
+            sb.Append(CultureInfo.InvariantCulture, $"{craft.ItemId},{craft.TotalQuantity}").Append('\n');
         }
 
         // Raw materials
         foreach (var mat in result.RawMaterials)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{mat.ItemId},{mat.TotalQuantity}");
+            sb.Append(CultureInfo.InvariantCulture, $"{mat.ItemId},{mat.TotalQuantity}").Append('\n');
         }
 
         // Crystals
         foreach (var crystal in result.Crystals)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{crystal.ItemId},{crystal.TotalQuantity}");
+            sb.Append(CultureInfo.InvariantCulture, $"{crystal.ItemId},{crystal.TotalQuantity}").Append('\n');
         }
 
         return sb.ToString();

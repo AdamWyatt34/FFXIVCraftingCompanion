@@ -28,11 +28,13 @@ fn recipe() -> RecipeParametersDto {
                 item_id: 1,
                 quantity: 2,
                 can_be_hq: true,
+                item_level: 560,
             },
             IngredientDto {
                 item_id: 2,
                 quantity: 1,
                 can_be_hq: false,
+                item_level: 1,
             },
         ],
     }
@@ -58,6 +60,7 @@ fn recipe_dto_uses_the_api_field_names() {
     assert_eq!(json["progressDivider"], 130);
     assert_eq!(json["materialQualityFactor"], 75);
     assert_eq!(json["ingredients"][0]["canBeHQ"], true);
+    assert_eq!(json["ingredients"][0]["itemLevel"], 560);
 
     let parsed: RecipeParametersDto = serde_json::from_value(json).unwrap();
     assert_eq!(parsed, recipe());
@@ -133,7 +136,7 @@ fn state_round_trips_through_the_named_buff_list() {
         heart_and_soul_used: true,
         careful_observation_count: 1,
         combo_action: Action::BasicTouch.id(),
-        observe_active: true,
+        expedience_active: true,
         ..CraftingState::default()
     };
 
@@ -153,8 +156,23 @@ fn state_round_trips_through_the_named_buff_list() {
 
     let json = serde_json::to_string(&dto).unwrap();
     assert!(json.contains("\"stacks\":null"));
+    assert!(json.contains("\"expedienceActive\":true"));
+    assert!(!json.contains("observeActive"));
     let back: CraftingStateDto = serde_json::from_str(&json).unwrap();
     assert_eq!(back.to_state(), state);
+}
+
+// A stored state with no Expedience field, or with an observeActive field, still deserializes with Expedience off.
+#[test]
+fn a_state_without_expedience_deserializes() {
+    let initial = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
+    let mut json = serde_json::to_value(&initial).unwrap();
+    let fields = json.as_object_mut().unwrap();
+    fields.remove("expedienceActive");
+    fields.insert("observeActive".into(), serde_json::Value::Bool(true));
+    let parsed: CraftingStateDto = serde_json::from_value(json).unwrap();
+    assert!(!parsed.expedience_active);
+    assert_eq!(parsed.to_state(), initial.to_state());
 }
 
 #[test]
@@ -223,11 +241,21 @@ fn execute_action_reports_a_fail_reason_and_an_unknown_id() {
 }
 
 #[test]
-fn available_actions_lists_every_action_in_registry_order() {
+fn available_actions_lists_the_offered_actions_in_registry_order() {
     let initial = engine::initial_state(&recipe(), &stats(), 0).expect("valid input");
     let table = engine::available_actions(&initial, &stats(), &recipe()).expect("valid input");
 
-    assert_eq!(table.len(), Action::ALL.len());
+    let offered: Vec<i32> = Action::offered().map(|a| a.id()).collect();
+    let listed: Vec<i32> = table.iter().map(|a| a.action_id).collect();
+    assert_eq!(listed, offered);
+    assert_eq!(table.len(), Action::COUNT - 3);
+    for legacy in [
+        Action::FocusedSynthesis,
+        Action::FocusedTouch,
+        Action::InnerQuiet,
+    ] {
+        assert!(!listed.contains(&legacy.id()), "{legacy:?} is not offered");
+    }
     assert_eq!(table[0].action_id, Action::BasicSynthesis.id());
     assert_eq!(table[0].action_name, "Basic Synthesis");
     assert!(table[0].is_available);
@@ -263,6 +291,44 @@ fn starting_quality_follows_the_hq_calculator() {
     );
     assert_eq!(half, 2700);
     assert_eq!(engine::starting_quality(&recipe(), &[]), 0);
+}
+
+// Data sets without ingredient itemLevel still deserialize, and weigh HQ materials by count.
+#[test]
+fn a_recipe_exported_without_item_levels_still_crafts() {
+    let recipe: RecipeParametersDto = serde_json::from_str(
+        r#"{"recipeId":100,"recipeLevel":580,"difficulty":3500,"quality":7200,"durability":70,
+            "progressDivider":130,"progressModifier":80,"qualityDivider":115,"qualityModifier":70,
+            "classJobLevel":90,"stars":2,"isExpert":false,"conditionsFlag":0,
+            "suggestedCraftsmanship":3700,"suggestedControl":3280,"materialQualityFactor":75,
+            "ingredients":[{"itemId":1,"quantity":2,"canBeHQ":true}]}"#,
+    )
+    .expect("an export without itemLevel deserializes");
+    assert_eq!(recipe.ingredients[0].item_level, 0);
+
+    let one_of_two = [HqIngredientDto {
+        item_id: 1,
+        hq_quantity: 1,
+    }];
+    let starting = engine::starting_quality(&recipe, &one_of_two);
+    assert_eq!(starting, 2700, "75% of 7200, half of the HQ-able units");
+    assert_eq!(
+        engine::initial_state(&recipe, &stats(), starting)
+            .expect("valid input")
+            .quality,
+        2700
+    );
+
+    let result = engine::simulate(
+        &recipe,
+        &stats(),
+        &[Action::BasicSynthesis.id()],
+        &SimulationOptionsDto::default(),
+        &one_of_two,
+    )
+    .expect("valid input");
+    assert_eq!(result.steps[0].state_after.quality, 2700);
+    assert_eq!(result.steps[0].state_after.progress, 282);
 }
 
 #[test]
@@ -391,6 +457,76 @@ fn action_catalog_sorts_by_category_name_then_level() {
     let low = engine::action_catalog(Some(10));
     assert!(low.iter().all(|a| a.level_requirement <= 10));
     assert!(low.len() < all.len());
+}
+
+#[test]
+fn action_catalog_is_the_recognized_set_with_legacy_flagged() {
+    let all = engine::action_catalog(None);
+    assert_eq!(all.len(), Action::COUNT);
+    let mut legacy: Vec<i32> = all.iter().filter(|a| a.is_legacy).map(|a| a.id).collect();
+    legacy.sort_unstable();
+    assert_eq!(
+        legacy,
+        [
+            Action::FocusedSynthesis.id(),
+            Action::FocusedTouch.id(),
+            Action::InnerQuiet.id()
+        ]
+    );
+
+    let daring = all
+        .iter()
+        .find(|a| a.id == Action::DaringTouch.id())
+        .unwrap();
+    let json = serde_json::to_value(daring).unwrap();
+    assert_eq!(json["isLegacy"], false);
+    assert_eq!(json["inGameName"], "Daring Touch");
+    assert_eq!(json["levelRequirement"], 96);
+    assert_eq!(json["baseSuccessRate"], 60);
+}
+
+// A saved rotation holding legacy actions still simulates and exports; Daring Touch is called by
+// Hasty Touch's name in a macro.
+#[test]
+fn legacy_and_dawntrail_actions_simulate_and_export() {
+    let ids = [
+        Action::InnerQuiet.id(),
+        Action::FocusedSynthesis.id(),
+        Action::Observe.id(),
+        Action::FocusedTouch.id(),
+    ];
+    let result = engine::simulate(
+        &recipe(),
+        &stats(),
+        &ids,
+        &SimulationOptionsDto::default(),
+        &[],
+    )
+    .expect("legacy ids are recognized");
+    assert_eq!(result.steps.len(), 4);
+    assert!(result.steps.iter().all(|s| s.succeeded));
+    assert_eq!(result.steps[0].action_name, "Inner Quiet");
+
+    let exported = engine::export_macro(
+        &[
+            Action::PreciseTouch.id(),
+            Action::RefinedTouch.id(),
+            Action::DaringTouch.id(),
+            Action::InnerQuiet.id(),
+        ],
+        &MacroOptionsDto {
+            include_echo: Some(false),
+            ..MacroOptionsDto::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        exported.macros,
+        ["/ac \"Precise Touch\" <wait.3>
+/ac \"Refined Touch\" <wait.3>
+/ac \"Hasty Touch\" <wait.3>
+/ac \"Inner Quiet\" <wait.2>"]
+    );
 }
 
 #[test]

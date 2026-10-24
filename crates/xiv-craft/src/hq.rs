@@ -5,6 +5,8 @@ pub struct Ingredient {
     pub item_id: i32,
     pub quantity: i32,
     pub can_be_hq: bool,
+    /// 0 in data exported without item levels; the calculator then weighs by count.
+    pub item_level: i32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,6 +15,8 @@ pub struct HqInput {
     pub hq_quantity: i32,
 }
 
+/// Each HQ material weighs its item level times its count, or its count alone when the data has
+/// no item levels (Raphael `raphael-data/src/lib.rs:203-239`; Teamcraft `recipes.extractor.ts`).
 pub fn calculate_starting_quality(
     max_quality: i32,
     material_quality_factor: i32,
@@ -26,23 +30,32 @@ pub fn calculate_starting_quality(
         return 0;
     }
 
-    let mut total_hqable = 0;
-    let mut total_hq = 0;
+    let mut total_item_level: i64 = 0;
+    let mut provided_item_level: i64 = 0;
+    let mut total_count: i64 = 0;
+    let mut provided_count: i64 = 0;
     for ingredient in ingredients {
         if !ingredient.can_be_hq {
             continue;
         }
-        total_hqable += ingredient.quantity;
+        total_item_level += ingredient.item_level as i64 * ingredient.quantity as i64;
+        total_count += ingredient.quantity as i64;
         // The C# side uses FirstOrDefault, so a duplicated item id counts its first entry only.
         if let Some(input) = hq_inputs.iter().find(|i| i.item_id == ingredient.item_id) {
-            total_hq += input.hq_quantity.min(ingredient.quantity);
+            let hq_quantity = input.hq_quantity.min(ingredient.quantity) as i64;
+            provided_item_level += ingredient.item_level as i64 * hq_quantity;
+            provided_count += hq_quantity;
         }
     }
 
-    if total_hqable == 0 || total_hq == 0 {
+    let (provided, total) = if total_item_level > 0 {
+        (provided_item_level, total_item_level)
+    } else {
+        (provided_count, total_count)
+    };
+    if total == 0 || provided <= 0 {
         return 0;
     }
 
-    let max_starting = (max_quality as f64 * material_quality_factor as f64 / 100.0).floor() as i32;
-    (max_starting as f64 * total_hq as f64 / total_hqable as f64).floor() as i32
+    (max_quality as i64 * material_quality_factor as i64 * provided / total / 100) as i32
 }

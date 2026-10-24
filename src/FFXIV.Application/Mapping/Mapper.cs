@@ -25,7 +25,7 @@ public static class Mapper
             ItemName: item.Name,
             IconUrl: item.IconPath,
             Quantity: ingredient.Quantity,
-            CanBeHQ: ingredient.CanBeHQ);
+            CanBeHQ: item.CanBeHQ);
     }
 
     public static RecipeDto ToDto(Recipe recipe, Item resultItem, List<RecipeIngredientDto> ingredients)

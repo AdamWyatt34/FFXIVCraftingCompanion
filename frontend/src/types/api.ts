@@ -63,6 +63,9 @@ export interface RecipeCraftingParametersDto {
   conditionsFlag: number;
   suggestedCraftsmanship: number;
   suggestedControl: number;
+  /** The hard gate to start the craft, 0 for most recipes. Data sets without the field are read through withRequiredStats. */
+  requiredCraftsmanship?: number;
+  requiredControl?: number;
   materialQualityFactor: number;
   ingredients: RecipeCraftingIngredientDto[];
 }
@@ -71,6 +74,33 @@ export interface RecipeCraftingIngredientDto {
   itemId: number;
   quantity: number;
   canBeHQ: boolean;
+  /** Absent from data sets without item levels; HQ starting quality then weighs materials by count. */
+  itemLevel?: number;
+}
+
+export type ConsumableKind = "Meal" | "Medicine";
+
+export type ConsumableStat = "Craftsmanship" | "Control" | "CP";
+
+export interface ConsumableBonusDto {
+  stat: ConsumableStat;
+  /** A relative bonus adds `value` percent of the base stat, capped at `max`; any other adds `value` flat. */
+  isRelative: boolean;
+  value: number;
+  max: number;
+  valueHQ: number;
+  maxHQ: number;
+}
+
+/** A crafting meal or medicine (consumables.json), with one bonus per crafting stat it raises. */
+export interface CraftingConsumableDto {
+  itemId: number;
+  name: string;
+  iconUrl: string;
+  itemLevel: number;
+  canBeHQ: boolean;
+  kind: ConsumableKind;
+  bonuses: ConsumableBonusDto[];
 }
 
 export interface ItemSearchResultDto {

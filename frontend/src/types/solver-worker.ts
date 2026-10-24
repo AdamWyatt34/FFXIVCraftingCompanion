@@ -17,6 +17,8 @@ export interface SolveWorkerRequest {
   constraints: SolverConstraints;
   settings: { timeBudgetMs: number; randomSeed?: number };
   hqIngredients?: HQIngredientInput[];
+  /** Used when no HQ materials are given; with them the engine works the starting quality out. */
+  startingQuality?: number;
 }
 
 export interface CancelWorkerRequest {

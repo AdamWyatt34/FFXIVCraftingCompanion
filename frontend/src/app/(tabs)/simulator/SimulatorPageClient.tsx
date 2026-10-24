@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, Suspense } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
@@ -15,12 +15,13 @@ import {
   SlidersHorizontal,
   Zap,
 } from "lucide-react";
-import { useSimulator } from "@/hooks/useSimulator";
+import { useSimulator, type RestoredCraftClosure } from "@/hooks/useSimulator";
 import { useSolver } from "@/hooks/useSolver";
 import { useSolverConfig } from "@/hooks/useSolverConfig";
 import { useWhatIf } from "@/hooks/useWhatIf";
 import { submitRotation } from "@/lib/api-client";
-import { getRecipe } from "@/lib/game-data";
+import { getRecipe, getRecipeCraftingParameters } from "@/lib/game-data";
+import { withRequiredStats, type CraftingParameters } from "@/lib/static-data/recipes";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseRotationFromUrl } from "@/lib/format-utils";
 import { validateCrafterStats } from "@/lib/stat-limits";
@@ -43,7 +44,8 @@ import { SolverConfigPanel } from "@/components/solver/SolverConfigPanel";
 import { SolverProgressOverlay } from "@/components/solver/SolverProgressOverlay";
 import { LoadingSkeleton } from "@/components/ui/LoadingStates";
 import { buildShareUrl } from "@/lib/format-utils";
-import { buildSolverShareUrl, parseSolverShareUrl } from "@/lib/rotation-codec";
+import { buildSolverShareUrl, decodeShareContext, parseSolverShareUrl } from "@/lib/rotation-codec";
+import { librarySaveProblem, replaySetup, shareContextOf, solvedSetupOf, type SolvedSetup } from "@/lib/simulator-setup";
 
 // Lazy-load heavy components that are conditionally rendered
 const MacroExportPanel = dynamic(
@@ -82,7 +84,57 @@ const WhatIfPanel = dynamic(
   { ssr: false },
 );
 import type { RecipeDto, CraftType } from "@/types/api";
-import type { CrafterStatsInput, HQIngredientInput } from "@/types/simulator";
+import type { CrafterStatsInput } from "@/types/simulator";
+
+const CONSUMABLES_UNAPPLIED = "Food and medicine couldn't load, so your selection isn't applied.";
+const HQ_QUALITY_PENDING = "Working out the starting quality from the HQ materials.";
+const HQ_QUALITY_FAILED = "The starting quality from these HQ materials couldn't be worked out; change the picks to try again.";
+const RECIPE_LOADING = "Loading the recipe…";
+const RESTORED_CRAFT_CLOSED: Record<RestoredCraftClosure, string> = {
+  consumables: "The craft in progress was closed because its food or medicine couldn't load.",
+  engine: "The craft in progress was closed because the crafting engine was updated; start it again from the same setup.",
+};
+
+interface StatTargetProblem {
+  severity: "required" | "recommended";
+  message: string;
+}
+
+function findStatTargetProblem(
+  targets: CraftingParameters | null,
+  stats: CrafterStatsInput | null,
+): StatTargetProblem | null {
+  if (!targets || !stats) return null;
+  const checks = [
+    {
+      name: "craftsmanship",
+      value: stats.craftsmanship,
+      required: targets.requiredCraftsmanship,
+      recommended: targets.suggestedCraftsmanship,
+    },
+    {
+      name: "control",
+      value: stats.control,
+      required: targets.requiredControl,
+      recommended: targets.suggestedControl,
+    },
+  ];
+  const belowRequired = checks.find((c) => c.required > 0 && c.value < c.required);
+  if (belowRequired) {
+    return {
+      severity: "required",
+      message: `Your ${belowRequired.name} ${belowRequired.value} is below this recipe's required ${belowRequired.required}.`,
+    };
+  }
+  const belowRecommended = checks.find((c) => c.recommended > 0 && c.value < c.recommended);
+  if (belowRecommended) {
+    return {
+      severity: "recommended",
+      message: `Your ${belowRecommended.name} ${belowRecommended.value} is below the recommended ${belowRecommended.recommended}; Quick Synthesis and some rotations may fail.`,
+    };
+  }
+  return null;
+}
 
 function SectionHeader({
   number,
@@ -110,14 +162,23 @@ function SectionHeader({
 }
 
 function SimulatorPageContent() {
-  const simulator = useSimulator();
+  const searchParams = useSearchParams();
+  const opensLink = useMemo(
+    () =>
+      parseSolverShareUrl(searchParams) !== null ||
+      Boolean(searchParams.get("recipeId") || searchParams.get("craftsmanship")),
+    [searchParams],
+  );
+  const simulator = useSimulator({ restoreSession: !opensLink });
   const solver = useSolver();
   const solverConfig = useSolverConfig();
-  const whatIf = useWhatIf();
+  const whatIf = useWhatIf(simulator.appliedConsumables, simulator.consumableOptions, {
+    startingQuality: simulator.startingQuality,
+    hqIngredients: simulator.hqIngredients,
+  });
   const { user } = useAuth();
-  const searchParams = useSearchParams();
   const [fullRecipe, setFullRecipe] = useState<RecipeDto | null>(null);
-  const [hqIngredients, setHqIngredients] = useState<HQIngredientInput[]>([]);
+  const [craftingParameters, setCraftingParameters] = useState<CraftingParameters | null>(null);
   const [showMacroPanel, setShowMacroPanel] = useState(false);
   const { setBreadcrumbs } = useBreadcrumbs();
 
@@ -131,6 +192,7 @@ function SimulatorPageContent() {
   const [replayInitialStep, setReplayInitialStep] = useState<
     number | undefined
   >(undefined);
+  const [solvedSetup, setSolvedSetup] = useState<SolvedSetup | null>(null);
   const [isSavingToLibrary, setIsSavingToLibrary] = useState(false);
   const [saveToLibrarySuccess, setSaveToLibrarySuccess] = useState(false);
   const [isSavingManual, setIsSavingManual] = useState(false);
@@ -140,18 +202,37 @@ function SimulatorPageContent() {
   );
   const hasInitializedFromUrlRef = useRef(false);
   const autoSolveTriggeredRef = useRef(false);
+  // Counts recipe picks, so a link's recipe that loads after one never replaces it.
+  const recipeSelectionRef = useRef(0);
   const { toast } = useToast();
 
   // URL-driven initialization
   useEffect(() => {
     if (hasInitializedFromUrlRef.current) return;
 
+    // The setup cards read the full recipe, which the simulator's own load does not hand back. It
+    // is set once that load has set the recipe, so the stats form mounts with the link's stats.
+    const loadShared = (...args: Parameters<typeof simulator.loadSharedRotation>) => {
+      const selection = recipeSelectionRef.current;
+      return simulator
+        .loadSharedRotation(...args)
+        .then(async (landed) => {
+          if (!landed) return;
+          const recipe = await getRecipe(args[0]);
+          if (recipeSelectionRef.current === selection) setFullRecipe(recipe);
+        })
+        .catch((err) => console.warn("Shared recipe failed to load:", err));
+    };
+
     // A solver share link (?solve=1&r=...) carries the recipe, the stats and the packed rotation.
     const shared = parseSolverShareUrl(searchParams);
     if (shared) {
       hasInitializedFromUrlRef.current = true;
-      simulator.loadSharedRotation(shared.recipeId, shared.stats, shared.actionIds);
-      setShowRotationResult(true);
+      const { consumables, isSpecialist, startingQuality } = shared.context;
+      loadShared(shared.recipeId, { ...shared.stats, isSpecialist }, shared.actionIds, {
+        consumables,
+        startingQuality,
+      });
       return;
     }
 
@@ -162,14 +243,21 @@ function SimulatorPageContent() {
     const levelParam = searchParams.get("level");
     const rotationParam = searchParams.get("rotation");
 
-    const hasUrlParams = recipeIdParam || craftsmanshipParam;
-    if (!hasUrlParams) return;
+    if (!opensLink) return;
 
     hasInitializedFromUrlRef.current = true;
 
-    const recipeId = recipeIdParam ? Number(recipeIdParam) : null;
+    // Link input is untrusted; a recipe id must be a positive safe integer before any request uses it.
+    const linkedRecipeId = recipeIdParam ? Number(recipeIdParam) : null;
+    const recipeId =
+      linkedRecipeId !== null && Number.isSafeInteger(linkedRecipeId) && linkedRecipeId > 0 ? linkedRecipeId : null;
+    if (linkedRecipeId !== null && recipeId === null) {
+      toast("The recipe in this link is invalid and was ignored.", "error", 6000);
+    }
     const hasStats =
       craftsmanshipParam && controlParam && cpParam && levelParam;
+    const context = decodeShareContext(searchParams);
+    const setup = { consumables: context.consumables, startingQuality: context.startingQuality };
 
     let stats: CrafterStatsInput | null = hasStats
       ? {
@@ -177,6 +265,7 @@ function SimulatorPageContent() {
           craftsmanship: Number(craftsmanshipParam),
           control: Number(controlParam),
           cp: Number(cpParam),
+          isSpecialist: context.isSpecialist,
         }
       : null;
 
@@ -195,30 +284,30 @@ function SimulatorPageContent() {
 
     const solveParam = searchParams.get("solve") === "true";
     const whatifParam = searchParams.get("whatif") === "true";
-    const compareParam = searchParams.get("compare") === "true";
 
     // If we have all three (recipe + stats + rotation), load as shared rotation
     if (recipeId && stats && rotationIds) {
-      if (compareParam) {
-        // Compare mode: show rotation result panel without entering craft view
-        simulator.loadSharedRotation(recipeId, stats, rotationIds);
-        setShowRotationResult(true);
-      } else {
-        simulator.loadSharedRotation(recipeId, stats, rotationIds);
-      }
+      loadShared(recipeId, stats, rotationIds, setup);
       return;
     }
 
     // Otherwise, auto-populate what we have
     if (recipeId) {
-      getRecipe(recipeId).then((recipe) => {
-        setFullRecipe(recipe);
-        simulator.setRecipe(recipeId);
-      });
+      const selection = recipeSelectionRef.current;
+      getRecipe(recipeId)
+        .then((recipe) => {
+          if (recipeSelectionRef.current !== selection) return;
+          setFullRecipe(recipe);
+          simulator.setRecipe(recipeId);
+        })
+        .catch((err) => {
+          console.warn("Linked recipe failed to load:", err);
+          toast("The recipe in this link could not be loaded.", "error", 6000);
+        });
     }
 
     if (stats) {
-      simulator.setStatsFromUrl(stats);
+      simulator.setStatsFromUrl(stats, setup);
     }
 
     if (whatifParam) {
@@ -226,20 +315,71 @@ function SimulatorPageContent() {
     } else if (solveParam) {
       setSetupMode("solve");
     }
-  }, [searchParams, simulator, toast]);
+  }, [searchParams, opensLink, simulator, toast]);
 
-  // Sync whatIf hook with simulator state
+  const simulatorRecipeId = simulator.selectedRecipe?.recipeId;
   useEffect(() => {
-    if (simulator.crafterStats && simulator.selectedRecipe) {
-      whatIf.setBaseStats({
-        craftsmanship: simulator.crafterStats.craftsmanship,
-        control: simulator.crafterStats.control,
-        cp: simulator.crafterStats.cp,
-        level: simulator.crafterStats.level,
+    if (simulatorRecipeId === undefined) return;
+    let cancelled = false;
+    getRecipe(simulatorRecipeId)
+      .then((recipe) => {
+        if (!cancelled) setFullRecipe((current) => current ?? recipe);
+      })
+      .catch((err) => console.warn("Restored recipe failed to load:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [simulatorRecipeId]);
+
+  // Two syncs keyed on primitives: a stats change must not reset the what-if results, and a
+  // re-render must not re-run either sync, which would cancel the debounced solves.
+  const { setBaseStats: setWhatIfBaseStats, setRecipeId: setWhatIfRecipe } = whatIf;
+  const whatIfRecipeId = simulator.selectedRecipe?.recipeId;
+  const whatIfCraftType = simulator.selectedRecipe?.craftType;
+  useEffect(() => {
+    if (whatIfRecipeId === undefined || whatIfCraftType === undefined) return;
+    setWhatIfRecipe(whatIfRecipeId, whatIfCraftType);
+  }, [whatIfRecipeId, whatIfCraftType, setWhatIfRecipe]);
+
+  const { craftsmanship, control, cp, level } = simulator.crafterStats ?? {};
+  useEffect(() => {
+    if (craftsmanship === undefined || control === undefined || cp === undefined || level === undefined) return;
+    setWhatIfBaseStats({ craftsmanship, control, cp, level });
+  }, [craftsmanship, control, cp, level, setWhatIfBaseStats]);
+
+  useEffect(() => {
+    if (!fullRecipe) return;
+    let cancelled = false;
+    getRecipeCraftingParameters(fullRecipe.recipeId)
+      .then((parameters) => {
+        if (!cancelled) setCraftingParameters(withRequiredStats(parameters, fullRecipe));
+      })
+      .catch((err) => {
+        console.warn("Recipe crafting parameters failed to load:", err);
       });
-      whatIf.setRecipeId(simulator.selectedRecipe.recipeId);
-    }
-  }, [simulator.crafterStats, simulator.selectedRecipe, whatIf]);
+    return () => {
+      cancelled = true;
+    };
+  }, [fullRecipe]);
+  const recipeParameters =
+    fullRecipe && craftingParameters?.recipeId === fullRecipe.recipeId ? craftingParameters : null;
+  const statTargetProblem = findStatTargetProblem(recipeParameters, simulator.crafterStats);
+  const startingQualityHold =
+    simulator.startingQualityStatus === "pending"
+      ? HQ_QUALITY_PENDING
+      : simulator.startingQualityStatus === "failed"
+        ? HQ_QUALITY_FAILED
+        : undefined;
+  // A picked recipe shows before the simulator has loaded it; a solve in between would run the previous recipe.
+  const recipeLoading = fullRecipe !== null && fullRecipe.recipeId !== simulator.selectedRecipe?.recipeId;
+  const solveBlock = recipeLoading
+    ? { reason: RECIPE_LOADING }
+    : statTargetProblem?.severity === "required"
+      ? { reason: statTargetProblem.message, describedBy: "stat-target-problem" }
+      : startingQualityHold
+        ? { reason: startingQualityHold, describedBy: "starting-quality-status" }
+        : undefined;
+  const solveBlockedReason = solveBlock?.reason;
 
   // Navigation warning during active simulation
   useEffect(() => {
@@ -251,18 +391,41 @@ function SimulatorPageContent() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [simulator.isSimulating, simulator.stateHistory.length]);
 
+  const { restoredCraftClosed } = simulator;
+  useEffect(() => {
+    if (restoredCraftClosed) toast(RESTORED_CRAFT_CLOSED[restoredCraftClosed], "info", 6000);
+  }, [restoredCraftClosed, toast]);
+
+  // A solver result belongs to its recipe; loading it under another recipe would replay one recipe's actions on the other.
+  const forgetSolve = useCallback(() => {
+    solver.clearResult();
+    setSolvedSetup(null);
+    setShowRotationResult(false);
+    setShowReplay(false);
+    setShowSolverOverlay(false);
+  }, [solver]);
+
   const handleRecipeSelected = useCallback(
     async (recipe: RecipeDto) => {
+      const selection = ++recipeSelectionRef.current;
+      // A failed pick leaves the simulator on the recipe it held; the setup must show that one.
+      const held = fullRecipe?.recipeId === simulator.selectedRecipe?.recipeId ? fullRecipe : null;
+      forgetSolve();
       setFullRecipe(recipe);
-      await simulator.setRecipe(recipe.recipeId);
+      const landed = await simulator.setRecipe(recipe.recipeId);
+      if (!landed && recipeSelectionRef.current === selection) setFullRecipe(held);
     },
-    [simulator],
+    [simulator, forgetSolve, fullRecipe],
   );
 
+  const { setHqIngredients, setStartingQuality } = simulator;
   const handleRecipeCleared = useCallback(() => {
+    recipeSelectionRef.current++;
+    forgetSolve();
     setFullRecipe(null);
     setHqIngredients([]);
-  }, []);
+    setStartingQuality(0);
+  }, [setHqIngredients, setStartingQuality, forgetSolve]);
 
   const handleStatsChange = useCallback(
     (stats: CrafterStatsInput) => {
@@ -287,14 +450,18 @@ function SimulatorPageContent() {
   );
 
   const handleShareRotation = useCallback(async () => {
-    const recipeId =
-      searchParams.get("recipeId") ?? simulator.selectedRecipe?.recipeId;
-    if (!recipeId || !simulator.crafterStats) return;
+    if (!simulator.selectedRecipe || !simulator.baseStats) return;
 
     const url = buildShareUrl({
-      recipeId: Number(recipeId),
-      stats: simulator.crafterStats,
+      recipeId: simulator.selectedRecipe.recipeId,
+      stats: simulator.baseStats,
       actionIds: simulator.actionIds,
+      context: {
+        consumables: simulator.appliedConsumables,
+        isSpecialist: simulator.baseStats.isSpecialist ?? false,
+        // The start the craft ran from, which the live setup may no longer match.
+        startingQuality: simulator.initialState?.quality ?? simulator.startingQuality,
+      },
     });
 
     try {
@@ -315,87 +482,107 @@ function SimulatorPageContent() {
       setTimeout(() => setShareConfirmation(false), 2000);
     }
   }, [
-    searchParams,
     simulator.selectedRecipe,
-    simulator.crafterStats,
+    simulator.baseStats,
+    simulator.appliedConsumables,
+    simulator.initialState,
+    simulator.startingQuality,
     simulator.actionIds,
   ]);
 
   // ── Solver handlers ──
 
-  const handleAutoSolve = useCallback(async () => {
-    if (!simulator.selectedRecipe || !simulator.crafterStats) return;
-    const request = solverConfig.buildSolveRequest(
-      simulator.selectedRecipe.recipeId,
-      simulator.crafterStats,
-      hqIngredients.length > 0 ? hqIngredients : undefined,
-    );
-    await solver.startSolve(request);
-  }, [
-    simulator.selectedRecipe,
-    simulator.crafterStats,
-    solverConfig,
-    solver,
-    hqIngredients,
-  ]);
+  // Every solve entry point checks the block, not only the buttons that display its reason.
+  const solveRefused = useCallback((): boolean => {
+    if (solveBlockedReason === undefined) return false;
+    toast(solveBlockedReason, "error");
+    return true;
+  }, [solveBlockedReason, toast]);
 
-  // Auto-solve trigger from URL param (must be after handleAutoSolve definition)
+  const runAutoSolve = useCallback(
+    async (onStart?: () => void) => {
+      if (solveRefused()) return;
+      const solved = solvedSetupOf(simulator);
+      if (!solved) return;
+      setSolvedSetup(solved);
+      const request = solverConfig.buildSolveRequest(
+        solved.recipeId,
+        solved.crafterStats,
+        solved.hqIngredients.length > 0 ? solved.hqIngredients : undefined,
+        solved.startingQuality,
+      );
+      onStart?.();
+      await solver.startSolve(request);
+    },
+    [solveRefused, simulator, solverConfig, solver],
+  );
+
+  const handleAutoSolve = useCallback(() => runAutoSolve(), [runAutoSolve]);
+
+  // Read when the timer fires: the handler is new every render, and depending on it would restart the wait.
+  const runAutoSolveRef = useRef(runAutoSolve);
+  useEffect(() => {
+    runAutoSolveRef.current = runAutoSolve;
+  }, [runAutoSolve]);
+
+  const recipeParametersLoaded = recipeParameters !== null;
   useEffect(() => {
     if (autoSolveTriggeredRef.current) return;
     if (setupMode !== "solve") return;
     if (!simulator.isSetupComplete) return;
+    // A block that clears, such as a pending HQ quality, delays the solve; one that stays prevents it. The
+    // required stats are known only once the recipe's parameters are.
+    if (solveBlockedReason !== undefined || !recipeParametersLoaded) return;
 
-    autoSolveTriggeredRef.current = true;
+    // Latched when a solve starts, so a setup the timer finds unready can still solve on a later render.
     const timer = setTimeout(() => {
-      handleAutoSolve();
+      void runAutoSolveRef.current(() => {
+        autoSolveTriggeredRef.current = true;
+      });
     }, 100);
     return () => clearTimeout(timer);
-  }, [setupMode, simulator.isSetupComplete, handleAutoSolve]);
+  }, [setupMode, simulator.isSetupComplete, solveBlockedReason, recipeParametersLoaded]);
 
   const handleQuickSolve = useCallback(async () => {
-    if (!simulator.selectedRecipe || !simulator.crafterStats) return;
+    if (solveRefused()) return;
+    const solved = solvedSetupOf(simulator);
+    if (!solved) return;
+    setSolvedSetup(solved);
     await solver.startQuickSolve({
-      recipeId: simulator.selectedRecipe.recipeId,
-      craftsmanship: simulator.crafterStats.craftsmanship,
-      control: simulator.crafterStats.control,
-      cp: simulator.crafterStats.cp,
-      level: simulator.crafterStats.level,
+      recipeId: solved.recipeId,
+      craftsmanship: solved.crafterStats.craftsmanship,
+      control: solved.crafterStats.control,
+      cp: solved.crafterStats.cp,
+      level: solved.crafterStats.level,
+      hqIngredients: solved.hqIngredients,
+      startingQuality: solved.startingQuality,
     });
-  }, [simulator.selectedRecipe, simulator.crafterStats, solver]);
+  }, [solveRefused, simulator, solver]);
 
-  const handleAutoSolveFromCraft = useCallback(async () => {
-    if (!simulator.selectedRecipe || !simulator.crafterStats) return;
-    setShowSolverOverlay(true);
-    const request = solverConfig.buildSolveRequest(
-      simulator.selectedRecipe.recipeId,
-      simulator.crafterStats,
-      hqIngredients.length > 0 ? hqIngredients : undefined,
-    );
-    await solver.startSolve(request);
-  }, [
-    simulator.selectedRecipe,
-    simulator.crafterStats,
-    solverConfig,
-    solver,
-    hqIngredients,
-  ]);
+  const handleAutoSolveFromCraft = useCallback(
+    () => runAutoSolve(() => setShowSolverOverlay(true)),
+    [runAutoSolve],
+  );
 
   const handleLoadPreview = useCallback(async () => {
     const result = solver.quickResult;
-    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+    if (!result || !solvedSetup) return;
+    const { stats, setup } = replaySetup(solvedSetup);
     solver.cancelSolve();
     setShowSolverOverlay(false);
-    await simulator.loadSharedRotation(
-      simulator.selectedRecipe.recipeId,
-      simulator.crafterStats,
-      result.actionIds,
-    );
-  }, [solver, simulator]);
+    await simulator.loadSharedRotation(solvedSetup.recipeId, stats, result.actionIds, setup);
+  }, [solver, simulator, solvedSetup]);
 
   const handleViewRotation = useCallback(() => {
     setShowRotationResult(true);
     setShowSolverOverlay(false);
   }, []);
+
+  // The solver result belongs to the craft being left, so setup never shows it again.
+  const handleBackToSetup = useCallback(() => {
+    simulator.exitSimulation();
+    forgetSolve();
+  }, [simulator, forgetSolve]);
 
   const handleCancelSolve = useCallback(async () => {
     await solver.cancelSolve();
@@ -421,26 +608,24 @@ function SimulatorPageContent() {
 
   const handleLoadIntoSimulator = useCallback(async () => {
     const result = solver.solverResult ?? solver.quickResult;
-    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
-    await simulator.loadSharedRotation(
-      simulator.selectedRecipe.recipeId,
-      simulator.crafterStats,
-      result.actionIds,
-    );
+    if (!result || !solvedSetup) return;
+    const { stats, setup } = replaySetup(solvedSetup);
+    await simulator.loadSharedRotation(solvedSetup.recipeId, stats, result.actionIds, setup);
     solver.clearResult();
     setShowRotationResult(false);
     setShowReplay(false);
-  }, [solver, simulator]);
+  }, [solver, simulator, solvedSetup]);
 
   const handleSolverShare = useCallback(async () => {
     const result = solver.solverResult ?? solver.quickResult;
-    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+    if (!result || !solvedSetup) return;
 
     const url = buildSolverShareUrl({
-      recipeId: simulator.selectedRecipe.recipeId,
-      stats: simulator.crafterStats,
+      recipeId: solvedSetup.recipeId,
+      stats: solvedSetup.baseStats,
       actionIds: result.actionIds,
       algorithm: result.metrics.algorithmUsed,
+      context: shareContextOf(solvedSetup),
     });
 
     try {
@@ -459,7 +644,7 @@ function SimulatorPageContent() {
       setShareConfirmation(true);
       setTimeout(() => setShareConfirmation(false), 2000);
     }
-  }, [solver, simulator.selectedRecipe, simulator.crafterStats]);
+  }, [solver, solvedSetup]);
 
   const handleDismissResult = useCallback(() => {
     setShowRotationResult(false);
@@ -468,13 +653,18 @@ function SimulatorPageContent() {
 
   const handleSaveToLibrary = useCallback(async () => {
     const result = solver.solverResult ?? solver.quickResult;
-    if (!result || !simulator.selectedRecipe || !simulator.crafterStats) return;
+    if (!result || !solvedSetup) return;
+    const problem = librarySaveProblem(solvedSetup.startingQuality);
+    if (problem) {
+      toast(problem, "error");
+      return;
+    }
     setIsSavingToLibrary(true);
     try {
       await submitRotation({
-        recipeId: simulator.selectedRecipe.recipeId,
+        recipeId: solvedSetup.recipeId,
         actionIds: result.actionIds,
-        stats: simulator.crafterStats,
+        stats: solvedSetup.crafterStats,
         source: "Solver",
         algorithm: result.metrics.algorithmUsed,
       });
@@ -485,7 +675,7 @@ function SimulatorPageContent() {
     } finally {
       setIsSavingToLibrary(false);
     }
-  }, [solver, simulator.selectedRecipe, simulator.crafterStats]);
+  }, [solver, solvedSetup, toast]);
 
   const handleSaveManualToLibrary = useCallback(async () => {
     if (
@@ -494,6 +684,11 @@ function SimulatorPageContent() {
       simulator.actionIds.length === 0
     )
       return;
+    const problem = librarySaveProblem(simulator.initialState?.quality ?? 0);
+    if (problem) {
+      toast(problem, "error");
+      return;
+    }
     setIsSavingManual(true);
     try {
       await submitRotation({
@@ -509,7 +704,7 @@ function SimulatorPageContent() {
     } finally {
       setIsSavingManual(false);
     }
-  }, [simulator.selectedRecipe, simulator.crafterStats, simulator.actionIds]);
+  }, [simulator.selectedRecipe, simulator.crafterStats, simulator.actionIds, simulator.initialState, toast]);
 
   // Auto-hide overlay when solver completes
   useEffect(() => {
@@ -523,6 +718,9 @@ function SimulatorPageContent() {
   }, [solver.solverStatus]);
 
   const hasStats = simulator.crafterStats !== null;
+  const consumablesUnapplied =
+    simulator.consumablesFailed &&
+    (simulator.consumables.meal !== null || simulator.consumables.medicine !== null);
 
   const lastDeltas =
     simulator.stateHistory.length > 0
@@ -595,8 +793,13 @@ function SimulatorPageContent() {
             recipe={simulator.selectedRecipe!}
             fullRecipe={fullRecipe ?? undefined}
             state={simulator.currentState}
-            onBackToSetup={simulator.exitSimulation}
+            onBackToSetup={handleBackToSetup}
           />
+          {consumablesUnapplied && (
+            <p role="status" className="text-xs text-amber-400 mt-2">
+              {CONSUMABLES_UNAPPLIED}
+            </p>
+          )}
 
           {/* 2-column grid: main content + step history sidebar */}
           <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 mt-4">
@@ -629,7 +832,6 @@ function SimulatorPageContent() {
                 canUndo={simulator.stateHistory.length > 0}
                 stepCount={simulator.stateHistory.length}
                 isLoading={simulator.isLoading}
-                onUndo={simulator.undoLastAction}
                 onReset={simulator.resetCraft}
                 onOpenMacroExport={() => setShowMacroPanel(true)}
                 onShareRotation={handleShareRotation}
@@ -652,7 +854,7 @@ function SimulatorPageContent() {
                   isSolving={solver.isSolving}
                   onStartSolve={handleAutoSolveFromCraft}
                   onCancelSolve={handleCancelSolve}
-                  onViewRotation={handleViewRotation}
+                  onViewRotation={handleLoadIntoSimulator}
                   onReSolve={handleAutoSolveFromCraft}
                   onClearResult={solver.clearResult}
                   onLoadPreview={handleLoadPreview}
@@ -695,7 +897,9 @@ function SimulatorPageContent() {
                     <div className="mb-3 flex items-center gap-2">
                       <button
                         onClick={handleQuickSolve}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-gold hover:border-gold/30 border border-border transition-colors text-sm"
+                        disabled={solveBlockedReason !== undefined}
+                        title={solveBlockedReason}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-elevated text-text-secondary font-medium rounded-lg hover:text-gold hover:border-gold/30 border border-border transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         aria-label="Quick solve from current state"
                       >
                         <Zap size={14} />
@@ -703,7 +907,9 @@ function SimulatorPageContent() {
                       </button>
                       <button
                         onClick={handleAutoSolveFromCraft}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 text-gold font-medium rounded-lg hover:bg-gold/20 border border-gold/30 transition-colors text-sm"
+                        disabled={solveBlockedReason !== undefined}
+                        title={solveBlockedReason}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 text-gold font-medium rounded-lg hover:bg-gold/20 border border-gold/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         aria-label="Auto-solve from current state"
                       >
                         <Sparkles size={14} />
@@ -787,10 +993,35 @@ function SimulatorPageContent() {
                   isComplete={hasStats}
                 />
                 <StatsInput
-                  stats={simulator.crafterStats}
+                  stats={simulator.baseStats}
                   onStatsChange={handleStatsChange}
                   selectedCraftType={fullRecipe.craftType as CraftType}
+                  consumableOptions={simulator.consumableOptions}
+                  consumables={simulator.consumables}
+                  onConsumablesChange={simulator.setConsumables}
                 />
+                {simulator.droppedConsumables.length > 0 && (
+                  <p role="status" className="text-xs text-amber-400 mt-2">
+                    The chosen food or medicine was left out because this game data cannot apply it
+                    (item {simulator.droppedConsumables.join(", ")}).
+                  </p>
+                )}
+                {consumablesUnapplied && (
+                  <p role="status" className="text-xs text-amber-400 mt-2">
+                    {CONSUMABLES_UNAPPLIED}
+                  </p>
+                )}
+                {statTargetProblem && (
+                  <p
+                    id="stat-target-problem"
+                    role="status"
+                    className={`text-sm mt-2 ${
+                      statTargetProblem.severity === "required" ? "text-red-400" : "text-amber-400"
+                    }`}
+                  >
+                    {statTargetProblem.message}
+                  </p>
+                )}
               </section>
 
               {/* Step 3: Recipe Parameters */}
@@ -800,6 +1031,7 @@ function SimulatorPageContent() {
                   <RecipeParams
                     recipe={fullRecipe}
                     stats={simulator.crafterStats}
+                    targets={recipeParameters}
                   />
                 </section>
               ) : (
@@ -812,14 +1044,38 @@ function SimulatorPageContent() {
           {fullRecipe && hasStats && (
             <section className="animate-slide-up">
               <HQIngredientSelector
+                key={fullRecipe.recipeId}
                 recipe={fullRecipe}
-                onChange={setHqIngredients}
+                value={simulator.hqIngredients}
+                onChange={simulator.setHqIngredients}
               />
             </section>
           )}
 
-          {/* Starting Quality Input */}
-          {fullRecipe && hasStats && (
+          {fullRecipe && hasStats && simulator.hqIngredients.length > 0 && (
+            <section className="animate-slide-up">
+              <div className="bg-bg-surface border border-border rounded-lg p-4">
+                <p className="text-sm font-semibold text-text-primary mb-2">
+                  Starting Quality
+                </p>
+                <p id="starting-quality-status" role="status" className="text-sm text-text-primary">
+                  {simulator.startingQualityStatus === "failed" ? (
+                    <span className="text-red-400">{HQ_QUALITY_FAILED}</span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-gold">
+                        {simulator.startingQualityStatus === "pending"
+                          ? "…"
+                          : simulator.startingQuality.toLocaleString()}
+                      </span>{" "}
+                      <span className="text-xs text-text-muted">from HQ materials</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </section>
+          )}
+          {fullRecipe && hasStats && simulator.hqIngredients.length === 0 && (
             <section className="animate-slide-up">
               <div className="bg-bg-surface border border-border rounded-lg p-4">
                 <label
@@ -829,8 +1085,8 @@ function SimulatorPageContent() {
                   Starting Quality
                 </label>
                 <p className="text-xs text-text-muted mb-3">
-                  Quality bonus from using HQ materials. Leave at 0 for no
-                  bonus.
+                  Quality the craft starts at. Selecting HQ materials works it
+                  out for you.
                 </p>
                 <div className="flex items-center gap-3">
                   <input
@@ -873,8 +1129,6 @@ function SimulatorPageContent() {
                   (solver.solverResult?.simulation ??
                     solver.quickResult?.simulation)!
                 }
-                recipeId={simulator.selectedRecipe!.recipeId}
-                crafterStats={simulator.crafterStats!}
                 onReplay={handleOpenReplay}
                 onJumpToStep={handleJumpToStep}
                 onExportMacro={() => setShowMacroPanel(true)}
@@ -884,6 +1138,7 @@ function SimulatorPageContent() {
                 onDismiss={handleDismissResult}
                 shareConfirmation={shareConfirmation}
                 onSaveToLibrary={user ? handleSaveToLibrary : undefined}
+                saveDisabledReason={librarySaveProblem(solvedSetup?.startingQuality ?? 0)}
                 isSaving={isSavingToLibrary}
                 saveSuccess={saveToLibrarySuccess}
               />
@@ -908,7 +1163,9 @@ function SimulatorPageContent() {
                 {/* Quick Solve button */}
                 <button
                   onClick={handleQuickSolve}
-                  disabled={simulator.isLoading || solver.isSolving}
+                  disabled={simulator.isLoading || solver.isSolving || solveBlockedReason !== undefined}
+                  title={solveBlockedReason}
+                  aria-describedby={solveBlock?.describedBy}
                   className="flex flex-col items-center justify-center gap-0.5 py-3 px-6 bg-bg-surface border border-border text-text-primary font-bold rounded-lg hover:border-gold hover:text-gold disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
                 >
                   <div className="flex items-center gap-2">
@@ -943,7 +1200,7 @@ function SimulatorPageContent() {
                       ? "Select a recipe first"
                       : !simulator.crafterStats
                         ? "Enter crafter stats first"
-                        : undefined
+                        : solveBlockedReason
                   }
                 />
 

@@ -116,7 +116,7 @@ public class ShoppingListExporterTests
 
         var teamcraft = ShoppingListExporter.ExportAsTeamcraft(plan);
 
-        var lines = teamcraft.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        var lines = teamcraft.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         // 1 final item + 1 intermediate + 1 raw + 1 crystal = 4
         lines.Should().HaveCount(4);
     }
@@ -128,7 +128,7 @@ public class ShoppingListExporterTests
 
         var teamcraft = ShoppingListExporter.ExportAsTeamcraft(plan);
 
-        var lines = teamcraft.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        var lines = teamcraft.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         // 1 final item + 1 intermediate craft + 1 raw material + 1 crystal = 4
         lines.Should().HaveCount(4);
         lines.Should().Contain("200,1");   // Final: Iron Sword

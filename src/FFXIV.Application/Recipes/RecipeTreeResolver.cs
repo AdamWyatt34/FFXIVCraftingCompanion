@@ -68,9 +68,16 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
         var intermediateCrafts = new List<(int Depth, ShoppingListItem Item)>();
         var maxDepth = 0;
 
-        AttachSourcesAndAggregate(
+        AttachSourcesAndCollect(
             rootNode, sourcesByItem, gatheringByItem, vendorByItem,
             shoppingDict, intermediateCrafts, ref maxDepth);
+
+        var intermediateDemand = new Dictionary<int, int>();
+        var rawDemand = AddRootDemand(rootNode, intermediateDemand);
+        foreach (var item in shoppingDict.Values)
+            item.TotalQuantity = rawDemand.GetValueOrDefault(item.ItemId);
+        foreach (var (_, item) in intermediateCrafts)
+            item.TotalQuantity = intermediateDemand.GetValueOrDefault(item.ItemId);
 
         // Separate crystals from the shopping list
         var crystals = new List<ShoppingListItem>();
@@ -181,7 +188,7 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
 
         // Yield-aware craft count
         var yield = Math.Max(recipe.Yield, 1);
-        var craftsNeeded = (quantity + yield - 1) / yield;
+        var craftsNeeded = CraftsNeeded(quantity, yield);
 
         node.IsRawMaterial = false;
         node.SourceType = ItemSourceType.Crafted;
@@ -241,7 +248,9 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
         return node;
     }
 
-    private static void AttachSourcesAndAggregate(
+    // Registers each listed item at its first occurrence; the totals come from AddRootDemand,
+    // because node quantities are per occurrence (what that branch alone would need).
+    private static void AttachSourcesAndCollect(
         MaterialTreeNode node,
         Dictionary<int, List<ItemSource>> sourcesByItem,
         Dictionary<int, List<GatheringInfo>> gatheringByItem,
@@ -265,58 +274,87 @@ public sealed class RecipeTreeResolver : IRecipeTreeResolver
 
         if (node.IsRawMaterial)
         {
-            // Aggregate into shopping list
-            if (shoppingDict.TryGetValue(node.ItemId, out var existing))
+            shoppingDict.TryAdd(node.ItemId, new ShoppingListItem
             {
-                existing.TotalQuantity += node.Quantity;
-            }
-            else
-            {
-                shoppingDict[node.ItemId] = new ShoppingListItem
-                {
-                    ItemId = node.ItemId,
-                    ItemName = node.ItemName,
-                    IconUrl = node.IconUrl,
-                    TotalQuantity = node.Quantity,
-                    SourceType = node.SourceType,
-                    Sources = sources,
-                    SortCategory = GetSortCategory(node.ItemId, node.SourceType)
-                };
-            }
+                ItemId = node.ItemId,
+                ItemName = node.ItemName,
+                IconUrl = node.IconUrl,
+                SourceType = node.SourceType,
+                Sources = sources,
+                SortCategory = GetSortCategory(node.ItemId, node.SourceType)
+            });
         }
         else
         {
             // Non-root intermediate craft (depth > 0 means it's not the final item)
-            if (node.Depth > 0)
+            if (node.Depth > 0 && intermediateCrafts.All(x => x.Item.ItemId != node.ItemId))
             {
-                // Check if already tracked
-                var existingIntermediate = intermediateCrafts.FirstOrDefault(x => x.Item.ItemId == node.ItemId);
-                if (existingIntermediate.Item is not null)
+                intermediateCrafts.Add((node.Depth, new ShoppingListItem
                 {
-                    existingIntermediate.Item.TotalQuantity += node.Quantity;
-                }
-                else
-                {
-                    intermediateCrafts.Add((node.Depth, new ShoppingListItem
-                    {
-                        ItemId = node.ItemId,
-                        ItemName = node.ItemName,
-                        IconUrl = node.IconUrl,
-                        TotalQuantity = node.Quantity,
-                        SourceType = ItemSourceType.Crafted,
-                        Sources = sources,
-                        SortCategory = "Crafted"
-                    }));
-                }
+                    ItemId = node.ItemId,
+                    ItemName = node.ItemName,
+                    IconUrl = node.IconUrl,
+                    SourceType = ItemSourceType.Crafted,
+                    Sources = sources,
+                    SortCategory = "Crafted"
+                }));
             }
 
             // Recurse into children
             foreach (var child in node.Children)
             {
-                AttachSourcesAndAggregate(child, sourcesByItem, gatheringByItem, vendorByItem,
+                AttachSourcesAndCollect(child, sourcesByItem, gatheringByItem, vendorByItem,
                     shoppingDict, intermediateCrafts, ref maxDepth);
             }
         }
+    }
+
+    // Intermediate demand accumulates in the shared map, so an occurrence crafts only what the running total needs beyond earlier crafts (Teamcraft list-controller.ts add).
+    internal static Dictionary<int, int> AddRootDemand(MaterialTreeNode root, Dictionary<int, int> intermediateDemand)
+    {
+        var rawDemand = new Dictionary<int, int>();
+        if (root.IsRawMaterial)
+        {
+            rawDemand[root.ItemId] = root.Quantity;
+            return rawDemand;
+        }
+
+        // Each plan root is crafted on its own, which its children's quantities already hold.
+        foreach (var child in root.Children)
+            AddDemand(child, child.Quantity, intermediateDemand, rawDemand);
+        return rawDemand;
+    }
+
+    private static void AddDemand(
+        MaterialTreeNode node,
+        int demand,
+        Dictionary<int, int> intermediateDemand,
+        Dictionary<int, int> rawDemand)
+    {
+        if (node.IsRawMaterial)
+        {
+            rawDemand[node.ItemId] = rawDemand.GetValueOrDefault(node.ItemId) + demand;
+            return;
+        }
+
+        var yield = node.Recipe!.YieldPerCraft;
+        var before = intermediateDemand.GetValueOrDefault(node.ItemId);
+        intermediateDemand[node.ItemId] = before + demand;
+        var addedCrafts = CraftsNeeded(before + demand, yield) - CraftsNeeded(before, yield);
+
+        // Child quantities are per occurrence; dividing by its crafts recovers the per-craft amount.
+        var occurrenceCrafts = CraftsNeeded(node.Quantity, yield);
+        foreach (var child in node.Children)
+        {
+            var perCraft = occurrenceCrafts == 0 ? 0 : child.Quantity / occurrenceCrafts;
+            AddDemand(child, perCraft * addedCrafts, intermediateDemand, rawDemand);
+        }
+    }
+
+    private static int CraftsNeeded(int quantity, int yield)
+    {
+        var perCraft = Math.Max(yield, 1);
+        return (quantity + perCraft - 1) / perCraft;
     }
 
     private static List<ItemSourceSummary> BuildSourceSummaries(

@@ -61,8 +61,16 @@ fn base_duration(action: Action) -> i32 {
 
 fn with_buff_turns(action: Action, mut state: CraftingState, turns: i32) -> CraftingState {
     match action {
-        Action::WasteNot => state.waste_not_turns = turns,
-        Action::WasteNotII => state.waste_not_ii_turns = turns,
+        // Waste Not and Waste Not II are one effect, so casting either replaces the other
+        // (Teamcraft buff/waste-not.ts:35-37, waste-not-ii.ts:35-37).
+        Action::WasteNot => {
+            state.waste_not_turns = turns;
+            state.waste_not_ii_turns = 0;
+        }
+        Action::WasteNotII => {
+            state.waste_not_ii_turns = turns;
+            state.waste_not_turns = 0;
+        }
         Action::Veneration => state.veneration_turns = turns,
         Action::Innovation => state.innovation_turns = turns,
         Action::GreatStrides => state.great_strides_turns = turns,
@@ -117,6 +125,19 @@ mod tests {
         let next = Action::Innovation.execute(state, &stats, &recipe, true);
         assert_eq!(next.innovation_turns, 4);
         assert_eq!(next.cp, 682);
+    }
+
+    #[test]
+    fn waste_not_and_waste_not_ii_replace_each_other() {
+        let (mut state, stats, recipe) = fixture();
+        state.waste_not_ii_turns = 6;
+        let waste_not = Action::WasteNot.execute(state, &stats, &recipe, true);
+        assert_eq!(waste_not.waste_not_turns, 4);
+        assert_eq!(waste_not.waste_not_ii_turns, 0);
+
+        let waste_not_ii = Action::WasteNotII.execute(waste_not, &stats, &recipe, true);
+        assert_eq!(waste_not_ii.waste_not_ii_turns, 8);
+        assert_eq!(waste_not_ii.waste_not_turns, 0);
     }
 
     #[test]

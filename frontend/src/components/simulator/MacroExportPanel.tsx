@@ -344,7 +344,7 @@ export function MacroExportPanel({
                   <p className="text-xs text-text-secondary whitespace-pre-wrap break-words flex-1">
                     {rotationSummary}
                   </p>
-                  <CopyButton text={rotationSummary} label="Copy" />
+                  <CopyButton text={rotationSummary} label="Copy summary" />
                 </div>
               </div>
             )}
@@ -357,6 +357,12 @@ export function MacroExportPanel({
             )}
             {error && (
               <p className="text-sm text-red-400 text-center py-2">{error}</p>
+            )}
+
+            {macroResult && macroCount > 0 && (
+              <p className="text-xs text-text-secondary">
+                Eat your food and medicine first; the macro assumes the same stats.
+              </p>
             )}
 
             {/* Macro blocks */}

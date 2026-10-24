@@ -5,6 +5,7 @@ namespace FFXIV.Domain.CraftingEngine.Actions;
 public abstract class BuffAction : CraftingActionBase
 {
     public override ActionCategory Category => ActionCategory.Buff;
+    public override int MacroWaitSeconds => 2;
     protected override int BaseDurabilityCost => 0;
     protected override int BaseSuccessRate => 100;
 

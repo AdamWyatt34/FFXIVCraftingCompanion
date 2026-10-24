@@ -26,6 +26,8 @@ struct HqIngredient {
     item_id: i32,
     quantity: i32,
     can_be_hq: bool,
+    #[serde(default)]
+    item_level: i32,
 }
 
 #[derive(Deserialize)]
@@ -72,6 +74,7 @@ fn starting_quality_matches_hq_calculator() {
                 item_id: i.item_id,
                 quantity: i.quantity,
                 can_be_hq: i.can_be_hq,
+                item_level: i.item_level,
             })
             .collect();
         let inputs: Vec<HqInput> = case

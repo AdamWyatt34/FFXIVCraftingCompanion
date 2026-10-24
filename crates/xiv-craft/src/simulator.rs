@@ -198,29 +198,27 @@ pub fn simulate_with(
     }
 }
 
+/// The offered actions that can execute now, in registry order: the ids `GetAvailableActions`
+/// marks available. Legacy actions are never listed.
 pub fn legal_actions(
     state: &CraftingState,
     stats: &CrafterStats,
     recipe: &Recipe,
 ) -> Vec<ActionId> {
-    Action::ALL
-        .iter()
+    Action::offered()
         .filter(|a| a.fail_reason(state, stats, recipe).is_none())
         .map(|a| a.id())
         .collect()
 }
 
-/// `GetAvailableActions` for every action, in registry order.
+/// The availability row of every recognized action, legacy ones included, in registry order.
+/// `GetAvailableActions` is the subset whose action is not [`Action::is_legacy`].
 pub fn action_availability(
     state: &CraftingState,
     stats: &CrafterStats,
     recipe: &Recipe,
-) -> [ActionAvailability; 36] {
-    let mut table = [Action::BasicSynthesis.availability(state, stats, recipe); 36];
-    for (slot, action) in table.iter_mut().zip(Action::ALL) {
-        *slot = action.availability(state, stats, recipe);
-    }
-    table
+) -> [ActionAvailability; Action::COUNT] {
+    Action::ALL.map(|action| action.availability(state, stats, recipe))
 }
 
 fn execute_internal(
@@ -308,6 +306,35 @@ mod tests {
         let legal = legal_actions(&state, &stats, &recipe);
         assert_eq!(legal.first(), Some(&Action::BasicSynthesis.id()));
         assert!(!legal.contains(&Action::HeartAndSoul.id()));
+    }
+
+    #[test]
+    fn legacy_actions_have_availability_rows_but_are_never_legal() {
+        let (recipe, stats) = fixture();
+        let state = create_initial(&recipe, &stats);
+        let table = action_availability(&state, &stats, &recipe);
+        assert_eq!(table.len(), Action::COUNT);
+        for (row, action) in table.iter().zip(Action::ALL) {
+            assert_eq!(row.action, action);
+        }
+
+        let legal = legal_actions(&state, &stats, &recipe);
+        for legacy in [
+            Action::FocusedSynthesis,
+            Action::FocusedTouch,
+            Action::InnerQuiet,
+        ] {
+            let row = table.iter().find(|r| r.action == legacy).unwrap();
+            assert!(row.is_available(), "{legacy:?} still executes on replay");
+            assert!(!legal.contains(&legacy.id()), "{legacy:?} is not offered");
+        }
+
+        let replayed = simulate(
+            &recipe,
+            &stats,
+            &[Action::InnerQuiet.id(), Action::FocusedTouch.id()],
+        );
+        assert!(replayed.steps.iter().all(|s| s.succeeded));
     }
 
     #[test]

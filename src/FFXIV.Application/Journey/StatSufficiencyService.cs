@@ -48,7 +48,7 @@ public sealed class StatSufficiencyService : IStatSufficiencyService
     {
         // The cached part depends on the stats only; the gear suggestions depend on the profile
         // and are computed per call (a signed-out result must not hide a signed-in user's upgrades).
-        var cacheKey = $"sufficiency:{recipeId}:{stats.Craftsmanship}:{stats.Control}:{stats.CP}:{stats.Level}";
+        var cacheKey = $"sufficiency:{recipeId}:{stats.Craftsmanship}:{stats.Control}:{stats.CP}:{stats.Level}:{stats.IsSpecialist}";
         var result = await _cache.GetAsync<StatSufficiencyResult>(cacheKey, ct)
             ?? await AnalyzeStatsAsync(recipeId, stats, cacheKey, ct);
 

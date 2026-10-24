@@ -21,6 +21,9 @@ public record RecipeParameters
     public int SuggestedCraftsmanship { get; init; }
     public int SuggestedControl { get; init; }
 
+    public int RequiredCraftsmanship { get; init; }
+    public int RequiredControl { get; init; }
+
     // Starting quality from HQ materials (if any)
     public int StartingQuality { get; init; } = 0;
 
@@ -29,4 +32,4 @@ public record RecipeParameters
     public List<RecipeIngredientInfo> Ingredients { get; init; } = [];
 }
 
-public sealed record RecipeIngredientInfo(int ItemId, int Quantity, bool CanBeHQ);
+public sealed record RecipeIngredientInfo(int ItemId, int Quantity, bool CanBeHQ, int ItemLevel);

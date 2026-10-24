@@ -1,4 +1,4 @@
-use crate::actions::quality::condition_multiplier;
+use crate::actions::quality;
 use crate::actions::Action;
 use crate::formula;
 use crate::state::{Condition, CrafterStats, CraftingState, Recipe};
@@ -29,7 +29,14 @@ pub(super) fn apply_effect(
                 150
             }
         }
-        Action::RapidSynthesis => 500,
+        // Rapid Synthesis Mastery, unlocked at level 63.
+        Action::RapidSynthesis => {
+            if stats.level >= 63 {
+                500
+            } else {
+                250
+            }
+        }
         Action::FocusedSynthesis => 200,
         // Groundwork loses half its potency when durability cannot cover its full cost.
         Action::Groundwork => {
@@ -96,6 +103,8 @@ fn progress_effect(
     next
 }
 
+// Buffs sum into one multiplier on the potency, in Raphael's integer order
+// (raphael-sim/src/effects.rs:70-80, actions.rs:28-52; Teamcraft progress-action.ts:26-36).
 pub(super) fn calculate_progress(
     state: &CraftingState,
     stats: &CrafterStats,
@@ -107,16 +116,16 @@ pub(super) fn calculate_progress(
         recipe.progress_divider,
         recipe.progress_modifier,
         stats.level,
-        recipe.recipe_level,
+        recipe.class_job_level,
     );
-    let mut efficiency = potency;
-    if state.veneration_turns > 0 {
-        efficiency += 50;
-    }
+    let mut modifier = 10;
     if state.muscle_memory_turns > 0 {
-        efficiency += 100;
+        modifier += 10;
     }
-    ((base * efficiency) as f64 / 100.0) as i32
+    if state.veneration_turns > 0 {
+        modifier += 5;
+    }
+    (base as i64 * potency as i64 * modifier / 1000) as i32
 }
 
 fn delicate_synthesis(
@@ -127,26 +136,7 @@ fn delicate_synthesis(
     // Delicate Synthesis Mastery (94) raises only the progress half.
     let progress_potency = if stats.level >= 94 { 150 } else { 100 };
     let progress_increase = calculate_progress(&state, stats, recipe, progress_potency);
-
-    let effective_control = stats.effective_control(state.inner_quiet_stacks);
-    let base_quality = formula::base_quality(
-        effective_control,
-        recipe.quality_divider,
-        recipe.quality_modifier,
-        stats.level,
-        recipe.recipe_level,
-    );
-    let mut quality_efficiency = 100;
-    if state.innovation_turns > 0 {
-        quality_efficiency += 50;
-    }
-    if state.great_strides_turns > 0 {
-        quality_efficiency += 100;
-    }
-    let quality_increase = condition_multiplier(
-        ((base_quality * quality_efficiency) as f64 / 100.0) as i32,
-        state.condition,
-    );
+    let quality_increase = quality::calculate_quality(&state, stats, recipe, 100);
 
     let mut new_progress = state.progress + progress_increase;
     let mut final_appraisal_turns = state.final_appraisal_turns;
@@ -163,7 +153,7 @@ fn delicate_synthesis(
     next.final_appraisal_turns = final_appraisal_turns;
     next.muscle_memory_turns = 0;
     next.great_strides_turns = 0;
-    next.inner_quiet_stacks = (state.inner_quiet_stacks + 1).min(10);
+    next.inner_quiet_stacks = quality::gain_inner_quiet(state.inner_quiet_stacks, 1, stats);
     next
 }
 
@@ -181,6 +171,7 @@ mod tests {
         };
         let recipe = Recipe {
             recipe_level: 580,
+            class_job_level: 90,
             difficulty: 3500,
             quality: 7200,
             durability: 70,
@@ -230,7 +221,8 @@ mod tests {
         state.veneration_turns = 2;
         state.muscle_memory_turns = 3;
         let next = Action::CarefulSynthesis.execute(state, &stats, &recipe, true);
-        assert_eq!(next.progress, 775);
+        // 235 * 180 * (10 + 10 + 5) / 1000: the buffs sum into one multiplier.
+        assert_eq!(next.progress, 1057);
         assert_eq!(next.muscle_memory_turns, 0);
     }
 
@@ -257,5 +249,37 @@ mod tests {
         state.durability = 15;
         let next = Action::Groundwork.execute(state, &stats, &recipe, true);
         assert_eq!(next.progress, 423);
+    }
+
+    #[test]
+    fn rapid_synthesis_doubles_its_potency_at_level_63() {
+        // Raphael's numbers for rlvl 133 (class job level 54) and 529 craftsmanship: 84 base.
+        let recipe = Recipe {
+            recipe_level: 133,
+            class_job_level: 54,
+            difficulty: 5000,
+            quality: 10000,
+            durability: 80,
+            progress_divider: 64,
+            progress_modifier: 100,
+            quality_divider: 44,
+            quality_modifier: 100,
+            ..Default::default()
+        };
+        let progress = |level: i32| {
+            let stats = CrafterStats {
+                level,
+                craftsmanship: 529,
+                control: 500,
+                cp: 300,
+                is_specialist: false,
+            };
+            let state = CraftingState::create_initial(&recipe, &stats);
+            Action::RapidSynthesis
+                .execute(state, &stats, &recipe, true)
+                .progress
+        };
+        assert_eq!(progress(50), 210);
+        assert_eq!(progress(63), 420);
     }
 }

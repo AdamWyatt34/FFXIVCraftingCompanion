@@ -40,9 +40,11 @@ public sealed class GetRecipeCraftingParametersQueryHandler
             parameters.ConditionsFlag,
             parameters.SuggestedCraftsmanship,
             parameters.SuggestedControl,
+            parameters.RequiredCraftsmanship,
+            parameters.RequiredControl,
             parameters.MaterialQualityFactor,
             parameters.Ingredients
-                .Select(i => new RecipeCraftingIngredientDto(i.ItemId, i.Quantity, i.CanBeHQ))
+                .Select(i => new RecipeCraftingIngredientDto(i.ItemId, i.Quantity, i.CanBeHQ, i.ItemLevel))
                 .ToList());
     }
 }

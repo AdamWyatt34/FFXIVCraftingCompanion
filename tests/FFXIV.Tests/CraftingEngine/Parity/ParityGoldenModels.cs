@@ -54,7 +54,8 @@ public sealed record ParityAvailability(
     int CpCost,
     int DurabilityCost,
     int SuccessRate,
-    int Category);
+    int Category,
+    bool IsLegacy);
 
 public sealed record ParityState(
     int Progress,
@@ -79,13 +80,13 @@ public sealed record ParityState(
     int MuscleMemoryTurns,
     bool HeartAndSoulActive,
     bool TrainedPerfectionActive,
+    bool ExpedienceActive,
     bool QuickInnovationUsed,
     bool HeartAndSoulUsed,
     bool TrainedPerfectionUsed,
     int CarefulObservationCount,
     bool IsFirstStep,
     int ComboAction,
-    bool ObserveActive,
     bool IsComplete,
     bool IsFailed,
     double QualityPercent,
@@ -106,7 +107,7 @@ public sealed record HqGoldenCase(
     List<HqGoldenInput> HqIngredients,
     int Expected);
 
-public sealed record HqGoldenIngredient(int ItemId, int Quantity, bool CanBeHq);
+public sealed record HqGoldenIngredient(int ItemId, int Quantity, bool CanBeHq, int ItemLevel);
 
 public sealed record HqGoldenInput(int ItemId, int HqQuantity);
 

@@ -1,5 +1,3 @@
-using FFXIV.Domain.CraftingEngine.Actions;
-
 namespace FFXIV.Domain.CraftingEngine;
 
 public record MacroOptions
@@ -22,8 +20,7 @@ public static class MacroExporter
             var action = CraftingActionRegistry.GetById(actionId);
             if (action == null) continue;
 
-            int waitTime = action.Category == ActionCategory.Buff ? 2 : 3;
-            lines.Add($"/ac \"{action.InGameName}\" <wait.{waitTime}>");
+            lines.Add($"/ac \"{action.MacroName}\" <wait.{action.MacroWaitSeconds}>");
         }
 
         if (lines.Count == 0)
